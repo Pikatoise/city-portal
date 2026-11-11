@@ -20,7 +20,7 @@ public sealed class InfrastructureFoundationTests
         await using var connection = new NpgsqlConnection(database.GetConnectionString());
         await connection.OpenAsync(CancellationToken.None);
 
-        await using var beforeMigration = new NpgsqlCommand("SELECT to_regnamespace('identity') IS NULL", connection);
+        await using var beforeMigration = new NpgsqlCommand("SELECT to_regnamespace('identity') IS NULL AND to_regnamespace('notifications') IS NULL", connection);
         Assert.Equal(true, await beforeMigration.ExecuteScalarAsync(CancellationToken.None));
 
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
@@ -44,8 +44,10 @@ public sealed class InfrastructureFoundationTests
         Assert.Equal(2L, await histories.ExecuteScalarAsync(CancellationToken.None));
     }
 
-    [Fact]
-    public async Task Readiness_WhenDependenciesFailAndRecover_TracksAvailabilityWhileLivenessRemainsHealthyAsync()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Readiness_WhenDependenciesFailAndRecover_TracksAvailabilityWhileLivenessRemainsHealthyAsync(bool migrateIdentityFirst)
     {
         await using PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18.6-alpine3.24").Build();
         await using RabbitMqContainer broker = new RabbitMqBuilder("rabbitmq:4.4.0-management-alpine").Build();
@@ -55,8 +57,18 @@ public sealed class InfrastructureFoundationTests
 
         using HttpResponseMessage beforeMigration = await client.GetAsync("/health/ready", CancellationToken.None);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, beforeMigration.StatusCode);
-        await factory.Services.MigrateIdentityAsync(CancellationToken.None);
-        await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
+        if (migrateIdentityFirst)
+            await factory.Services.MigrateIdentityAsync(CancellationToken.None);
+        else
+            await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
+
+        using HttpResponseMessage partiallyMigrated = await client.GetAsync("/health/ready", CancellationToken.None);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, partiallyMigrated.StatusCode);
+
+        if (migrateIdentityFirst)
+            await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
+        else
+            await factory.Services.MigrateIdentityAsync(CancellationToken.None);
 
         using HttpResponseMessage initialReadiness = await client.GetAsync("/health/ready", CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, initialReadiness.StatusCode);

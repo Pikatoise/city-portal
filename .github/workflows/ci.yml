@@ -80,7 +80,7 @@ jobs:
           done
           test -s /tmp/cityportal-root.crt
           curl --fail --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/api/system/info
-          curl --fail --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
+          curl --fail --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
           grep -q '<app-root' /tmp/cityportal.html
       - name: Check live OpenAPI contract against client snapshot
         run: |

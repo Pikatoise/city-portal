@@ -17,9 +17,11 @@ Run the commands below from the repository root. In Windows PowerShell, use
 ## Configure Local Credentials
 
 Copy `.env.example` to `.env`. Set `POSTGRES_PASSWORD` and `RABBITMQ_PASSWORD`
-to different random values. Use letters, digits, hyphens, or underscores for
-RabbitMQ credentials because they form part of an AMQP URI. `.env` is ignored by
-Git. Do not reuse these development credentials for a deployment.
+to different random values containing only letters, digits, hyphens, or underscores.
+Random hexadecimal values are suitable for both passwords. PostgreSQL credentials
+form part of an Npgsql connection string, and RabbitMQ credentials form part of an
+AMQP URI; the restricted local alphabet avoids quoting and URI-escaping ambiguity.
+`.env` is ignored by Git. Do not reuse these development credentials for a deployment.
 
 ```powershell
 Copy-Item .env.example .env

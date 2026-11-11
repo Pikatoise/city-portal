@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: stage 1 business decisions agreed with the owner; implementation contracts documented; application foundation implementation is in progress (step 2).
+Status: stage 1 business decisions agreed with the owner; step 2 application foundation implemented, automatically verified, and independently reviewed. Steps 3-6 and owner completion review remain pending.
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -228,7 +228,7 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implement these in order; #1 is in progress. Record exact local/CI commands after scaffolding, pin compatible dependencies, and document the concrete key management, SMTP/proxy configuration, and scheduling integration with their implementation. These are engineering setup tasks, not unresolved approval of the business rules.
+Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implement these in order; foundation implementation and independent review are complete, with owner review pending. [DEVELOPMENT.md](../DEVELOPMENT.md) records foundation commands and configuration. Document concrete protection-key management, SMTP delivery, authenticated proxy handling, and scheduling integration with their account workflows. These are engineering setup tasks, not unresolved approval of the business rules.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
@@ -285,10 +285,35 @@ None remain from the stage 1 interview. Remaining engineering setup is listed ab
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: step 2 in progress. Registration, authentication, recovery, role management, and durable Email delivery are not implemented yet.
-- Documentation verification: relative file links resolve; agreed rule values and stage references checked; outgoing content reviewed for credentials and local paths. Run Git whitespace checks on the staged specification before committing.
-- Application verification: not run; no application exists yet.
+- Implementation: step 2 foundation implemented. Registration, authentication, recovery, role management, and durable Email delivery are not implemented yet. Step 3 is next.
+- Documentation verification: foundation setup, explicit migrations, pinned tools, credentials, HTTPS, and operational limits are documented. Outgoing source was checked for credentials and local user paths; local credentials and certificates remain ignored.
+- Application verification: 10 backend tests and two frontend tests passed; commands and evidence are recorded below. CI is configured, but no remote Actions run is claimed because these commits have not been pushed.
+- Independent review: separate agents reviewed specification compliance and coding standards after implementation. Credential alphabet guidance and the DTO constructor were corrected. Tests now check that neither module migrates at startup and that either module's pending migrations block readiness. Both reviewers confirmed their findings resolved.
+- Limitations: visual browser validation could not run because the connected browser/native automation host was unavailable. Automated frontend tests and actual HTTPS SSR/API checks passed. Local browser certificate trust remains a documented manual choice; system trust was not changed. Account security, durable delivery, and scheduling guarantees are not delivered by this foundation.
 - Owner completion review: pending.
+
+### Foundation Verification (2026-11-11)
+
+| Check | Result |
+| --- | --- |
+| `dotnet build CityPortal.slnx --configuration Release --no-restore --no-incremental` | Passed with zero warnings/errors before review; incremental Release build after DTO/test corrections also passed with zero warnings/errors. |
+| `dotnet format CityPortal.slnx --verify-no-changes --no-restore` | Passed. Build-time style checks also caught generated migration namespace/unused-using violations during implementation; those files were formatted before completion. |
+| `dotnet test tests/CityPortal.IntegrationTests/CityPortal.IntegrationTests.csproj --configuration Release` | Initial project discovery and execution verified; final solution command below verifies the reviewed test set. |
+| `dotnet test CityPortal.slnx --configuration Release --no-build` | Passed: 10, Failed: 0, Skipped: 0. Real PostgreSQL and RabbitMQ run through Testcontainers. |
+| `npm.cmd run build`, `npm.cmd run format:check`, `npm.cmd run api:check` in `frontend` | Passed. Angular production SSR build, source formatting, and generated-client consistency. |
+| `npm.cmd test -- --watch=false` in `frontend` | Passed: 2, Failed: 0. Generated-client connection success, failed request, and retry behavior. |
+| `docker compose config --quiet`, `docker compose build`, `docker compose run --rm --no-deps api --migrate` | Passed. Explicit migrations initialize empty PostgreSQL schemas; repeat execution preserves existing data. |
+| Compose readiness, HTTPS, and contract smoke | All seven containers run. API and Worker readiness return 200. HTTPS API and SSR homepage return 200 with CA and hostname verification; `/account` returns `Cache-Control: no-store`. Live OpenAPI matches `frontend/openapi.json` using `scripts/check-openapi.py`. |
+| RabbitMQ outage and recovery | Readiness returns 503 during the outage while liveness returns 200; readiness returns 200 after AMQP recovery. No account/delivery outage guarantee is inferred. |
+| Workflow syntax | `actionlint` passed for `.github/workflows/ci.yml`; CI runs build/format/tests, client drift checks, explicit migrations, and HTTPS smoke on Linux. Remote execution remains pending push. |
+
+| Requirement | Evidence |
+| --- | --- |
+| Public metadata and development-only documentation | `SystemInfo_ReturnsOnlyPublicApplicationMetadataAsync`, `OpenApi_InDevelopment_DescribesSystemInfoContractAsync`, `ApiDocumentation_InProduction_IsUnavailableAsync`. |
+| Dependency-independent liveness and structured errors | `Liveness_WhenDependenciesAreUnavailable_RemainsHealthyAsync`, `Readiness_WhenDependenciesAreUnavailable_ReturnsServiceUnavailableAsync`, `UnknownApiRoute_ReturnsProblemDetailsAsync`. |
+| Explicit, repeatable module migrations | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`. |
+| Both module migration gates and dependency failure/recovery | `Readiness_WhenDependenciesFailAndRecover_TracksAvailabilityWhileLivenessRemainsHealthyAsync` runs with both migration orders. |
+| Angular connection loading, success, failure, and retry | `shows successful connection after the generated API request completes`, `allows a failed connection to be retried successfully`. |
 
 Update this section as work proceeds. Include the completed step, verification evidence, unresolved limitations, and review outcome.
 
@@ -305,5 +330,6 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Agreed remaining field constraints, IP limits, login counter handling, and concurrent-change behavior. | Owner selected letter/digit-only display names, 15 login requests/minute/IP and ten Email requests/hour/IP; approved the other proposed rules, including five registrations/hour/IP, 254-character Email, non-disclosing login failures, conflict responses, and pre-commit authorization rechecks. |
 | 2026-11-11 | Closed the owner interview and documented implementation contracts. | Owner approved permanent-failure handling, separate account mail limits including initial sends, automatic retry exclusions, and latest-confirmation status. Added API, permission, state, transaction, bootstrap, and verification contracts; synchronized relevant baseline documents. |
 | 2026-11-11 | Added the owner-reviewed C# style baseline and stage checks. | Created .editorconfig and CODE_STYLE.md from the edited sample, including omitted braces for single statements and readable single-line signatures. AGENTS.md and CORE.md link the conventions; stage 1 scaffolding must add build/CI enforcement. |
+| 2026-11-11 | Implemented and independently reviewed the application foundation. | Added API/Worker, Angular SSR host with CSR account/staff placeholders, module migrations, generated client, real infrastructure checks, Compose HTTPS, local setup, and CI. Recorded actual verification and the browser automation limitation; remaining account workflows and owner review keep stage 1 open. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.
