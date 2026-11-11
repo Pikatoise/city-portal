@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CityPortal.Api/CityPortal.Api.csproj" />
+    <Project Path="src/CityPortal.Worker/CityPortal.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
+    <Project Path="src/Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CityPortal.IntegrationTests/CityPortal.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

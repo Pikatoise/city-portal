@@ -50,9 +50,9 @@ This is a method-layout excerpt, not a complete implementation or a business spe
 
 ## Verification and Limits
 
-The current repository has no application solution or projects. Whitespace can be checked with `dotnet format whitespace . --folder --include CodeStyle.Sample.cs --verify-no-changes` while the temporary sample exists. This checks whitespace only, not semantic analyzer rules.
+The application solution is `CityPortal.slnx`. Run `dotnet format CityPortal.slnx --verify-no-changes --no-restore` after restoring dependencies. The temporary `CodeStyle.Sample.cs` remains a review reference outside the application projects.
 
-During stage 1 scaffolding, enable Nullable and EnforceCodeStyleInBuild for the .NET projects, set explicit diagnostic severities, and add `dotnet format <solution> --verify-no-changes` to CI using the actual solution path. Verify that selected diagnostics execute during build and formatting rather than assuming every editor option is enforced. Do not create empty application projects solely for style configuration.
+`Directory.Build.props` enables nullable references, build-time style analysis, and warnings as errors. XML documentation generation enables unused-using analysis; CS1591 alone is suppressed because exhaustive public XML comments are not a selected convention. CI checks formatting against the actual solution. Verify selected diagnostics during build and formatting rather than assuming every editor option is enforced.
 
 The built-in braces option expresses the preference for omitted braces; it does not provide a complete remove-braces enforcement guarantee. Likewise, disabling IDE0290 stops suggestions to use primary constructors but does not reject existing primary constructors. Signature wrapping, Async naming, cancellation propagation, comment quality, and the ordinary-constructor convention also require review. Custom analyzers are not introduced for these conventions at this stage.
 

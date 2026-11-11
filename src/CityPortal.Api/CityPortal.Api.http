@@ -1,0 +1,18 @@
+@baseUrl = http://localhost:5080
+
+### Public application metadata
+GET {{baseUrl}}/api/system/info
+Accept: application/json
+
+### Process liveness
+GET {{baseUrl}}/health/live
+
+### PostgreSQL and RabbitMQ readiness
+GET {{baseUrl}}/health/ready
+
+### API contract (Development only)
+GET {{baseUrl}}/openapi/v1.json
+
+### Unknown endpoint returns Problem Details
+GET {{baseUrl}}/api/unknown
+Accept: application/problem+json

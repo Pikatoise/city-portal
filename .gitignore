@@ -55,3 +55,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Local configuration, frontend dependencies, and development certificates
+.env.*
+!.env.example
+node_modules/
+.angular/
+dist/
+coverage/
+.local/
+*.pfx
+*.pem
+*.key

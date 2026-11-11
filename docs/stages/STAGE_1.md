@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: stage 1 business decisions agreed with the owner; implementation contracts documented; application implementation has not started.
+Status: stage 1 business decisions agreed with the owner; implementation contracts documented; application foundation implementation is in progress (step 2).
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -57,6 +57,12 @@ Establish automated build and test checks, health checks, structured logs, and s
 Apply [CODE_STYLE.md](../CODE_STYLE.md) and the root `.editorconfig`. Enable nullable reference types and build-time style diagnostics for the .NET projects, and add a solution formatting check to CI. Verify the selected rules against real project code; review conventions without built-in enforcement manually.
 
 Completion: the application starts through the documented local procedure, migrations initialize an empty database, and the initial automated checks pass.
+
+Foundation implementation: `CityPortal.slnx` contains API, Worker, Identity, Notifications, and integration-test projects. Module DbContexts remain internal. Public module operations register services and apply owned migrations. The API `--migrate` command is an explicit deployment step; ordinary startup never migrates. Notifications initially owns its schema and migration history, with delivery records and handlers introduced in step 3.
+
+The read-only foundation endpoint GET `/api/system/info` returns `{ "name": "CityPortal", "stage": 1 }` and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client to display API connectivity. The temporary account and staff routes explain that their workflows are not available. No account or staff data is exposed. OpenAPI and Scalar are available only in Development.
+
+Both .NET processes expose `/health/live` and `/health/ready`. Liveness does not depend on external services; readiness requires PostgreSQL connectivity, applied module migrations, and a successful RabbitMQ connection. JSON logs and OpenTelemetry instrumentation are configured, with OTLP export enabled when an endpoint is configured. [DEVELOPMENT.md](../DEVELOPMENT.md) documents Compose, local credentials, HTTPS, migrations, and checks. Wolverine delivery, SMTP sending, Quartz retention, persistent protection keys, and authenticated proxy handling remain work for the account workflows.
 
 ### 3. Deliver Registration and Email Confirmation
 
@@ -222,7 +228,7 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Before application coding, create/link the implementation Issues and GitHub Project required by CORE.md. This documentation task does not claim that external tracking has already been created. Record exact local/CI commands after scaffolding, pin compatible dependencies, and document the concrete key management, SMTP/proxy configuration, and scheduling integration with their implementation. These are remaining engineering setup tasks, not unresolved approval of the business rules.
+Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implement these in order; #1 is in progress. Record exact local/CI commands after scaffolding, pin compatible dependencies, and document the concrete key management, SMTP/proxy configuration, and scheduling integration with their implementation. These are engineering setup tasks, not unresolved approval of the business rules.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
@@ -279,7 +285,7 @@ None remain from the stage 1 interview. Remaining engineering setup is listed ab
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: not started.
+- Implementation: step 2 in progress. Registration, authentication, recovery, role management, and durable Email delivery are not implemented yet.
 - Documentation verification: relative file links resolve; agreed rule values and stage references checked; outgoing content reviewed for credentials and local paths. Run Git whitespace checks on the staged specification before committing.
 - Application verification: not run; no application exists yet.
 - Owner completion review: pending.

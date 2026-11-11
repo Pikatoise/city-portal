@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.pfx
+**/*.pem
+**/*.key
+**/bin
+**/obj
+**/node_modules
+**/.angular
+**/dist
+**/TestResults
+artifacts
+.local
+*.binlog
