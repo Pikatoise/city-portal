@@ -1,9 +1,11 @@
 import { afterNextRender, Component, inject, signal } from '@angular/core';
 import { Api } from './api/api';
 import { getSystemInfo } from './api/fn/system/get-system-info';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home',
+  imports: [RouterLink],
   template: `
     <section class="intro" aria-labelledby="home-title">
       <p class="eyebrow">Город начинается с людей</p>
@@ -16,8 +18,9 @@ import { getSystemInfo } from './api/fn/system/get-system-info';
         <div>
           <h2>Сначала знакомство</h2>
           <p>
-            На первом этапе появятся регистрация, вход и личный кабинет. Эти функции пока в
-            разработке.
+            Создайте аккаунт, подтвердите Email и откройте личный кабинет.
+            <a routerLink="/account/register">Зарегистрироваться</a> или
+            <a routerLink="/account/login">войти</a>.
           </p>
         </div>
       </div>

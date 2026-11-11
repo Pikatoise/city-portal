@@ -6,3 +6,11 @@ coverage
 *.log
 .git
 .env
+.env.*
+.npmrc
+.netrc
+_netrc
+*.pem
+*.key
+*.pfx
+*.p12

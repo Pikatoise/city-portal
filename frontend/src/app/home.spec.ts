@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Home } from './home';
 import { vi } from 'vitest';
+import { provideRouter } from '@angular/router';
 
 describe('Home server connection', () => {
   let http: HttpTestingController;
@@ -10,7 +11,7 @@ describe('Home server connection', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [Home],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
     http = TestBed.inject(HttpTestingController);
   });

@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: stage 1 business decisions agreed with the owner; step 2 application foundation implemented, automatically verified, and independently reviewed. Steps 3-6 and owner completion review remain pending.
+Status: steps 2 and 3 are implemented and independently reviewed. Registration, Email confirmation, and their login/profile dependencies are available. Steps 4-6 and owner completion review remain pending. Verification evidence and limitations are recorded below.
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -60,15 +60,17 @@ Completion: the application starts through the documented local procedure, migra
 
 Foundation implementation: `CityPortal.slnx` contains API, Worker, Identity, Notifications, and integration-test projects. Module DbContexts remain internal. Public module operations register services and apply owned migrations. The API `--migrate` command is an explicit deployment step; ordinary startup never migrates. Notifications initially owns its schema and migration history, with delivery records and handlers introduced in step 3.
 
-The read-only foundation endpoint GET `/api/system/info` returns `{ "name": "CityPortal", "stage": 1 }` and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client to display API connectivity. The temporary account and staff routes explain that their workflows are not available. No account or staff data is exposed. OpenAPI and Scalar are available only in Development.
+The read-only foundation endpoint GET `/api/system/info` returns `{ "name": "CityPortal", "stage": 1 }` and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client to display API connectivity. Step 3 replaces the foundation account placeholder with the account workflow; the staff route remains a placeholder. OpenAPI and Scalar are available only in Development.
 
-Both .NET processes expose `/health/live` and `/health/ready`. Liveness does not depend on external services; readiness requires PostgreSQL connectivity, applied module migrations, and a successful RabbitMQ connection. JSON logs and OpenTelemetry instrumentation are configured, with OTLP export enabled when an endpoint is configured. [DEVELOPMENT.md](../DEVELOPMENT.md) documents Compose, local credentials, HTTPS, migrations, and checks. Wolverine delivery, SMTP sending, Quartz retention, persistent protection keys, and authenticated proxy handling remain work for the account workflows.
+Both .NET processes expose `/health/live` and `/health/ready`. Liveness does not depend on external services; readiness requires PostgreSQL connectivity, applied module/messaging/scheduler schemas, and a successful RabbitMQ connection. JSON logs and OpenTelemetry instrumentation are configured, with OTLP export enabled when an endpoint is configured. [DEVELOPMENT.md](../DEVELOPMENT.md) documents Compose, local credentials, HTTPS, migrations, persistent protection keys, trusted proxy configuration, and checks. Step 3 adds Wolverine delivery, SMTP sending, and Quartz retention.
 
 ### 3. Deliver Registration and Email Confirmation
 
 Implement registration end to end, including validation, persisted unconfirmed accounts, durable confirmation messages, Worker delivery, confirmation links, the agreed loading/error/sent presentation, and profile-only resend. Verify transaction rollback, infrastructure outages, restarts, and duplicate message processing against real infrastructure.
 
 Completion: a user can register and confirm Email through the interface; pending work survives outages and resumes without repeating account changes.
+
+Implementation dependency: step 3 includes login, logout, and profile reading so the agreed profile-only confirmation resend can be exercised end to end. These operations follow the already agreed step 4 session and protection rules. Password recovery and profile editing remain in step 4; administration remains in step 5. This sequencing does not change the approved behavior or stage scope.
 
 ### 4. Deliver Authentication and Password Recovery
 
@@ -228,13 +230,13 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implement these in order; foundation implementation and independent review are complete, with owner review pending. [DEVELOPMENT.md](../DEVELOPMENT.md) records foundation commands and configuration. Document concrete protection-key management, SMTP delivery, authenticated proxy handling, and scheduling integration with their account workflows. These are engineering setup tasks, not unresolved approval of the business rules.
+Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Steps 2 and 3 are implemented and independently reviewed, with owner review pending. [DEVELOPMENT.md](../DEVELOPMENT.md) records the implemented configuration for keys, SMTP, trusted proxies, explicit schemas, and scheduling. Continue with recovery and profile editing in issue #3, then administration and delivery inspection/replay in issue #4.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
 ## Open Business Decisions
 
-None remain from the stage 1 interview. Remaining engineering setup is listed above. The stage itself is not complete until application acceptance checks and the owner's completion review pass.
+None remain from the stage 1 interview. Remaining implementation workflows are listed above. The stage itself is not complete until application acceptance checks and the owner's completion review pass.
 
 ## Stage Acceptance Criteria
 
@@ -285,11 +287,11 @@ None remain from the stage 1 interview. Remaining engineering setup is listed ab
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: step 2 foundation implemented. Registration, authentication, recovery, role management, and durable Email delivery are not implemented yet. Step 3 is next.
-- Documentation verification: foundation setup, explicit migrations, pinned tools, credentials, HTTPS, and operational limits are documented. Outgoing source was checked for credentials and local user paths; local credentials and certificates remain ignored.
-- Application verification: 10 backend tests and two frontend tests passed; commands and evidence are recorded below. CI is configured, but no remote Actions run is claimed because these commits have not been pushed.
-- Independent review: separate agents reviewed specification compliance and coding standards after implementation. Credential alphabet guidance and the DTO constructor were corrected. Tests now check that neither module migrates at startup and that either module's pending migrations block readiness. Both reviewers confirmed their findings resolved.
-- Limitations: visual browser validation could not run because the connected browser/native automation host was unavailable. Automated frontend tests and actual HTTPS SSR/API checks passed. Local browser certificate trust remains a documented manual choice; system trust was not changed. Account security, durable delivery, and scheduling guarantees are not delivered by this foundation.
+- Implementation: steps 2 and 3 implemented. Issue #2 includes registration, confirmation, durable Email, and its login/profile/logout dependencies. Recovery, profile editing, administration, delivery inspection/replay screens, and final stage acceptance remain pending.
+- Documentation verification: local setup, explicit EF/Wolverine/Quartz schema deployment, SMTP, persistent keys, trusted proxies, and verification commands are documented. Local credentials, private keys, and build/runtime artifacts are excluded from Git and image build contexts.
+- Application verification: 47 backend tests and 23 frontend tests pass. The HTTPS registration-to-confirmation smoke and live OpenAPI comparison pass. Commands and evidence are recorded below. No remote Actions run is claimed before push.
+- Independent review: separate agents reviewed specification compliance and coding standards after implementation. Review found and resolved stale confirmation fragments, malformed-link presentation, missing-delivery loading after retention, and session revocation between authentication and profile lookup. Tests now prove the actual HTTP outage path and await duplicate handling rather than relying on a short delay. Both reviewers confirmed their findings resolved.
+- Limitations: visual browser validation could not run because the connected browser/native automation host was unavailable. Automated frontend tests and actual HTTPS SSR/API checks pass. Local browser certificate trust remains a documented manual choice; system trust was not changed. Password recovery, profile editing, administration and delivery inspection/replay remain subsequent work. SMTP acceptance followed by database acknowledgement failure can still duplicate external Email, as agreed.
 - Owner completion review: pending.
 
 ### Foundation Verification (2026-11-11)
@@ -315,6 +317,41 @@ None remain from the stage 1 interview. Remaining engineering setup is listed ab
 | Both module migration gates and dependency failure/recovery | `Readiness_WhenDependenciesFailAndRecover_TracksAvailabilityWhileLivenessRemainsHealthyAsync` runs with both migration orders. |
 | Angular connection loading, success, failure, and retry | `shows successful connection after the generated API request completes`, `allows a failed connection to be retried successfully`. |
 
+### Registration and Confirmation Verification (2026-11-12)
+
+The API coordinates Identity and Notifications using the same database connection and transaction. The Notifications EF Outbox stores a message containing only delivery ID and attempt number. The recoverable recipient/token payload is protected with shared persistent Data Protection keys; Identity stores a token verifier. The Worker uses RabbitMQ durable Inbox delivery, rechecks link validity before SMTP, and persists attempt outcomes and bounded retries. Quartz uses its explicit PostgreSQL schema migration for daily completed-delivery retention. Ordinary startup does not provision database schemas.
+
+Confirmation links use URL fragments, which do not reach proxy request logs. The CSR page clears the fragment from history, observes replacement fragments, rejects malformed links, and requires an explicit POST action. Profile state follows only the latest confirmation request. Missing retained delivery records produce Error/resend rather than indefinite loading.
+
+| Check | Result |
+| --- | --- |
+| `dotnet test CityPortal.slnx --configuration Release --no-restore --logger "trx;LogFileName=final-stage-one.trx" --results-directory .local/test-results` | Passed: 47, Failed: 0, Skipped: 0. Real PostgreSQL, RabbitMQ, and controllable SMTP; TRX counters verified. |
+| `dotnet format CityPortal.slnx --verify-no-changes --no-restore` | Passed. Release API/Worker image publication and test compilation also pass build-time style checks. |
+| `npm.cmd test -- --watch=false`, `npm.cmd run build`, `npm.cmd run format:check`, `npm.cmd run api:check` in `frontend` | Passed: 23 frontend tests, production build, formatting, and generated-client consistency. |
+| `docker compose build`, explicit `api --migrate`, Compose startup | Passed. Existing local data retained; API and Worker readiness healthy. Frontend image rebuilt after the confirmation-page review fixes. |
+| `python scripts/check-registration.py --ca .local/cityportal-root.crt` | Passed through the actual HTTPS origin: CSRF rejection, separate registration/login, secure session cookie, Mailpit HTML/plain-text mail, GET without confirmation, POST confirmation, informational repeated confirmation, profile, logout. |
+| `python scripts/check-openapi.py frontend/openapi.json .local/final-openapi.json` | Passed against the running API. JSON-only body schemas and required CSRF headers generate the account client. |
+| Independent review | Standards and specification reviewers confirmed their findings resolved. Owner completion review remains pending. |
+
+| Requirement | Evidence |
+| --- | --- |
+| Field boundaries, Unicode scalars/NFC, exact ASCII password policy | `Registration_WithAllowedNameAndPassword_AcceptsExactValues`, `Registration_WithDecomposedLetters_NormalizesBeforeScalarLengthValidation`, `Registration_WithInvalidName_ReportsDisplayNameError`, `Registration_WithInvalidPassword_ReportsPasswordError`, `Registration_EmailLengthBoundary_IsEnforced`. |
+| CSRF, normalized uniqueness, separate login, profile, confirmation/reopen, logout | `RegisterConfirmAndLogout_WithCsrfAndCookie_EnforcesAccountLifecycleAsync`. |
+| Malformed requests, alternate route casing and spoofed proxy headers cannot bypass limits | `RegistrationRateLimit_WithMalformedAndAlternateCaseRoutes_CountsAcrossRequestsAsync`. |
+| Atomic account/role/link/delivery/Outbox rollback | `Registration_WhenDeliveryInsertFails_RollsBackAccountRoleLinkAndOutboxAsync`, `Queue_WhenTransactionRollsBack_DiscardsDeliveryAndWolverineEnvelopeAsync`. |
+| Actual HTTP registration/resend succeeds while broker unavailable | `RegistrationAndResend_WhenBrokerIsUnavailable_ReturnSuccessWithDurableWorkAsync`. |
+| Replacement rollback, initial-send allowance, resend bounds, invalidation and expiry | `Resend_WithReplacementQuotaAndExpiry_PreservesOnlyLatestLinkAsync`. |
+| One-time concurrent confirmation | `Confirmation_WhenSubmittedConcurrently_ConsumesOnceAndReturnsInformationalReplayAsync`. |
+| Persisted lockout, absolute sessions, logout and concurrent quota enforcement | `Login_WithLockoutAbsoluteExpiryAndLogout_ValidatesPersistedSessionsAsync`, `RequestQuota_WhenContextsCompete_AllowsExactlyTheConfiguredCountAsync`. |
+| Session revocation after authentication returns 401 on both profile reads | `ProfileReads_WhenSessionIsRevokedAfterAuthentication_ReturnUnauthorizedAsync`. |
+| Protected payload, identifier-only envelope, broker dispatch/recovery, duplicate handler and Worker restart | `CommittedOutbox_WhenBrokerAndWorkerRecover_DeliversOnceAndSurvivesRestartAsync`. |
+| Bounded transient retries and eventual success; permanent/exhausted failure | `Delivery_WhenTransientFailureOccurs_PersistsBoundedRetriesAndThenSucceedsAsync`, `Delivery_WhenFailuresArePermanentOrExhausted_StopsAutomaticAttemptsAsync`. |
+| Expired/invalid links skipped before SMTP | `Delivery_WhenLinkIsExpiredOrInvalid_SkipsBeforeSmtpAsync`. |
+| Resolved-only 30-day retention and post-cleanup profile projection | `Retention_WhenCompletedRecordsReachThirtyDays_DeletesOnlyOlderResolvedWorkAsync`, `GetLatest_WhenRetainedDeliveryHasBeenCleanedUp_ProjectsErrorInsteadOfPendingAsync`. |
+| Invalid-link UI and same-route replacement with stale in-flight response | `does not submit an invalid confirmation link with %s`, `uses a replacement link on the same route and ignores an older in-flight confirmation`. |
+| Explicit action, fresh CSRF/JSON requests and separate login | `removes the confirmation secret from history and requires an explicit POST action`, `fetches fresh CSRF protection across consecutive identity writes`, `creates an account with the exact password and asks for separate login without claiming mail sent`. |
+| Latest-request delivery UI, resend, errors and authentication | `shows profile loading, failed mail and later SMTP acceptance without exposing internal queue states`, `does not let an older profile response overwrite the latest requested mail status`, `resends only from the profile and treats persisted work as loading until SMTP accepts it`, `keeps failed login feedback generic and clears the password`. |
+
 Update this section as work proceeds. Include the completed step, verification evidence, unresolved limitations, and review outcome.
 
 ## Specification Changes
@@ -331,5 +368,6 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Closed the owner interview and documented implementation contracts. | Owner approved permanent-failure handling, separate account mail limits including initial sends, automatic retry exclusions, and latest-confirmation status. Added API, permission, state, transaction, bootstrap, and verification contracts; synchronized relevant baseline documents. |
 | 2026-11-11 | Added the owner-reviewed C# style baseline and stage checks. | Created .editorconfig and CODE_STYLE.md from the edited sample, including omitted braces for single statements and readable single-line signatures. AGENTS.md and CORE.md link the conventions; stage 1 scaffolding must add build/CI enforcement. |
 | 2026-11-11 | Implemented and independently reviewed the application foundation. | Added API/Worker, Angular SSR host with CSR account/staff placeholders, module migrations, generated client, real infrastructure checks, Compose HTTPS, local setup, and CI. Recorded actual verification and the browser automation limitation; remaining account workflows and owner review keep stage 1 open. |
+| 2026-11-12 | Implemented and independently reviewed registration and Email confirmation. | Delivered step 3 with login/profile/logout dependencies, protected durable Email, distributed limits, persistent keys, explicit message/scheduler migrations, and recorded verification. Recovery/profile editing remain step 4; administration and delivery replay remain step 5. No new business rules. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.

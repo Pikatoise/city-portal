@@ -24,8 +24,17 @@ public partial class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddJsonConsole();
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging);
-        builder.Services.AddControllers();
-        builder.Services.AddOpenApi();
+        builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
+        builder.Services.AddAccountSecurity(builder.Configuration);
+        builder.Services.AddControllers(options => options.Filters.Add<AccountRequestFilter>());
+        builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, cancellationToken) =>
+        {
+            // The generated client must send a concrete content type instead of the JSON formatter's wildcard alias.
+            if (operation.RequestBody?.Content is { } content && content.ContainsKey("application/json"))
+                foreach (string mediaType in content.Keys.Where(key => key != "application/json").ToArray())
+                    content.Remove(mediaType);
+            return Task.CompletedTask;
+        }));
         builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {
             context.ProblemDetails.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
@@ -49,12 +58,27 @@ public partial class Program
         {
             await app.Services.MigrateIdentityAsync(CancellationToken.None);
             await app.Services.MigrateNotificationsAsync(CancellationToken.None);
+            await app.Services.MigrateAccountMailMessagingAsync();
             app.Logger.LogInformation("Applied Identity and Notifications database migrations.");
             return;
         }
 
         app.UseExceptionHandler();
+        app.UseMiddleware<AccountErrorMiddleware>();
+        app.UseForwardedHeaders();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase)
+                || context.Request.Path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+                context.Response.Headers.Pragma = "no-cache";
+            }
+            await next(context);
+        });
         app.UseStatusCodePages();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapControllers();
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
         app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") });

@@ -41,7 +41,7 @@ public sealed class InfrastructureFoundationTests
         read.Parameters.AddWithValue("id", accountId);
         Assert.Equal("MigrationUser", await read.ExecuteScalarAsync(CancellationToken.None));
         await using var histories = new NpgsqlCommand("SELECT (SELECT count(*) FROM identity.\"__EFMigrationsHistory\") + (SELECT count(*) FROM notifications.\"__EFMigrationsHistory\")", connection);
-        Assert.Equal(2L, await histories.ExecuteScalarAsync(CancellationToken.None));
+        Assert.Equal(4L, await histories.ExecuteScalarAsync(CancellationToken.None));
     }
 
     [Theory]
@@ -69,6 +69,8 @@ public sealed class InfrastructureFoundationTests
             await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         else
             await factory.Services.MigrateIdentityAsync(CancellationToken.None);
+
+        await factory.Services.MigrateAccountMailMessagingAsync();
 
         using HttpResponseMessage initialReadiness = await client.GetAsync("/health/ready", CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, initialReadiness.StatusCode);

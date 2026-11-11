@@ -5,6 +5,14 @@ x-backend-environment: &backend-environment
   ASPNETCORE_HTTP_PORTS: 8080
   ConnectionStrings__Database: Host=postgres;Port=5432;Database=cityportal;Username=cityportal;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};GSS Encryption Mode=Disable
   ConnectionStrings__Messaging: amqp://${RABBITMQ_USER:-cityportal}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+  Security__DataProtectionKeysPath: /var/cityportal/keys
+  Security__TrustedProxies__0: ${PROXY_ADDRESS:-172.30.88.10}
+  Mail__PublicOrigin: https://localhost:8443
+  Mail__SmtpHost: mailpit
+  Mail__SmtpPort: 1025
+  Mail__UseTls: 'false'
+  Mail__SenderAddress: noreply@cityportal.test
+  Mail__PortalName: CityPortal
 
 services:
   postgres:
@@ -56,6 +64,8 @@ services:
       context: .
       dockerfile: infra/docker/Api.Dockerfile
     environment: *backend-environment
+    volumes:
+      - protection-keys:/var/cityportal/keys
     ports:
       - 127.0.0.1:5080:8080
     depends_on:
@@ -69,6 +79,8 @@ services:
       context: .
       dockerfile: infra/docker/Worker.Dockerfile
     environment: *backend-environment
+    volumes:
+      - protection-keys:/var/cityportal/keys
     ports:
       - 127.0.0.1:5081:8080
     depends_on:
@@ -96,6 +108,15 @@ services:
     depends_on:
       - api
       - frontend
+    networks:
+      default:
+        ipv4_address: ${PROXY_ADDRESS:-172.30.88.10}
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${COMPOSE_SUBNET:-172.30.88.0/24}
 
 volumes:
   postgres-data:
@@ -103,3 +124,4 @@ volumes:
   mailpit-data:
   caddy-data:
   caddy-config:
+  protection-keys:

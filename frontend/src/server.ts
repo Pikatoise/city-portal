@@ -18,6 +18,7 @@ const angularApp = new AngularNodeAppEngine({
 app.disable('x-powered-by');
 app.use(['/account', '/staff'], (_request, response, next) => {
   response.setHeader('Cache-Control', 'no-store');
+  response.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
 app.use(

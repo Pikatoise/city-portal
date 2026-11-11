@@ -5,6 +5,7 @@ RUN dotnet publish src/CityPortal.Worker/CityPortal.Worker.csproj --configuratio
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS runtime
 WORKDIR /app
+RUN mkdir -p /var/cityportal/keys && chown $APP_UID:$APP_UID /var/cityportal/keys
 COPY --from=build /app/publish .
 USER $APP_UID
 EXPOSE 8080

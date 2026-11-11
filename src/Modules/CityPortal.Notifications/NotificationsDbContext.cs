@@ -8,8 +8,33 @@ internal sealed class NotificationsDbContext : DbContext
     {
     }
 
+    public DbSet<EmailDelivery> Deliveries => Set<EmailDelivery>();
+
+    public DbSet<EmailAttempt> Attempts => Set<EmailAttempt>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("notifications");
+        modelBuilder.Entity<EmailDelivery>(entity =>
+        {
+            entity.ToTable("EmailDeliveries");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Purpose).HasMaxLength(32);
+            entity.Property(x => x.State).HasMaxLength(32);
+            entity.Property(x => x.ErrorCode).HasMaxLength(80);
+            entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.HasIndex(x => x.AccountId);
+            entity.HasIndex(x => new { x.State, x.NextAttemptAtUtc });
+            entity.HasIndex(x => x.CompletedAtUtc);
+        });
+        modelBuilder.Entity<EmailAttempt>(entity =>
+        {
+            entity.ToTable("EmailAttempts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Result).HasMaxLength(32);
+            entity.Property(x => x.ErrorCode).HasMaxLength(80);
+            entity.HasOne<EmailDelivery>().WithMany().HasForeignKey(x => x.DeliveryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.DeliveryId, x.Number }).IsUnique();
+        });
     }
 }

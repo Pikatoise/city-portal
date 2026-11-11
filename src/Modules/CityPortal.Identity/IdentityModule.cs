@@ -1,5 +1,7 @@
+using CityPortal.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CityPortal.Identity;
 
@@ -9,6 +11,9 @@ public static class IdentityModule
     {
         services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString,
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "identity")));
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped(provider => new AccountOperations(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<AccountMailQueue>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped<IAccountMailLinkValidator, AccountMailLinkValidator>();
         services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>("identity-database", tags: ["ready"],
             customTestQuery: async (context, cancellationToken) =>
                 await context.Database.CanConnectAsync(cancellationToken)

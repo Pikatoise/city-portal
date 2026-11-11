@@ -1,9 +1,9 @@
 # Local Development
 
-This guide covers the stage 1 application foundation. Registration, authentication,
-Email delivery, administrative workflows, and their outage guarantees are not yet
-implemented. The presence of PostgreSQL, RabbitMQ, and Mailpit does not imply those
-business workflows are available.
+This guide covers the stage 1 application foundation and local configuration for
+registration and Email confirmation. The current implementation and actual
+verification status are recorded in [STAGE_1.md](stages/STAGE_1.md). Password
+recovery, profile editing, and administration are subsequent work.
 
 ## Prerequisites
 
@@ -56,6 +56,21 @@ The frontend trusts Caddy's forwarded headers only in Compose. Its port is not
 published to the host; requests enter through Caddy. Direct host development does
 not enable that trust. The SSR host allowlist remains limited to local hostnames.
 
+The API trusts forwarded client IP and scheme headers only from the configured
+Caddy address. Compose uses the local subnet `172.30.88.0/24` and reserves
+`172.30.88.10` for Caddy. If this conflicts with an existing Docker/VPN network,
+set both `COMPOSE_SUBNET` and `PROXY_ADDRESS` in `.env` to a matching private subnet
+and address. Never configure arbitrary Internet sources as trusted proxies.
+
+API and Worker share the `protection-keys` volume at `/var/cityportal/keys` with
+the application name `CityPortal`. It protects persisted mail payloads and API
+cookies across restarts. The runtime creates this directory for the non-root
+application user before volume initialization. Keep the volume private and back
+it up with PostgreSQL; losing keys makes queued protected payloads and existing
+cookies unreadable. Local keys are filesystem-protected; a deployment must also
+configure encryption at rest and controlled backup access. Private key material
+must never be committed or copied into image build contexts.
+
 ## Trust the Local HTTPS Certificate
 
 Caddy issues a certificate through its local certificate authority. Its private
@@ -90,7 +105,7 @@ validation still use the exported root. Linux curl needs only `--cacert`.
 | `http://localhost:5080/`                 | Direct loopback API for host tooling.                 |
 | `http://localhost:5081/health/ready`     | Worker dependency readiness.                          |
 | `http://localhost:8025/`                 | Mailpit captured Email interface.                     |
-| `localhost:1025`                         | Mailpit SMTP listener for future Email workflow work. |
+| `localhost:1025`                         | Mailpit SMTP listener for local confirmation Email.   |
 | `http://localhost:15672/`                | RabbitMQ management UI with `.env` credentials.       |
 | `localhost:5432`                         | PostgreSQL database `cityportal`, user `cityportal`.  |
 | `localhost:5672`                         | RabbitMQ AMQP.                                        |
@@ -112,6 +127,11 @@ Keep PostgreSQL, RabbitMQ, and Mailpit running in Compose. Set
 `ConnectionStrings__Database` and `ConnectionStrings__Messaging` in the current
 process or .NET user secrets, using `localhost` and the `.env` credentials.
 The API uses port 5080 for local development. Never commit real connection strings.
+For host API/Worker development, set `Security__DataProtectionKeysPath` to the same
+ignored local directory in both processes, for example `.local/protection-keys`
+resolved to an absolute path. Also set `Mail__SmtpHost=localhost`,
+`Mail__SmtpPort=1025`, and `Mail__UseTls=false` for host Worker access to Mailpit.
+Keep `Mail__PublicOrigin=https://localhost:8443` when testing links through Compose.
 
 ```powershell
 dotnet restore CityPortal.slnx
@@ -130,20 +150,49 @@ npm.cmd start
 ```
 
 The frontend development server proxies `/api/` to `http://localhost:5080`.
-Use the Compose HTTPS origin for later cookie-authentication acceptance checks.
+Use the Compose HTTPS origin for cookie-authentication acceptance checks.
 The generated client workflow and frontend test commands live in the frontend
 package scripts. CI runs backend format/build/tests, frontend build/tests, and
 the Compose image/migration/HTTPS smoke path on Linux.
 
+## Registration and Confirmation Configuration
+
+Compose configures the local mail sender through the following settings, shared
+by API and Worker:
+
+| Configuration | Local value or purpose |
+| --- | --- |
+| `Mail:PublicOrigin` | `https://localhost:8443`, the origin used in confirmation links. |
+| `Mail:PortalName` | `CityPortal`, displayed in Russian HTML and plain-text templates. |
+| `Mail:SenderAddress` | `noreply@cityportal.test`, a fictional local sender. |
+| `Mail:SmtpHost`, `Mail:SmtpPort` | `mailpit`, `1025`. |
+| `Mail:UseTls` | `false` only for the isolated local SMTP receiver; use TLS for deployment. |
+| `Mail:Username`, `Mail:Password` | Optional SMTP credentials, supplied outside source control. |
+| `Security:DataProtectionKeysPath` | Shared persistent key directory. |
+| `Security:TrustedProxies` | Exact trusted proxy IP addresses; untrusted forwarded headers are ignored. |
+
+Open `/account/register`, then sign in separately at `/account/login`. The profile
+at `/account` shows the latest confirmation delivery. Inspect captured mail at
+Mailpit and open its confirmation link. Opening the page does not confirm the
+account; use its confirmation button. The link secret is in the URL fragment so
+it is not sent to the reverse proxy, and the page clears it from browser history.
+Confirmation resend is available only inside the authenticated profile.
+
+The following HTTPS smoke check creates one disposable account and retains its
+mail for inspection. It verifies CSRF rejection, registration, login, SMTP
+templates, confirmation, repeated confirmation, profile status, and logout. It
+uses the actual registration limit, so repeated runs can return HTTP 429.
+
+```powershell
+python scripts/check-registration.py --ca .local/cityportal-root.crt
+```
+
 ## Operational Boundaries
 
-- The Worker currently exposes health endpoints; durable Email handlers,
-  Wolverine Outbox/Inbox integration, SMTP sending, and Quartz retention will
-  arrive with the account workflows. No placeholder job claims to send Email.
 - Health probes verify process/dependency availability. They do not prove Email
   delivery or application business correctness.
-- Configure API trusted proxy addresses, persistent data-protection keys, SMTP
-  credentials, and production HTTPS before deploying authenticated workflows.
+- Configure trusted proxy addresses, protected persistent keys, SMTP credentials,
+  and production HTTPS for the deployment environment.
 - Redis and S3-compatible storage remain selected infrastructure; this foundation
   does not start them before a concrete workflow uses them.
 
