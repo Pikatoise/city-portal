@@ -54,6 +54,8 @@ Create the API, Worker, Angular application, Identity and Notifications module p
 
 Establish automated build and test checks, health checks, structured logs, and secret configuration. Document local startup and explicit migration execution.
 
+Apply [CODE_STYLE.md](../CODE_STYLE.md) and the root `.editorconfig`. Enable nullable reference types and build-time style diagnostics for the .NET projects, and add a solution formatting check to CI. Verify the selected rules against real project code; review conventions without built-in enforcement manually.
+
 Completion: the application starts through the documented local procedure, migrations initialize an empty database, and the initial automated checks pass.
 
 ### 3. Deliver Registration and Email Confirmation
@@ -247,6 +249,7 @@ None remain from the stage 1 interview. Remaining engineering setup is listed ab
 - The first-administrator command refuses to run when an administrator exists. Concurrent role changes cannot remove the last administrator or any account's Regular User role.
 - Confirmed users can change their own display name and password. The profile shows the agreed fields and Russian role labels; administrators can search/filter accounts and inspect retained role-change history.
 - Migrations, automated tests, browser checks, health checks, delivery diagnostics, and local/deployment instructions cover the delivered workflows. Record actual commands and results after implementation.
+- C# follows CODE_STYLE.md; solution formatting and configured build-time style checks pass. Review also covers single-statement braces, method signature layout, conventional constructors, Async naming, and cancellation propagation where tools do not enforce them.
 - The owner has reviewed the delivered workflows and their explanation; every remaining limitation is recorded before closing the stage.
 
 ## Progress and Verification
@@ -295,5 +298,6 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Agreed Email tooling, templates, retry delays, administrator replay, and delivery retention. | Owner limited user-facing states to Sent and Error/resend, then approved loading during the initial attempt and Error/resend after a failed attempt while retries continue. VALUE.md records the revised interface requirement. |
 | 2026-11-11 | Agreed remaining field constraints, IP limits, login counter handling, and concurrent-change behavior. | Owner selected letter/digit-only display names, 15 login requests/minute/IP and ten Email requests/hour/IP; approved the other proposed rules, including five registrations/hour/IP, 254-character Email, non-disclosing login failures, conflict responses, and pre-commit authorization rechecks. |
 | 2026-11-11 | Closed the owner interview and documented implementation contracts. | Owner approved permanent-failure handling, separate account mail limits including initial sends, automatic retry exclusions, and latest-confirmation status. Added API, permission, state, transaction, bootstrap, and verification contracts; synchronized relevant baseline documents. |
+| 2026-11-11 | Added the owner-reviewed C# style baseline and stage checks. | Created .editorconfig and CODE_STYLE.md from the edited sample, including omitted braces for single statements and readable single-line signatures. AGENTS.md and CORE.md link the conventions; stage 1 scaffolding must add build/CI enforcement. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.

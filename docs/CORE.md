@@ -170,6 +170,8 @@ Use Dapper only for a demonstrated query benefit. Evaluate a dedicated search en
 
 ## Testing, Observability, and Operations
 
+Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Introduce build-time code-style diagnostics and a formatting check when scaffolding the solution; code review covers conventions that built-in tooling cannot enforce.
+
 Use xUnit and Testcontainers with real PostgreSQL for transaction, query, migration, and concurrency integration tests. Add unit tests for state transitions and selected end-to-end Angular/API workflows.
 
 Prioritize unauthorized access to another user's resource, unconfirmed and blocked accounts, conflicting edits, revision visibility, atomic cross-module rollback, duplicate messages, and recovery after restarts. Verify messaging and scheduling against their actual infrastructure where those guarantees matter.
