@@ -10,7 +10,7 @@ News is the main feature, complemented by moderated classifieds, citizen story s
 
 - Read [docs/VALUE.md](docs/VALUE.md) before defining product behavior, permissions, content lifecycles, or scope.
 - Read [docs/CORE.md](docs/CORE.md) before architectural changes, implementation planning, or infrastructure work.
-- Before writing or reviewing C#, read [docs/CODE_STYLE.md](docs/CODE_STYLE.md) and follow the root `.editorconfig`. The owner's reviewed sample establishes the conventions, including omitted braces for single-statement control-flow bodies.
+- Before writing or reviewing C#, read [docs/CODE_STYLE.md](docs/CODE_STYLE.md) and follow the root `.editorconfig`. These files record the owner's approved conventions, including omitted braces for single-statement control-flow bodies.
 - These documents define the approved direction. Agree unresolved workflow details with the owner before implementation; new business rules and features require confirmation.
 
 ## Technical Direction

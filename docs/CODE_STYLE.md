@@ -1,13 +1,13 @@
 # C# Code Style
 
-The owner reviewed a concrete C# sample and selected these conventions. [../.editorconfig](../.editorconfig) contains the supported editor and analyzer settings. Apply the rules below during code review as well; not every convention has a built-in diagnostic.
+The owner approved these C# conventions. [../.editorconfig](../.editorconfig) contains the supported editor and analyzer settings. Apply the rules below during code review as well; not every convention has a built-in diagnostic.
 
 ## Layout and Control Flow
 
 - Use four spaces per indentation level. Put opening braces on a new line for types, methods, and blocks that need braces.
-- Omit braces when an `if`, `else`, or loop contains a single statement. Keep that statement on a separate, indented line. A nested control statement counts as one statement, matching the reviewed sample.
+- Omit braces when an `if`, `else`, or loop contains a single statement. Keep that statement on a separate, indented line. A nested control statement counts as one statement.
 - Use braces when the body contains multiple statements or syntax requires a block. When removing braces would change which `if` owns an `else`, retain the braces needed to preserve behavior.
-- Keep readable method signatures on one line, including the reviewed two-parameter async method. Split only when a signature becomes difficult to read. No fixed line-length limit was selected.
+- Keep readable method signatures on one line. Split only when a signature becomes difficult to read. No fixed line-length limit was selected.
 - Keep simple auto-properties on one line and separate members with a blank line.
 - Place using directives outside the namespace, put System directives first, and remove unused directives.
 - Use file-scoped namespaces.
@@ -36,7 +36,7 @@ This is a method-layout excerpt, not a complete implementation or a business spe
 - Use PascalCase for types, methods, and properties; prefix interface names with I.
 - Use camelCase for parameters and local variables, and _camelCase for private fields.
 - Use C# type keywords such as `string`, `bool`, and `int` instead of framework aliases.
-- Use explicit built-in types, including `string role` in a foreach loop as in the reviewed sample.
+- Use explicit built-in types, including `string role` in a foreach loop.
 - Use `var` when the initializer clearly exposes the non-built-in type, such as `var summary = new AccountSummary { ... };`. Use an explicit type for method results, such as `Account? account = await ...;`.
 
 ## Members and Dependencies
@@ -45,12 +45,12 @@ This is a method-layout excerpt, not a complete implementation or a business spe
 - Use expression-bodied methods and properties for short, single-line expressions. Use block bodies for longer logic.
 - Enable nullable reference types in each project during scaffolding. Check nullable results explicitly; use the null-forgiving operator only with a concrete, documented reason.
 - Give task-returning asynchronous methods an Async suffix and propagate CancellationToken to operations that support cancellation, especially I/O.
-- Write code comments in English. Explain the reason for a decision instead of narrating the statement below it. Teaching comments in the temporary review sample are not a requirement for production files.
-- Keep production types in their corresponding files. The temporary sample grouped types only for review.
+- Write code comments in English. Explain the reason for a decision instead of narrating the statement below it.
+- Keep production types in their corresponding files.
 
 ## Verification and Limits
 
-The application solution is `CityPortal.slnx`. Run `dotnet format CityPortal.slnx --verify-no-changes --no-restore` after restoring dependencies. The temporary `CodeStyle.Sample.cs` remains a review reference outside the application projects.
+The application solution is `CityPortal.slnx`. Run `dotnet format CityPortal.slnx --verify-no-changes --no-restore` after restoring dependencies.
 
 `Directory.Build.props` enables nullable references, build-time style analysis, and warnings as errors. XML documentation generation enables unused-using analysis; CS1591 alone is suppressed because exhaustive public XML comments are not a selected convention. CI checks formatting against the actual solution. Verify selected diagnostics during build and formatting rather than assuming every editor option is enforced.
 

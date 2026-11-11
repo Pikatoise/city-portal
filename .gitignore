@@ -67,3 +67,57 @@ coverage/
 *.pfx
 *.pem
 *.key
+
+# Private keys, certificate stores, and ASP.NET Core Data Protection keys
+*.p12
+*.p8
+*.snk
+*.jks
+*.keystore
+*.kdbx
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+key-*.xml
+DataProtection-Keys/
+data-protection-keys/
+
+# Local secret/configuration overrides; keep shared non-secret appsettings tracked
+secrets.json
+.secrets/
+secrets/
+appsettings.Local.json
+appsettings.local.json
+appsettings.*.Local.json
+appsettings.*.local.json
+.npmrc
+.netrc
+_netrc
+.pgpass
+.envrc
+NuGet.Local.Config
+nuget.local.config
+*.pubxml.user
+*.publishsettings
+
+# Local IDE state and machine-specific connection settings
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/mcp.json
+.mcp.local.json
+
+# Runtime logs, crash dumps, and local database/backup copies
+*.log
+*.dmp
+*.dump
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+backups/
