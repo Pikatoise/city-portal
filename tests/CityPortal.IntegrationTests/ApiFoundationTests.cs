@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using CityPortal.Api;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CityPortal.IntegrationTests;
 
@@ -7,6 +9,18 @@ public sealed class ApiFoundationTests
 {
     private const string _unavailableDatabase = "Host=127.0.0.1;Port=1;Database=unavailable;Username=test;Password=test;Timeout=1";
     private const string _unavailableMessaging = "amqp://test:test@127.0.0.1:1";
+
+    [Theory]
+    [InlineData("Asia/Yekaterinburg", "Asia/Yekaterinburg")]
+    [InlineData("Russian Standard Time", "Europe/Moscow")]
+    public async Task SystemInfo_WithConfiguredCityTimeZone_ReturnsBrowserCompatibleIdentifierAsync(string configuredId, string expectedId)
+    {
+        await using var factory = new ApiFactory("Development", _unavailableDatabase, _unavailableMessaging);
+        await using WebApplicationFactory<Program> configured = factory.WithWebHostBuilder(builder => builder.UseSetting("City:TimeZone", configuredId));
+        using HttpClient client = configured.CreateClient();
+        using var body = JsonDocument.Parse(await client.GetStringAsync("/api/system/info"));
+        Assert.Equal(expectedId, body.RootElement.GetProperty("timeZone").GetString());
+    }
 
     [Fact]
     public async Task SystemInfo_ReturnsOnlyPublicApplicationMetadataAsync()
@@ -20,7 +34,8 @@ public sealed class ApiFoundationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("CityPortal", body.RootElement.GetProperty("name").GetString());
         Assert.Equal(1, body.RootElement.GetProperty("stage").GetInt32());
-        Assert.Equal(2, body.RootElement.EnumerateObject().Count());
+        Assert.Equal("UTC", body.RootElement.GetProperty("timeZone").GetString());
+        Assert.Equal(3, body.RootElement.EnumerateObject().Count());
     }
 
     [Fact]

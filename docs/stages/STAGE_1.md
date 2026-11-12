@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: steps 2-4 are implemented and independently reviewed. Registration, Email confirmation, authentication, password recovery, and profile editing are available. Steps 5-6 and owner completion review remain pending. Verification evidence and limitations are recorded below.
+Status: steps 2-5 are implemented. Account workflows, administrator setup, role management/history, and Email inspection/replay are available. Steps 2-4 were independently reviewed; final stage verification, remaining independent review, and owner completion review remain in step 6. Verification evidence and limitations are recorded below.
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -60,7 +60,7 @@ Completion: the application starts through the documented local procedure, migra
 
 Foundation implementation: `CityPortal.slnx` contains API, Worker, Identity, Notifications, and integration-test projects. Module DbContexts remain internal. Public module operations register services and apply owned migrations. The API `--migrate` command is an explicit deployment step; ordinary startup never migrates. Notifications initially owns its schema and migration history, with delivery records and handlers introduced in step 3.
 
-The read-only foundation endpoint GET `/api/system/info` returns `{ "name": "CityPortal", "stage": 1 }` and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client to display API connectivity. Step 3 replaces the foundation account placeholder with the account workflow; the staff route remains a placeholder. OpenAPI and Scalar are available only in Development.
+The read-only endpoint GET `/api/system/info` returns public `name`, `stage`, and `timeZone` metadata and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client for connectivity and configured administrative timestamp display. Account workflows and administrative staff screens replace the original placeholders. OpenAPI and Scalar are available only in Development.
 
 Both .NET processes expose `/health/live` and `/health/ready`. Liveness does not depend on external services; readiness requires PostgreSQL connectivity, applied module/messaging/scheduler schemas, and a successful RabbitMQ connection. JSON logs and OpenTelemetry instrumentation are configured, with OTLP export enabled when an endpoint is configured. [DEVELOPMENT.md](../DEVELOPMENT.md) documents Compose, local credentials, HTTPS, migrations, persistent protection keys, trusted proxy configuration, and checks. Step 3 adds Wolverine delivery, SMTP sending, and Quartz retention.
 
@@ -85,6 +85,8 @@ Implementation: purpose-specific recovery links and quotas reuse the protected N
 Implement the agreed initial-administrator setup, account lookup, role assignment and removal, and the administrative interface. Preserve personal access for accounts with staff roles. Record the responsible actor for role changes and enforce effective permissions on subsequent protected requests.
 
 Completion: authorized administrators can perform the agreed operations; other users cannot; removing a role takes effect for an existing authenticated session as required by CORE.md.
+
+Timestamp display follows CORE.md: `City:TimeZone` is deployment configuration with a neutral UTC development default. The public GET `/api/system/info` metadata includes `timeZone`; administration formats stored UTC timestamps in that configured zone. Configuration is read-only over HTTP; no city-settings screen or write permission is introduced. Reject invalid zone configuration at startup. Account lists order by creation time/ID; histories and deliveries show newest first with ID tie-breaking. Invalid pagination or filter values return 400.
 
 ### 6. Verify and Review the Stage
 
@@ -232,7 +234,7 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implementation and independent review of issues #1-#3 are complete; owner completion review remains in issue #5. [DEVELOPMENT.md](../DEVELOPMENT.md) records configuration and local verification. The next implementation task is administration and delivery inspection/replay in issue #4.
+Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implementation of issues #1-#4 is complete; final acceptance, remaining independent review and owner completion review remain in #5. [DEVELOPMENT.md](../DEVELOPMENT.md) records configuration and local verification. Do not describe stage 2 before the owner's stage 1 completion review.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
@@ -289,11 +291,11 @@ None remain from the stage 1 interview. Remaining implementation workflows are l
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: steps 2-4 implemented. Issue #2 delivers registration, confirmation, durable Email, and login/profile/logout dependencies; issue #3 adds recovery and profile name/password editing. Administration, delivery inspection/replay screens, and final stage acceptance remain pending.
+- Implementation: steps 2-5 implemented. Issues #1-#4 deliver the foundation, account workflows, role management, and Email inspection/replay. Final stage acceptance and owner review remain in #5.
 - Documentation verification: local setup, explicit EF/Wolverine/Quartz schema deployment, SMTP, persistent keys, trusted proxies, and verification commands are documented. Local credentials, private keys, and build/runtime artifacts are excluded from Git and image build contexts.
-- Application verification: 54 backend tests and 31 frontend tests pass. The HTTPS smoke covers registration, confirmation, recovery, profile edits, password changes, session revocation, and logout. Evidence is recorded below. GitHub Actions for foundation/registration commit `cfe3503` passed; issue #3 verification below is local unless explicitly stated otherwise.
+- Application verification: 67 backend tests and 39 frontend tests pass. The HTTPS smoke covers account workflows; administration integration tests use actual HTTP, PostgreSQL, RabbitMQ, SMTP, and the bootstrap command in an isolated process. Docker images, explicit/repeat migrations, and live OpenAPI comparison pass. Prior GitHub Actions for `cfe3503` and `74ce081` passed; current local evidence is below.
 - Independent review: separate agents reviewed specification compliance and coding standards after implementation. Review found and resolved stale confirmation fragments, malformed-link presentation, missing-delivery loading after retention, and session revocation between authentication and profile lookup. Tests now prove the actual HTTP outage path and await duplicate handling rather than relying on a short delay. Both reviewers confirmed their findings resolved.
-- Limitations: recovery/reset screens rendered in the embedded browser through the local development server, and the recovery secret was removed from history. Full HTTPS browser acceptance remains pending because the embedded browser rejected the local CA; HTTP development requests cannot issue the required Secure CSRF cookie. Automated frontend tests and certificate-verified HTTPS API smoke pass. System certificate trust was not changed. Administration and delivery inspection/replay remain subsequent work. SMTP acknowledgement followed by database failure can still duplicate external Email, as agreed.
+- Limitations: full HTTPS browser acceptance, including the new administrative screens, remains in #5 because the embedded browser rejected the local CA; HTTP development requests cannot issue the required Secure CSRF cookie. Angular DOM tests and certificate-verified HTTPS smoke pass. System trust was not changed. SMTP acknowledgement followed by database failure can still duplicate external Email, as agreed. The machine's system SDK changed during issue #4; verification used the pinned 10.0.403 SDK from ignored local storage without changing global SDK selection.
 - Owner completion review: pending.
 
 ### Foundation Verification (2026-11-11)
@@ -377,6 +379,32 @@ Confirmation links use URL fragments, which do not reach proxy request logs. The
 | Russian multipart recovery mail, recovery route and stated lifetime | `RecoveryMail_WhenDelivered_UsesRecoveryPageAndRussianMultipartTemplateAsync`. |
 | Angular generic recovery response, explicit reset, secret/history cleanup, invalid/expired links, conflict reload and password completion | Eight cases in `frontend/src/app/account/recovery.spec.ts`; existing 23 frontend cases also pass. |
 
+### Administration and Email Replay Verification (2026-11-12)
+
+The Identity administration operation serializes bootstrap and role writes with an administration lock, then coordinates account locks with existing login/profile/password operations. Version checks, effective acting-user permissions, last-administrator protection and role audit commit together. Notifications owns replay metadata, locking and audit; the Identity coordinator verifies current administrator access and shares its database transaction with replay/Outbox writes. Replay resets `RetryCount`, while lifetime `AttemptCount` stays monotonic. The migration initializes existing retry budgets from their lifetime counts. Replay history has no cascading delivery reference and survives retention.
+
+| Check | Result |
+| --- | --- |
+| `dotnet test CityPortal.slnx --configuration Release --no-restore --logger "trx;LogFileName=stage-one-administration-final.trx" --results-directory .local/test-results` | Passed: 67, Failed: 0, Skipped: 0; TRX counters checked. |
+| `dotnet format CityPortal.slnx --verify-no-changes --no-restore` | Passed; Release compilation enforces configured style diagnostics. |
+| Frontend tests, production build, formatting, generated client | 39 tests pass; SSR build, Prettier, and API drift checks pass. |
+| Docker API/Worker/frontend images, explicit migrations and repeat | Passed; existing local data retained. |
+| Certificate-verified HTTPS account smoke and live OpenAPI | Passed; new admin account route returns 401 for an anonymous request. |
+| Review | Transaction/lock ordering, immutable audit ownership, secret-free DTOs, replay generation and frontend authorization/conflicts reviewed inline. Final independent/owner review remains in #5. |
+
+| Requirement | Evidence |
+| --- | --- |
+| Bootstrap requires an existing confirmed account, refuses repeats, records system actor and exposes no default password | `Bootstrap_WithMissingUnconfirmedOrExistingAdministrator_RefusesAndAuditsOnlySuccessfulSetupAsync` invokes the actual server command in a separate process and checks exit codes. |
+| Concurrent bootstrap creates one administrator | `Bootstrap_WhenConcurrent_ProvisionsExactlyOneInitialAdministratorAsync`. |
+| Search/filter/page/detail contracts, current versions, preserved RegularUser, multi-role writes, CSRF, confirmed administrator access and retained actor history | `AdministrationHttp_WithSearchRolesVersionsAndCsrf_EnforcesMetadataContractsAndPermissionsAsync`. |
+| Concurrent self-removal preserves the last administrator; existing cookies lose administrative access while keeping personal access | `Roles_WhenAdministratorsRemoveThemselvesConcurrently_PreserveLastAdministratorAndRecheckExistingSessionsAsync`. |
+| Role membership, account version and audit roll back together | `RoleWrite_WhenAuditFails_RollsBackMembershipAndVersionAsync`. |
+| Versioned replay queues the same link once, retains actor and latest-confirmation pointer, and hides mail secrets | `ReplayHttp_WithConcurrentRequests_QueuesSameLinkOnceAndAuditsWithoutExposingSecretsAsync`. |
+| Expired/invalidated links, terminal deliveries, and failed audit cannot produce partial replay changes | Four `Replay_WhenInvalidOrAuditFails_DoesNotQueueOrRecordPartialChangesAsync` cases. |
+| Replay starts a fresh retry budget, rejects old attempt envelopes, resumes SMTP, and retains audit after delivery cleanup | `Replay_WhenSmtpRecovers_RestartsRetryBudgetKeepsAttemptNumbersAndRetainsAuditAsync`. |
+| Configured city-zone metadata, including Windows-to-IANA normalization | Two `SystemInfo_WithConfiguredCityTimeZone_ReturnsBrowserCompatibleIdentifierAsync` cases. |
+| Angular filters, versioned writes, conflict reload, self-removal, replay/error presentation, and city-zone time display | Eight cases in `frontend/src/app/staff/administration.spec.ts`; all prior frontend cases also pass. |
+
 Update this section as work proceeds. Include the completed step, verification evidence, unresolved limitations, and review outcome.
 
 ## Specification Changes
@@ -395,5 +423,6 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Implemented and independently reviewed the application foundation. | Added API/Worker, Angular SSR host with CSR account/staff placeholders, module migrations, generated client, real infrastructure checks, Compose HTTPS, local setup, and CI. Recorded actual verification and the browser automation limitation; remaining account workflows and owner review keep stage 1 open. |
 | 2026-11-12 | Implemented and independently reviewed registration and Email confirmation. | Delivered step 3 with login/profile/logout dependencies, protected durable Email, distributed limits, persistent keys, explicit message/scheduler migrations, and recorded verification. Recovery/profile editing remain step 4; administration and delivery replay remain step 5. No new business rules. |
 | 2026-11-12 | Implemented and independently reviewed password recovery and profile editing. | Delivered step 4, purpose-specific link persistence, atomic password/session changes, coordinated account-write locks, generated API client, Angular screens, and verification evidence. Implementation tasks #1-#3 are complete; stage/owner acceptance stays in #5. |
+| 2026-11-12 | Implemented administrator setup, role management, and Email inspection/replay. | Delivered step 5 with serialized role invariants, retained audit, versioned replay/Outbox coordination, administrative screens, and configured city-zone timestamp display. Implementation tasks #1-#4 are complete; final independent review, browser acceptance and owner review remain in #5. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.

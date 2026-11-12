@@ -101,6 +101,9 @@ namespace CityPortal.Notifications.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -119,6 +122,31 @@ namespace CityPortal.Notifications.Migrations
                     b.HasIndex("State", "NextAttemptAtUtc");
 
                     b.ToTable("EmailDeliveries", "notifications");
+                });
+
+            modelBuilder.Entity("CityPortal.Notifications.EmailReplay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PreviousVersion")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryId", "CreatedAtUtc");
+
+                    b.ToTable("Replays", "notifications");
                 });
 
             modelBuilder.Entity("CityPortal.Notifications.EmailAttempt", b =>

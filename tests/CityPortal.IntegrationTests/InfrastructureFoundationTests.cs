@@ -41,7 +41,7 @@ public sealed class InfrastructureFoundationTests
         read.Parameters.AddWithValue("id", accountId);
         Assert.Equal("MigrationUser", await read.ExecuteScalarAsync(CancellationToken.None));
         await using var histories = new NpgsqlCommand("SELECT (SELECT count(*) FROM identity.\"__EFMigrationsHistory\") + (SELECT count(*) FROM notifications.\"__EFMigrationsHistory\")", connection);
-        Assert.Equal(5L, await histories.ExecuteScalarAsync(CancellationToken.None));
+        Assert.Equal(7L, await histories.ExecuteScalarAsync(CancellationToken.None));
     }
 
     [Theory]

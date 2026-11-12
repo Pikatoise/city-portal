@@ -28,8 +28,16 @@ export const routes: Routes = [
   },
   {
     path: 'staff',
-    data: { title: 'Рабочее пространство' },
-    loadComponent: () => import('./upcoming').then((m) => m.Upcoming),
+    pathMatch: 'full',
+    redirectTo: 'staff/accounts',
+  },
+  {
+    path: 'staff/accounts',
+    loadComponent: () => import('./staff/accounts').then((m) => m.Accounts),
+  },
+  {
+    path: 'staff/email-deliveries',
+    loadComponent: () => import('./staff/email-deliveries').then((m) => m.EmailDeliveries),
   },
   { path: '**', redirectTo: '' },
 ];

@@ -47,3 +47,29 @@ Content-Type: application/json
 X-CSRF-TOKEN: {{csrfToken}}
 
 { "currentPassword": "Current1!", "newPassword": "Replacement1!", "version": 3 }
+
+### Administrator account search; confirmed Administrator session required
+GET {{baseUrl}}/api/admin/accounts?query=resident&role=Author&page=1&pageSize=20
+
+### Account details and version
+GET {{baseUrl}}/api/admin/accounts/{{accountId}}
+
+### Grant/revoke staff roles; RegularUser is always retained
+PUT {{baseUrl}}/api/admin/accounts/{{accountId}}/roles
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "roles": ["Author", "Editor"], "version": 2 }
+
+### Retained role audit history
+GET {{baseUrl}}/api/admin/accounts/{{accountId}}/role-history?page=1&pageSize=20
+
+### Sanitized delivery metadata
+GET {{baseUrl}}/api/admin/email-deliveries?state=Failed&page=1&pageSize=20
+
+### Replay a still-valid failed delivery at its current version
+POST {{baseUrl}}/api/admin/email-deliveries/{{deliveryId}}/replay
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "version": 3 }

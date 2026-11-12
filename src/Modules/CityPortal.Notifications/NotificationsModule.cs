@@ -18,6 +18,7 @@ public static class NotificationsModule
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "notifications")));
         services.TryAddSingleton(TimeProvider.System);
         services.AddOptions<AccountMailOptions>();
+        services.AddScoped(provider => new EmailAdministration(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IAccountMailLinkValidator>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new AccountMailQueue(provider.GetRequiredService<NotificationsDbContext>(),
             provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IDataProtectionProvider>()));
         services.AddSingleton(new ConnectionFactory

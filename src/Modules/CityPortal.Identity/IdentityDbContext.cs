@@ -12,6 +12,7 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
     public DbSet<AccountLink> Links => Set<AccountLink>();
     public DbSet<AccountSession> Sessions => Set<AccountSession>();
     public DbSet<RequestAttempt> RequestAttempts => Set<RequestAttempt>();
+    public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -30,5 +31,7 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
         builder.Entity<AccountSession>().HasOne<Account>().WithMany().HasForeignKey(session => session.AccountId);
         builder.Entity<RequestAttempt>().Property(attempt => attempt.Key).HasMaxLength(100);
         builder.Entity<RequestAttempt>().HasIndex(attempt => new { attempt.Key, attempt.CreatedAtUtc });
+        builder.Entity<RoleChange>().Property(change => change.ActorKind).HasMaxLength(20);
+        builder.Entity<RoleChange>().HasIndex(change => new { change.TargetAccountId, change.CreatedAtUtc });
     }
 }

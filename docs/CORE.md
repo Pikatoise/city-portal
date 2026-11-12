@@ -70,6 +70,8 @@ City-specific configuration includes portal name and branding, city and region n
 
 Specify the configuration model, persistence, and permissions before implementing the relevant settings. Store timestamps in UTC and display them in the configured city time zone.
 
+Stage 1 uses deployment configuration `City:TimeZone` (UTC development default) for administrative timestamp display. The API validates it at startup and returns a browser-compatible IANA identifier in public system metadata. There is no HTTP mutation or city-settings UI for this deployment setting.
+
 ## Identity and Authorization
 
 Use unified accounts with Regular User, Author, Editor, Moderator, and Administrator roles. Accounts may hold multiple roles. Registration, Email confirmation, recovery, and role responsibilities follow VALUE.md.
@@ -211,4 +213,4 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-The current specification is [Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md). Its owner interview is complete, and agreed workflows, permissions, contracts, transaction boundaries, and acceptance criteria are recorded there. Steps 2-4 implement the foundation, registration, Email confirmation, durable delivery, authentication, password recovery, and profile editing. Independent standards and specification reviews are complete. Implementation tasks #1-#3 are complete; administration and delivery inspection/replay remain in #4, while final stage acceptance and owner review remain in #5 of [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). The stage remains open. Agree newly discovered business decisions with the owner before implementing the affected workflow.
+The current specification is [Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md). Its owner interview is complete, and agreed workflows, permissions, contracts, transaction boundaries, and acceptance criteria are recorded there. Steps 2-5 implement the foundation, account workflows, durable Email, administrator provisioning, role management and retained history, and delivery inspection/replay. Implementation tasks #1-#4 are complete. Final stage acceptance, remaining independent review, and owner review stay in #5 of [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). The stage remains open. Agree newly discovered business decisions with the owner before implementing the affected workflow.

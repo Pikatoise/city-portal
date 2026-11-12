@@ -26,6 +26,41 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
     }
 
     [Fact]
+    public async Task Replay_WhenSmtpRecovers_RestartsRetryBudgetKeepsAttemptNumbersAndRetainsAuditAsync()
+    {
+        using IHost host = _fixture.BuildHost(false, true);
+        await host.StartAsync(CancellationToken.None);
+        AccountMailRequest request = _fixture.NewRequest();
+        await _fixture.QueueAsync(host, request, commit: true);
+        _fixture.Smtp.RejectionCode = 550;
+        await _fixture.DeliverAsync(host, request.MessageId, 0);
+        Assert.Equal("Failed", await _fixture.StateAsync(request.MessageId));
+        long version = await _fixture.ScalarAsync<long>("SELECT \"Version\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", request.MessageId);
+        await _fixture.ReplayAsync(host, request.MessageId, version);
+        Assert.Equal("Queued", await _fixture.StateAsync(request.MessageId));
+        await _fixture.DeliverAsync(host, request.MessageId, 0);
+        Assert.Equal(1L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"EmailAttempts\" WHERE \"DeliveryId\"=@id", request.MessageId));
+        _fixture.Smtp.RejectionCode = 450;
+        await _fixture.DeliverAsync(host, request.MessageId, 1);
+        Assert.Equal("RetryScheduled", await _fixture.StateAsync(request.MessageId));
+        DateTimeOffset next = await _fixture.ScalarAsync<DateTimeOffset>("SELECT \"NextAttemptAtUtc\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", request.MessageId);
+        Assert.Equal(_fixture.Time.Now.AddMinutes(1).Ticks / 10, next.Ticks / 10);
+        _fixture.Time.Now = next.AddSeconds(1);
+        _fixture.Smtp.RejectionCode = 0;
+        await _fixture.DeliverAsync(host, request.MessageId, 2);
+        Assert.Equal("Sent", await _fixture.StateAsync(request.MessageId));
+        Assert.Equal(3L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"EmailAttempts\" WHERE \"DeliveryId\"=@id", request.MessageId));
+        Assert.Equal(1, _fixture.Smtp.Accepted.Count(mail => mail.Contains(request.MessageId.ToString("N"), StringComparison.Ordinal)));
+        await _fixture.ExecuteAsync("UPDATE notifications.\"EmailDeliveries\" SET \"CompletedAtUtc\"=@at WHERE \"Id\"=@id", request.MessageId, _fixture.Time.Now.AddDays(-31));
+        await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+        EmailRetentionJob job = scope.ServiceProvider.GetRequiredService<EmailRetentionJob>();
+        await job.Execute(JobExecutionContextBuilder.For(job).Build(), CancellationToken.None);
+        Assert.Equal(0L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", request.MessageId));
+        Assert.Equal(1L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"Replays\" WHERE \"DeliveryId\"=@id", request.MessageId));
+        await host.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RecoveryMail_WhenDelivered_UsesRecoveryPageAndRussianMultipartTemplateAsync()
     {
         using IHost host = _fixture.BuildHost(true, true);
@@ -318,6 +353,18 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
             await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
             await scope.ServiceProvider.GetRequiredService<AccountMailDeliveryService>()
                 .DeliverAsync(new DeliverAccountMail { DeliveryId = id, Attempt = attempt }, CancellationToken.None);
+        }
+
+        public async Task ReplayAsync(IHost host, Guid id, long version)
+        {
+            await using var connection = new NpgsqlConnection(_database.GetConnectionString());
+            await connection.OpenAsync();
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+            await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+            EmailAdministration administration = scope.ServiceProvider.GetRequiredService<EmailAdministration>();
+            Assert.Equal(EmailReplayResult.Accepted, await administration.ReplayAsync(id, version, Guid.NewGuid(), connection, transaction, CancellationToken.None));
+            await transaction.CommitAsync();
+            await administration.FlushAfterCommitAsync();
         }
 
         public Task<string> StateAsync(Guid id) => ScalarAsync<string>("SELECT \"State\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", id);

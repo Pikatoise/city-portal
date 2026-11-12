@@ -12,6 +12,8 @@ internal sealed class NotificationsDbContext : DbContext
 
     public DbSet<EmailAttempt> Attempts => Set<EmailAttempt>();
 
+    public DbSet<EmailReplay> Replays => Set<EmailReplay>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("notifications");
@@ -36,5 +38,7 @@ internal sealed class NotificationsDbContext : DbContext
             entity.HasOne<EmailDelivery>().WithMany().HasForeignKey(x => x.DeliveryId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => new { x.DeliveryId, x.Number }).IsUnique();
         });
+        // Audit records survive deletion of completed delivery records.
+        modelBuilder.Entity<EmailReplay>().HasIndex(replay => new { replay.DeliveryId, replay.CreatedAtUtc });
     }
 }

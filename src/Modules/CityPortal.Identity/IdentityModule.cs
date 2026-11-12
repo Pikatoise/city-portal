@@ -14,6 +14,7 @@ public static class IdentityModule
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped(provider => new AccountOperations(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<AccountMailQueue>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IAccountMailLinkValidator, AccountMailLinkValidator>();
+        services.AddScoped(provider => new AccountAdministration(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<EmailAdministration>(), provider.GetRequiredService<TimeProvider>()));
         services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>("identity-database", tags: ["ready"],
             customTestQuery: async (context, cancellationToken) =>
                 await context.Database.CanConnectAsync(cancellationToken)

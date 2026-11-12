@@ -3,7 +3,53 @@
 This guide covers the stage 1 application foundation and local configuration for
 registration, Email confirmation, password recovery, and profile editing. The
 current implementation and actual verification status are recorded in
-[STAGE_1.md](stages/STAGE_1.md). Administration remains subsequent work.
+[STAGE_1.md](stages/STAGE_1.md). Administration and Email inspection/replay are
+implemented; final stage acceptance and owner review remain pending.
+
+## Initial Administrator and Staff Screens
+
+Register an ordinary account and confirm its Email first. After explicit
+migration, provision the first administrator with the existing account Email:
+
+```powershell
+docker compose run --rm --no-deps api --bootstrap-admin resident@example.test
+```
+
+Use the Email of the intended administrator in place of the sample. The command
+accepts no password, refuses missing/unconfirmed accounts, and exits with code 1
+if any administrator already exists. It does not start an HTTP server or require
+a working Email provider. Concurrent attempts can provision only one account.
+The system records the bootstrap actor in retained role history.
+
+After login, open `/staff/accounts` for search, confirmation/role filters,
+paginated accounts, role changes and history. Administrative roles require
+confirmed Email. RegularUser is always retained, and the last administrator
+cannot lose that role. Self-removal keeps personal access and immediately ends
+administrative access for subsequent requests using existing cookies.
+
+Open `/staff/email-deliveries` to inspect metadata and sanitized failure causes.
+Replay requires a current version, Failed state, and a still-active link. It
+reuses that link, records the actor atomically with the queued Outbox message,
+and starts a fresh bounded retry budget. Lifetime attempt numbers keep increasing
+so old envelopes and attempt records cannot become current again. Replay audit
+records survive the 30-day cleanup of resolved delivery records.
+
+Set `CITY_TIME_ZONE` in `.env` for Compose, or `City__TimeZone` for the API directly.
+UTC is the neutral development default. IANA identifiers such as `Europe/Moscow`
+are suitable; supported Windows identifiers are normalized to IANA. Invalid
+configuration fails startup. Public `/api/system/info` includes `timeZone`,
+which the administrative screens use to display UTC timestamps. This is
+deployment configuration, with no city-settings write endpoint or screen.
+
+If using the ignored project-local SDK, enable it only in the current shell:
+
+```powershell
+$env:DOTNET_ROOT = Join-Path $PWD '.local/dotnet'
+$env:PATH = "$env:DOTNET_ROOT;$env:PATH"
+```
+
+The current workflow was verified with the SDK pinned by `global.json`. Local
+SDK binaries, credentials, test reports and logs must remain outside Git.
 
 ## Recovery and Profile Editing
 

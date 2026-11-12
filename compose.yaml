@@ -13,6 +13,7 @@ x-backend-environment: &backend-environment
   Mail__UseTls: 'false'
   Mail__SenderAddress: noreply@cityportal.test
   Mail__PortalName: CityPortal
+  City__TimeZone: ${CITY_TIME_ZONE:-UTC}
 
 services:
   postgres:

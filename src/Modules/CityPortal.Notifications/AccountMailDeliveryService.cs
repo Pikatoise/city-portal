@@ -101,6 +101,7 @@ public sealed class AccountMailDeliveryService
 
         DateTimeOffset finished = _time.GetUtcNow();
         delivery.AttemptCount++;
+        delivery.RetryCount++;
         delivery.ErrorCode = errorCode;
         _context.Attempts.Add(new EmailAttempt
         {
@@ -120,7 +121,7 @@ public sealed class AccountMailDeliveryService
             delivery.NextAttemptAtUtc = null;
             delivery.ProtectedPayload = "";
         }
-        else if (permanent || delivery.AttemptCount > _retryMinutes.Length)
+        else if (permanent || delivery.RetryCount > _retryMinutes.Length)
         {
             delivery.State = "Failed";
             delivery.NextAttemptAtUtc = null;
@@ -128,7 +129,7 @@ public sealed class AccountMailDeliveryService
         else
         {
             delivery.State = "RetryScheduled";
-            delivery.NextAttemptAtUtc = finished.AddMinutes(_retryMinutes[delivery.AttemptCount - 1]);
+            delivery.NextAttemptAtUtc = finished.AddMinutes(_retryMinutes[delivery.RetryCount - 1]);
             _outbox.Enroll(_context);
             await _outbox.ScheduleAsync(new DeliverAccountMail { DeliveryId = delivery.Id, Attempt = delivery.AttemptCount }, delivery.NextAttemptAtUtc.Value);
         }

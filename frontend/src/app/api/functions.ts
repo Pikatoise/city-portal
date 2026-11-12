@@ -11,6 +11,18 @@ export type { ChangeDisplayName$Params as ChangeDisplayName$Params } from './fn/
 export { changeDisplayName as changeDisplayName } from './fn/account/change-display-name';
 export type { ChangePassword$Params as ChangePassword$Params } from './fn/account/change-password';
 export { changePassword as changePassword } from './fn/account/change-password';
+export type { ListAccounts$Params as ListAccounts$Params } from './fn/administration/list-accounts';
+export { listAccounts as listAccounts } from './fn/administration/list-accounts';
+export type { GetAdminAccount$Params as GetAdminAccount$Params } from './fn/administration/get-admin-account';
+export { getAdminAccount as getAdminAccount } from './fn/administration/get-admin-account';
+export type { ChangeRoles$Params as ChangeRoles$Params } from './fn/administration/change-roles';
+export { changeRoles as changeRoles } from './fn/administration/change-roles';
+export type { GetRoleHistory$Params as GetRoleHistory$Params } from './fn/administration/get-role-history';
+export { getRoleHistory as getRoleHistory } from './fn/administration/get-role-history';
+export type { ListEmailDeliveries$Params as ListEmailDeliveries$Params } from './fn/administration/list-email-deliveries';
+export { listEmailDeliveries as listEmailDeliveries } from './fn/administration/list-email-deliveries';
+export type { ReplayEmail$Params as ReplayEmail$Params } from './fn/administration/replay-email';
+export { replayEmail as replayEmail } from './fn/administration/replay-email';
 export type { GetCsrf$Params as GetCsrf$Params } from './fn/auth/get-csrf';
 export { getCsrf as getCsrf } from './fn/auth/get-csrf';
 export type { Register$Params as Register$Params } from './fn/auth/register';

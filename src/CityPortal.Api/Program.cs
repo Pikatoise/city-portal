@@ -15,7 +15,11 @@ public partial class Program
     public static async Task Main(string[] args)
     {
         bool migrate = args.Contains("--migrate", StringComparer.Ordinal);
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(args.Where(argument => argument != "--migrate").ToArray());
+        int bootstrapIndex = Array.IndexOf(args, "--bootstrap-admin");
+        string? bootstrapEmail = bootstrapIndex >= 0 && bootstrapIndex + 1 < args.Length ? args[bootstrapIndex + 1] : null;
+        if (bootstrapIndex >= 0 && (string.IsNullOrWhiteSpace(bootstrapEmail) || bootstrapEmail.StartsWith("--", StringComparison.Ordinal) || migrate))
+            throw new ArgumentException("Use --bootstrap-admin <confirmed-account-email> separately from --migrate.");
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args.Where((argument, index) => argument != "--migrate" && index != bootstrapIndex && (bootstrapIndex < 0 || index != bootstrapIndex + 1)).ToArray());
         string database = builder.Configuration.GetConnectionString("Database")
             ?? throw new InvalidOperationException("ConnectionStrings:Database must be configured.");
         string messaging = builder.Configuration.GetConnectionString("Messaging")
@@ -23,6 +27,10 @@ public partial class Program
 
         builder.Logging.ClearProviders();
         builder.Logging.AddJsonConsole();
+        string timeZoneId = builder.Configuration["City:TimeZone"] ?? "UTC";
+        if (timeZoneId != "UTC" && TimeZoneInfo.TryConvertWindowsIdToIanaId(timeZoneId, out string? ianaId))
+            timeZoneId = ianaId;
+        builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId));
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
@@ -54,6 +62,22 @@ public partial class Program
 
         await using WebApplication app = builder.Build();
 
+        if (bootstrapEmail is not null)
+        {
+            await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+            try
+            {
+                await scope.ServiceProvider.GetRequiredService<AccountAdministration>().BootstrapAsync(bootstrapEmail, CancellationToken.None);
+                app.Logger.LogInformation("Provisioned the initial administrator.");
+            }
+            catch (AccountOperationException exception)
+            {
+                app.Logger.LogError("Administrator setup refused: {Code}.", exception.Code);
+                Environment.ExitCode = 1;
+            }
+            return;
+        }
+
         if (migrate)
         {
             await app.Services.MigrateIdentityAsync(CancellationToken.None);
@@ -69,7 +93,8 @@ public partial class Program
         app.Use(async (context, next) =>
         {
             if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase)
-                || context.Request.Path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase))
+                || context.Request.Path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase)
+                || context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Headers.CacheControl = "no-store";
                 context.Response.Headers.Pragma = "no-cache";

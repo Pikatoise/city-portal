@@ -16,6 +16,8 @@ internal sealed class EmailDelivery
 
     public int AttemptCount { get; set; }
 
+    public int RetryCount { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; }
 
     public DateTimeOffset ExpiresAtUtc { get; set; }

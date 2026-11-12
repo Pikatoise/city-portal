@@ -8,4 +8,5 @@
 export interface SystemInfoResponse {
   name: string;
   stage: (number | string);
+  timeZone: string;
 }
