@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
   AccountApi,
@@ -20,7 +21,7 @@ const roleLabels: Record<string, string> = {
 
 @Component({
   selector: 'app-profile',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     <section class="account-panel" aria-labelledby="profile-title">
       <p class="eyebrow">Личный кабинет</p>
@@ -36,6 +37,63 @@ const roleLabels: Record<string, string> = {
           <dt>Роли</dt>
           <dd>{{ roles(account.roles) }}</dd>
         </dl>
+        @if (account.emailConfirmed) {
+          <form #nameForm="ngForm" (ngSubmit)="saveName(nameForm)">
+            <h2>Изменить имя</h2>
+            <label for="edit-display-name">Имя на портале</label>
+            <input
+              id="edit-display-name"
+              name="displayName"
+              required
+              [(ngModel)]="displayName"
+              aria-describedby="name-hint"
+            />
+            <p id="name-hint" class="field-hint">
+              3–20 букв или цифр без пробелов и других знаков.
+            </p>
+            <button type="submit" class="secondary-button" [disabled]="busy() || nameForm.invalid">
+              Сохранить имя
+            </button>
+          </form>
+          <form #passwordForm="ngForm" (ngSubmit)="savePassword(passwordForm)">
+            <h2>Изменить пароль</h2>
+            <label for="current-password">Текущий пароль</label>
+            <input
+              id="current-password"
+              name="currentPassword"
+              type="password"
+              autocomplete="current-password"
+              required
+              [(ngModel)]="currentPassword"
+            />
+            <label for="new-password">Новый пароль</label>
+            <input
+              id="new-password"
+              name="newPassword"
+              type="password"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              maxlength="30"
+              [(ngModel)]="newPassword"
+              aria-describedby="password-hint"
+            />
+            <p id="password-hint" class="field-hint">
+              8–30 символов ASCII без пробелов, хотя бы один знак. После изменения все сеансы
+              завершатся.
+            </p>
+            <button
+              type="submit"
+              class="secondary-button"
+              [disabled]="busy() || passwordForm.invalid"
+            >
+              Изменить пароль
+            </button>
+          </form>
+          @if (saved()) {
+            <p role="status">Имя сохранено.</p>
+          }
+        }
         @if (!account.emailConfirmed) {
           <section class="confirmation-card" aria-labelledby="confirmation-title">
             <h2 id="confirmation-title">Подтвердите Email</h2>
@@ -84,6 +142,9 @@ const roleLabels: Record<string, string> = {
         <button type="button" class="secondary-button" (click)="logout()" [disabled]="busy()">
           Выйти
         </button>
+      } @else if (passwordChanged()) {
+        <p role="status">Пароль изменён. Все сеансы завершены.</p>
+        <p><a routerLink="/account/login">Войти с новым паролем</a></p>
       } @else if (error()) {
         <p role="alert" class="form-error">{{ error() }}</p>
         <button class="secondary-button" type="button" (click)="refresh()">Повторить</button>
@@ -108,6 +169,11 @@ export class Profile {
   protected readonly busy = signal(false);
   protected readonly refreshing = signal(false);
   protected readonly error = signal('');
+  protected displayName = '';
+  protected currentPassword = '';
+  protected newPassword = '';
+  protected readonly saved = signal(false);
+  protected readonly passwordChanged = signal(false);
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -130,6 +196,7 @@ export class Profile {
       const account = await this.api.profile();
       if (this.destroyed || deliveryGeneration !== this.deliveryGeneration) return;
       this.profile.set(account);
+      this.displayName = account.displayName;
       this.setDelivery(account.confirmationDelivery);
       this.error.set('');
     } catch (error) {
@@ -173,6 +240,61 @@ export class Profile {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected async saveName(form: NgForm): Promise<void> {
+    const account = this.profile();
+    if (this.busy() || form.invalid || !account) return;
+    this.busy.set(true);
+    this.deliveryGeneration++;
+    this.error.set('');
+    this.saved.set(false);
+    try {
+      const updated = await this.api.changeDisplayName(this.displayName, account.version);
+      this.profile.set(updated);
+      this.displayName = updated.displayName;
+      this.saved.set(true);
+    } catch (error) {
+      await this.editError(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async savePassword(form: NgForm): Promise<void> {
+    const account = this.profile();
+    if (this.busy() || form.invalid || !account) return;
+    this.busy.set(true);
+    this.deliveryGeneration++;
+    this.error.set('');
+    this.saved.set(false);
+    try {
+      await this.api.changePassword(this.currentPassword, this.newPassword, account.version);
+      this.profile.set(null);
+      this.passwordChanged.set(true);
+    } catch (error) {
+      await this.editError(error);
+    } finally {
+      this.currentPassword = '';
+      this.newPassword = '';
+      this.busy.set(false);
+    }
+  }
+
+  private async editError(error: unknown): Promise<void> {
+    if (error instanceof HttpErrorResponse && error.status === 401) {
+      await this.router.navigateByUrl('/account/login');
+      return;
+    }
+    if (accountProblem(error).code === 'version_conflict') {
+      // Any older refresh was invalidated when this write began.
+      const current = await this.api.profile().catch(() => null);
+      if (current) {
+        this.profile.set(current);
+        this.displayName = current.displayName;
+      }
+    }
+    this.error.set(errorMessage(error));
   }
 
   private setDelivery(delivery: ConfirmationDelivery): void {

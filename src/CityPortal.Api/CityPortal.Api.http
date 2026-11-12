@@ -16,3 +16,34 @@ GET {{baseUrl}}/openapi/v1.json
 ### Unknown endpoint returns Problem Details
 GET {{baseUrl}}/api/unknown
 Accept: application/problem+json
+
+### Obtain CSRF protection; retain its cookie and copy the token below
+GET {{baseUrl}}/api/auth/csrf
+
+### Recovery request (same response for unknown or throttled accounts)
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "email": "resident@example.test" }
+
+### Reset with a link from Mailpit; GET alone never changes the password
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "linkId": "{{linkId}}", "token": "{{recoveryToken}}", "newPassword": "Replacement1!" }
+
+### Confirmed session required; use the version from GET /api/account
+PATCH {{baseUrl}}/api/account/display-name
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "displayName": "Resident2", "version": 2 }
+
+### All sessions are revoked after a successful change
+POST {{baseUrl}}/api/account/change-password
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "currentPassword": "Current1!", "newPassword": "Replacement1!", "version": 3 }

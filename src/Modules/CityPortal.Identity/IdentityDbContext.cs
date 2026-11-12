@@ -25,6 +25,7 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
         builder.Entity<AccountLink>().HasIndex(link => new { link.AccountId, link.CreatedAtUtc });
         builder.Entity<AccountLink>().Property(link => link.TokenHash).HasMaxLength(64);
         builder.Entity<AccountLink>().Property(link => link.State).HasMaxLength(20);
+        builder.Entity<AccountLink>().Property(link => link.Purpose).HasMaxLength(20).HasDefaultValue("confirmation");
         builder.Entity<AccountLink>().HasOne<Account>().WithMany().HasForeignKey(link => link.AccountId);
         builder.Entity<AccountSession>().HasOne<Account>().WithMany().HasForeignKey(session => session.AccountId);
         builder.Entity<RequestAttempt>().Property(attempt => attempt.Key).HasMaxLength(100);

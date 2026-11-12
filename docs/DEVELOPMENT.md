@@ -1,9 +1,29 @@
 # Local Development
 
 This guide covers the stage 1 application foundation and local configuration for
-registration and Email confirmation. The current implementation and actual
-verification status are recorded in [STAGE_1.md](stages/STAGE_1.md). Password
-recovery, profile editing, and administration are subsequent work.
+registration, Email confirmation, password recovery, and profile editing. The
+current implementation and actual verification status are recorded in
+[STAGE_1.md](stages/STAGE_1.md). Administration remains subsequent work.
+
+## Recovery and Profile Editing
+
+Use `/account/forgot-password` without login to request recovery. Its generic
+response never reveals whether an account exists or an account mail quota was
+exhausted. Mailpit captures Russian HTML/plain-text mail linking to
+`/account/reset-password`; the link expires after one hour. The page removes
+the secret fragment from history and requires an explicit password submission.
+Opening the page alone does not change credentials.
+
+Confirmed accounts can edit their display name or password in `/account`.
+Both writes require the displayed account version; a conflict reloads current
+profile data. Password changes require the current password. Change/reset
+revokes all account sessions, invalidates outstanding recovery links, and
+requires separate login. Confirmation links and quotas remain independent.
+
+The explicit `PasswordRecoveryPurpose` migration classifies existing links as
+confirmation links. Run the migration command below before starting updated
+API and Worker processes. `scripts/check-registration.py` now exercises recovery
+and profile/password changes as well as the existing HTTPS registration flow.
 
 ## Prerequisites
 

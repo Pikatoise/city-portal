@@ -35,14 +35,14 @@ def main():
         urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=arguments.ca)),
     )
 
-    def request(path, expected=200, body=None, csrf=True):
+    def request(path, expected=200, body=None, csrf=True, method=None):
         headers = {"Accept": "application/json"}
         if body is not None:
             headers["Content-Type"] = "application/json"
             if csrf:
                 headers["X-CSRF-TOKEN"] = request("/api/auth/csrf")["token"]
         data = None if body is None else json.dumps(body).encode("utf-8")
-        call = urllib.request.Request(origin + path, data=data, headers=headers)
+        call = urllib.request.Request(origin + path, data=data, headers=headers, method=method)
         try:
             response = client.open(call, timeout=20)
         except urllib.error.HTTPError as error:
@@ -112,9 +112,44 @@ def main():
     require(request("/api/auth/confirm-email", body=link)["status"] == "Confirmed", "Confirmation failed.")
     require(request("/api/auth/confirm-email", body=link)["status"] == "AlreadyConfirmed", "Consumed link result incorrect.")
     require(request("/api/account")["emailConfirmed"], "Profile confirmation flag not updated.")
+    profile = request("/api/account")
+    edited = request("/api/account/display-name", body={"displayName": "Resident2", "version": profile["version"]}, method="PATCH")
+    require(edited["displayName"] == "Resident2" and edited["version"] > profile["version"], "Profile edit/version failed.")
+    request("/api/account/display-name", expected=409, body={"displayName": "Stale", "version": profile["version"]}, method="PATCH")
+    request("/api/auth/forgot-password", expected=202, body={"email": email})
+    deadline = time.monotonic() + 30
+    recovery = None
+    while time.monotonic() < deadline:
+        for summary in mail_json("/api/v1/messages?limit=100")["messages"]:
+            if any(address["Address"].lower() == email for address in summary["To"]):
+                captured = mail_json("/api/v1/message/" + summary["ID"])
+                recovery = next((url for url in re.findall(r"https://[^\s<>\"]+", captured["Text"]) if "/account/reset-password" in url), None)
+                if recovery:
+                    require(captured["HTML"] and "1 час" in captured["Text"], "Recovery multipart template/lifetime missing.")
+                    break
+        if recovery:
+            break
+        time.sleep(0.5)
+    require(recovery is not None, "Recovery Email did not arrive.")
+    parsed_recovery = urllib.parse.urlsplit(recovery)
+    recovery_parameters = urllib.parse.parse_qs(parsed_recovery.fragment)
+    reset = {"linkId": recovery_parameters["linkId"][0], "token": recovery_parameters["token"][0], "newPassword": secrets.token_hex(12) + "!"}
+    with client.open(origin + parsed_recovery.path, timeout=20) as response:
+        require(response.status == 200, "Recovery page unavailable.")
+    require(request("/api/account")["id"] == account["id"], "GET recovery unexpectedly revoked a session.")
+    request("/api/auth/reset-password", expected=204, body=reset)
+    request("/api/account", expected=401)
+    request("/api/auth/reset-password", expected=400, body=reset)
+    request("/api/auth/login", expected=401, body={"email": email, "password": password, "rememberMe": False})
+    request("/api/auth/login", body={"email": email, "password": reset["newPassword"], "rememberMe": False})
+    profile = request("/api/account")
+    password = secrets.token_hex(12) + "!"
+    request("/api/account/change-password", expected=204, body={"currentPassword": reset["newPassword"], "newPassword": password, "version": profile["version"]})
+    request("/api/account", expected=401)
+    request("/api/auth/login", body={"email": email, "password": password, "rememberMe": False})
     request("/api/auth/logout", expected=204, body={})
     request("/api/account", expected=401)
-    print("HTTPS registration, CSRF, SMTP templates, confirmation, profile and logout checks passed.")
+    print("HTTPS registration, confirmation, recovery, profile edits, password changes, session revocation and logout passed.")
 
 
 if __name__ == "__main__":

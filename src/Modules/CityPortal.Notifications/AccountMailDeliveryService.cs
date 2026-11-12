@@ -142,17 +142,24 @@ public sealed class AccountMailDeliveryService
 
     private async Task SendAsync(EmailDelivery delivery, AccountMailPayload payload, CancellationToken cancellationToken)
     {
-        string link = $"{_options.PublicOrigin.TrimEnd('/')}/account/confirm-email#linkId={delivery.LinkId:D}&token={Uri.EscapeDataString(payload.Token)}";
+        bool recovery = delivery.Purpose == "recovery";
+        string page = recovery ? "reset-password" : "confirm-email";
+        string link = $"{_options.PublicOrigin.TrimEnd('/')}/account/{page}#linkId={delivery.LinkId:D}&token={Uri.EscapeDataString(payload.Token)}";
         string portal = _options.PortalName;
+        string action = recovery ? "Восстановить пароль" : "Подтвердить Email";
+        string instruction = recovery ? "Чтобы задать новый пароль, откройте ссылку:" : "Подтвердите Email, открыв ссылку и нажав кнопку подтверждения:";
+        string footer = recovery
+            ? "Ссылка действует 1 час с момента создания. Если вы не запрашивали восстановление пароля, проигнорируйте письмо."
+            : "Ссылка действует 24 часа с момента создания. Если вы не регистрировались, проигнорируйте письмо.";
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(portal, _options.SenderAddress));
         message.To.Add(MailboxAddress.Parse(payload.Recipient));
         message.MessageId = $"{delivery.Id:N}@cityportal.invalid";
-        message.Subject = $"{portal}: подтверждение Email";
+        message.Subject = $"{portal}: {(recovery ? "восстановление пароля" : "подтверждение Email")}";
         var body = new BodyBuilder
         {
-            TextBody = $"{portal}\n\nПодтвердите Email, открыв ссылку и нажав кнопку подтверждения:\n{link}\n\nСсылка действует 24 часа с момента создания. Если вы не регистрировались, проигнорируйте письмо.",
-            HtmlBody = $"<h1>{WebUtility.HtmlEncode(portal)}</h1><p>Подтвердите Email, открыв ссылку и нажав кнопку подтверждения:</p><p><a href=\"{WebUtility.HtmlEncode(link)}\">Подтвердить Email</a></p><p>Ссылка действует 24 часа с момента создания. Если вы не регистрировались, проигнорируйте письмо.</p>"
+            TextBody = $"{portal}\n\n{instruction}\n{link}\n\n{footer}",
+            HtmlBody = $"<h1>{WebUtility.HtmlEncode(portal)}</h1><p>{instruction}</p><p><a href=\"{WebUtility.HtmlEncode(link)}\">{action}</a></p><p>{footer}</p>"
         };
         message.Body = body.ToMessageBody();
         using var client = new SmtpClient { Timeout = 30000 };

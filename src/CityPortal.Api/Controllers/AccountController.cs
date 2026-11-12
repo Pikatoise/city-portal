@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using CityPortal.Api.Contracts;
 using CityPortal.Identity;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,5 +48,21 @@ public sealed class AccountController : ControllerBase
     public async Task<ActionResult<ConfirmationDeliveryResponse>> ResendAsync([FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
     {
         return StatusCode(202, await _accounts.ResendAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), cancellationToken));
+    }
+
+    [HttpPatch("display-name", Name = "changeDisplayName")]
+    [Consumes("application/json")]
+    [ProducesResponseType<AccountResponse>(200)]
+    public async Task<ActionResult<AccountResponse>> ChangeDisplayNameAsync(ChangeDisplayNameRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
+        => await _accounts.ChangeDisplayNameAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), Guid.Parse(User.FindFirstValue("session")!), request.DisplayName, request.Version, cancellationToken);
+
+    [HttpPost("change-password", Name = "changePassword")]
+    [Consumes("application/json")]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> ChangePasswordAsync(ChangePasswordRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
+    {
+        await _accounts.ChangePasswordAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), Guid.Parse(User.FindFirstValue("session")!), request.CurrentPassword, request.NewPassword, request.Version, cancellationToken);
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return NoContent();
     }
 }

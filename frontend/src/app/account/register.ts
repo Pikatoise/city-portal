@@ -76,7 +76,9 @@ const validationMessages: Record<string, string> = {
           }
           @if (duplicate()) {
             <p>
-              Этот Email уже зарегистрирован. <a routerLink="/account/login">Войдите в аккаунт</a>.
+              Этот Email уже зарегистрирован.
+              <a routerLink="/account/login">Войдите в аккаунт</a> или
+              <a routerLink="/account/forgot-password">восстановите пароль</a>.
             </p>
           }
           <button class="primary-button" type="submit" [disabled]="busy() || form.invalid">

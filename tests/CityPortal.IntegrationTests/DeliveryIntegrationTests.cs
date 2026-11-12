@@ -26,6 +26,27 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
     }
 
     [Fact]
+    public async Task RecoveryMail_WhenDelivered_UsesRecoveryPageAndRussianMultipartTemplateAsync()
+    {
+        using IHost host = _fixture.BuildHost(true, true);
+        await host.StartAsync(CancellationToken.None);
+        AccountMailRequest request = _fixture.NewRequest("recovery");
+        await _fixture.QueueAsync(host, request, commit: true);
+        await _fixture.DeliverAsync(host, request.MessageId, 0);
+        await _fixture.WaitForStateAsync(request.MessageId, "Sent");
+        string raw = Assert.Single(_fixture.Smtp.Accepted, value => value.Contains(request.MessageId.ToString("N"), StringComparison.Ordinal));
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(raw));
+        using MimeKit.MimeMessage mail = await MimeKit.MimeMessage.LoadAsync(stream);
+        Assert.Contains("восстановление пароля", mail.Subject);
+        Assert.Contains("/account/reset-password#linkId=" + request.LinkId.ToString("D"), mail.TextBody);
+        Assert.Contains(request.Token, mail.TextBody);
+        Assert.Contains("1 час", mail.TextBody);
+        Assert.Contains("Восстановить пароль", mail.HtmlBody);
+        Assert.DoesNotContain("/account/confirm-email", mail.HtmlBody);
+        await host.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
     public async Task Queue_WhenTransactionRollsBack_DiscardsDeliveryAndWolverineEnvelopeAsync()
     {
         using IHost host = _fixture.BuildHost(false, false);
@@ -266,8 +287,9 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
                 }).UseAccountMailMessaging(_database.GetConnectionString(), Broker.GetConnectionString(), consume).Build();
         }
 
-        public AccountMailRequest NewRequest() => new()
+        public AccountMailRequest NewRequest(string purpose = "confirmation") => new()
         {
+            Purpose = purpose,
             MessageId = Guid.NewGuid(),
             AccountId = Guid.NewGuid(),
             LinkId = Guid.NewGuid(),

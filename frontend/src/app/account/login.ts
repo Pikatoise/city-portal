@@ -42,6 +42,7 @@ import { AccountApi, errorMessage } from './account-api';
           {{ busy() ? 'Входим…' : 'Войти' }}
         </button>
       </form>
+      <p><a routerLink="/account/forgot-password">Забыли пароль?</a></p>
     </section>
   `,
 })

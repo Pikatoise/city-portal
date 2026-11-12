@@ -70,4 +70,23 @@ public sealed class AuthController : ControllerBase
     public async Task<ActionResult<ConfirmEmailResponse>> ConfirmAsync(ConfirmEmailRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
         => new ConfirmEmailResponse { Status = await _accounts.ConfirmAsync(request.LinkId, request.Token, cancellationToken) };
 
+    [HttpPost("forgot-password", Name = "forgotPassword")]
+    [Consumes("application/json")]
+    [ProducesResponseType(202)]
+    public async Task<IActionResult> ForgotPasswordAsync(ForgotPasswordRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
+    {
+        await _accounts.ForgotPasswordAsync(request.Email, cancellationToken);
+        return Accepted();
+    }
+
+    [HttpPost("reset-password", Name = "resetPassword")]
+    [Consumes("application/json")]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> ResetPasswordAsync(ResetPasswordRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken)
+    {
+        await _accounts.ResetPasswordAsync(request.LinkId, request.Token, request.NewPassword, cancellationToken);
+        if (Guid.TryParse(User.FindFirstValue("session"), out Guid sessionId) && await _accounts.FindSessionAsync(sessionId, cancellationToken) is null)
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return NoContent();
+    }
 }

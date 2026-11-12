@@ -67,7 +67,7 @@ public sealed class AccountOperations
             _context.Roles.Add(role);
         }
         _context.Set<IdentityUserRole<Guid>>().Add(new IdentityUserRole<Guid> { UserId = account.Id, RoleId = role.Id });
-        await QueueConfirmationAsync(account, cancellationToken);
+        await QueueLinkAsync(account, "confirmation", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await _mail.FlushAfterCommitAsync();
         return await ProjectAsync(account, cancellationToken);
@@ -129,12 +129,12 @@ public sealed class AccountOperations
         Account account = await _context.Users.SingleAsync(item => item.Id == accountId, cancellationToken);
         if (account.EmailConfirmed)
             throw new AccountOperationException(409, "already_confirmed", "Email is already confirmed.");
-        int wait = await ResendWaitAsync(accountId, cancellationToken);
+        int wait = await ResendWaitAsync(accountId, "confirmation", cancellationToken);
         if (wait > 0)
             throw RateLimit(wait);
-        await _context.Links.Where(link => link.AccountId == accountId && link.State == "Active")
+        await _context.Links.Where(link => link.AccountId == accountId && link.Purpose == "confirmation" && link.State == "Active")
             .ExecuteUpdateAsync(update => update.SetProperty(link => link.State, "Invalidated"), cancellationToken);
-        await QueueConfirmationAsync(account, cancellationToken);
+        await QueueLinkAsync(account, "confirmation", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await _mail.FlushAfterCommitAsync();
         return await DeliveryAsync(account, cancellationToken);
@@ -148,11 +148,10 @@ public sealed class AccountOperations
         AccountLink? initial = await _context.Links.AsNoTracking().SingleOrDefaultAsync(link => link.Id == linkId, cancellationToken);
         if (initial is null)
             throw InvalidLink();
-        await LockAsync("account:" + initial.AccountId, cancellationToken);
+        Account account = await LockAccountAsync(initial.AccountId, cancellationToken);
         AccountLink link = await _context.Links.SingleAsync(item => item.Id == linkId, cancellationToken);
-        if (!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(link.TokenHash), SHA256.HashData(Encoding.UTF8.GetBytes(token))) || link.State == "Invalidated")
+        if (link.Purpose != "confirmation" || !CryptographicOperations.FixedTimeEquals(Convert.FromHexString(link.TokenHash), SHA256.HashData(Encoding.UTF8.GetBytes(token))) || link.State == "Invalidated")
             throw InvalidLink();
-        Account account = await _context.Users.SingleAsync(item => item.Id == link.AccountId, cancellationToken);
         if (link.State == "Consumed" && account.EmailConfirmed)
             return "AlreadyConfirmed";
         if (link.ExpiresAtUtc <= _time.GetUtcNow())
@@ -165,14 +164,114 @@ public sealed class AccountOperations
         return "Confirmed";
     }
 
-    private async Task QueueConfirmationAsync(Account account, CancellationToken cancellationToken)
+    public async Task ForgotPasswordAsync(string? email, CancellationToken cancellationToken)
+    {
+        string normalized = (email?.Trim() ?? string.Empty).ToUpperInvariant();
+        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        await LockAsync("email:" + normalized, cancellationToken);
+        Account? initial = await _context.Users.AsNoTracking().SingleOrDefaultAsync(item => item.NormalizedEmail == normalized, cancellationToken);
+        if (initial is null)
+            return;
+        await LockAsync("account:" + initial.Id, cancellationToken);
+        Account account = await _context.Users.SingleAsync(item => item.Id == initial.Id, cancellationToken);
+        // Account-specific suppression must have the same public response as an unknown address.
+        if (await ResendWaitAsync(account.Id, "recovery", cancellationToken) > 0)
+            return;
+        await _context.Links.Where(link => link.AccountId == account.Id && link.Purpose == "recovery" && link.State == "Active")
+            .ExecuteUpdateAsync(update => update.SetProperty(link => link.State, "Invalidated"), cancellationToken);
+        await QueueLinkAsync(account, "recovery", cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        await _mail.FlushAfterCommitAsync();
+    }
+
+    public async Task ResetPasswordAsync(Guid linkId, string? token, string? newPassword, CancellationToken cancellationToken)
+    {
+        string password = AccountValidation.ValidateNewPassword(newPassword);
+        if (linkId == Guid.Empty || string.IsNullOrWhiteSpace(token) || token.Length > 128)
+            throw InvalidLink();
+        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        AccountLink? initial = await _context.Links.AsNoTracking().SingleOrDefaultAsync(link => link.Id == linkId, cancellationToken);
+        if (initial is null)
+            throw InvalidLink();
+        Account account = await LockAccountAsync(initial.AccountId, cancellationToken);
+        AccountLink link = await _context.Links.SingleAsync(item => item.Id == linkId, cancellationToken);
+        if (link.Purpose != "recovery" || link.State != "Active" || !CryptographicOperations.FixedTimeEquals(Convert.FromHexString(link.TokenHash), SHA256.HashData(Encoding.UTF8.GetBytes(token))))
+            throw InvalidLink();
+        if (link.ExpiresAtUtc <= _time.GetUtcNow())
+            throw new AccountOperationException(400, "expired_link", "The recovery link has expired.");
+        link.State = "Consumed";
+        await SetPasswordAsync(account, password, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task<AccountResponse> ChangeDisplayNameAsync(Guid accountId, Guid sessionId, string? displayName, long version, CancellationToken cancellationToken)
+    {
+        string name = AccountValidation.ValidateDisplayName(displayName);
+        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        Account account = await LockAccountAsync(accountId, cancellationToken);
+        await CheckEditAsync(account, sessionId, version, cancellationToken);
+        account.DisplayName = name;
+        account.Version++;
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return await ProjectAsync(account, cancellationToken);
+    }
+
+    public async Task ChangePasswordAsync(Guid accountId, Guid sessionId, string? currentPassword, string? newPassword, long version, CancellationToken cancellationToken)
+    {
+        string password = AccountValidation.ValidateNewPassword(newPassword);
+        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        Account account = await LockAccountAsync(accountId, cancellationToken);
+        await CheckEditAsync(account, sessionId, version, cancellationToken);
+        if (string.IsNullOrEmpty(currentPassword) || _passwords.VerifyHashedPassword(account, account.PasswordHash ?? string.Empty, currentPassword) == PasswordVerificationResult.Failed)
+            throw new AccountOperationException(400, "invalid_current_password", "The current password is incorrect.");
+        await SetPasswordAsync(account, password, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task<Account> LockAccountAsync(Guid accountId, CancellationToken cancellationToken)
+    {
+        string email = await _context.Users.Where(item => item.Id == accountId).Select(item => item.NormalizedEmail).SingleAsync(cancellationToken)
+            ?? throw new InvalidOperationException("An account must have a normalized Email.");
+        // Login takes the same email lock before checking credentials and creating a session.
+        await LockAsync("email:" + email, cancellationToken);
+        await LockAsync("account:" + accountId, cancellationToken);
+        return await _context.Users.SingleAsync(item => item.Id == accountId, cancellationToken);
+    }
+
+    private async Task CheckEditAsync(Account account, Guid sessionId, long version, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _time.GetUtcNow();
+        if (!await _context.Sessions.AnyAsync(session => session.Id == sessionId && session.AccountId == account.Id && !session.Revoked && session.ExpiresAtUtc > now, cancellationToken))
+            throw new AccountOperationException(401, "invalid_session", "Log in again.");
+        if (!account.EmailConfirmed)
+            throw new AccountOperationException(403, "email_unconfirmed", "Confirm Email before editing your profile.");
+        if (account.Version != version)
+            throw new AccountOperationException(409, "version_conflict", "The account changed. Reload the profile.");
+    }
+
+    private async Task SetPasswordAsync(Account account, string password, CancellationToken cancellationToken)
+    {
+        account.PasswordHash = _passwords.HashPassword(account, password);
+        account.SecurityStamp = Guid.NewGuid().ToString();
+        account.Version++;
+        await _context.Sessions.Where(session => session.AccountId == account.Id && !session.Revoked)
+            .ExecuteUpdateAsync(update => update.SetProperty(session => session.Revoked, true), cancellationToken);
+        await _context.Links.Where(link => link.AccountId == account.Id && link.Purpose == "recovery" && link.State == "Active")
+            .ExecuteUpdateAsync(update => update.SetProperty(link => link.State, "Invalidated"), cancellationToken);
+    }
+
+    private async Task QueueLinkAsync(Account account, string purpose, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _time.GetUtcNow();
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        var link = new AccountLink { Id = Guid.NewGuid(), AccountId = account.Id, TokenHash = Hash(token), CreatedAtUtc = now, ExpiresAtUtc = now.AddHours(24) };
+        var link = new AccountLink { Id = Guid.NewGuid(), AccountId = account.Id, Purpose = purpose, TokenHash = Hash(token), CreatedAtUtc = now, ExpiresAtUtc = now.AddHours(purpose == "recovery" ? 1 : 24) };
         var messageId = Guid.NewGuid();
         _context.Links.Add(link);
-        account.LatestConfirmationMessageId = messageId;
+        if (purpose == "confirmation")
+            account.LatestConfirmationMessageId = messageId;
         await _context.SaveChangesAsync(cancellationToken);
         await _mail.QueueAsync(new AccountMailRequest
         {
@@ -181,7 +280,7 @@ public sealed class AccountOperations
             LinkId = link.Id,
             Recipient = account.Email!,
             Token = token,
-            Purpose = "confirmation",
+            Purpose = purpose,
             CreatedAtUtc = now,
             ExpiresAtUtc = link.ExpiresAtUtc
         }, _context.Database.GetDbConnection(), _context.Database.CurrentTransaction!.GetDbTransaction(), cancellationToken);
@@ -215,13 +314,13 @@ public sealed class AccountOperations
             if (delivery is not null)
                 state = delivery.State == "Pending" ? "Loading" : delivery.State;
         }
-        return new ConfirmationDeliveryResponse { State = state, ResendAfterSeconds = await ResendWaitAsync(account.Id, cancellationToken) };
+        return new ConfirmationDeliveryResponse { State = state, ResendAfterSeconds = await ResendWaitAsync(account.Id, "confirmation", cancellationToken) };
     }
 
-    private async Task<int> ResendWaitAsync(Guid accountId, CancellationToken cancellationToken)
+    private async Task<int> ResendWaitAsync(Guid accountId, string purpose, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _time.GetUtcNow();
-        DateTimeOffset[] links = await _context.Links.Where(link => link.AccountId == accountId && link.CreatedAtUtc > now.AddHours(-1))
+        DateTimeOffset[] links = await _context.Links.Where(link => link.AccountId == accountId && link.Purpose == purpose && link.CreatedAtUtc > now.AddHours(-1))
             .OrderByDescending(link => link.CreatedAtUtc).Select(link => link.CreatedAtUtc).ToArrayAsync(cancellationToken);
         double wait = links.Length == 0 ? 0 : (links[0].AddSeconds(60) - now).TotalSeconds;
         if (links.Length >= 5)
@@ -236,5 +335,5 @@ public sealed class AccountOperations
 
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private static AccountOperationException RateLimit(int wait) => new(429, "rate_limited", "Please wait before trying again.", retryAfterSeconds: Math.Max(1, wait));
-    private static AccountOperationException InvalidLink() => new(400, "invalid_link", "The confirmation link is invalid.");
+    private static AccountOperationException InvalidLink() => new(400, "invalid_link", "The link is invalid.");
 }

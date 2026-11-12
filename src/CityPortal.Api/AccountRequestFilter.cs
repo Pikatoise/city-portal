@@ -21,7 +21,7 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
             await accounts.EnforceIpLimitAsync(ip, "registration", 5, TimeSpan.FromHours(1), http.RequestAborted);
         if (path == "/api/auth/login")
             await accounts.EnforceIpLimitAsync(ip, "login", 15, TimeSpan.FromMinutes(1), http.RequestAborted);
-        if (path is "/api/auth/register" or "/api/account/email-confirmation")
+        if (path is "/api/auth/register" or "/api/account/email-confirmation" or "/api/auth/forgot-password")
             await accounts.EnforceIpLimitAsync(ip, "email", 10, TimeSpan.FromHours(1), http.RequestAborted);
         try
         {

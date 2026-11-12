@@ -6,6 +6,8 @@ internal sealed class AccountLink
 
     public Guid AccountId { get; set; }
 
+    public string Purpose { get; set; } = "confirmation";
+
     public string TokenHash { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAtUtc { get; set; }

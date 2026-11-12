@@ -21,7 +21,7 @@ public sealed class AccountMailQueue
 
     public async Task QueueAsync(AccountMailRequest request, DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken)
     {
-        if (request.Purpose != "confirmation")
+        if (request.Purpose is not ("confirmation" or "recovery"))
             throw new ArgumentException("Unsupported account mail purpose.", nameof(request));
 
         _context.Database.SetDbConnection(connection, contextOwnsConnection: false);

@@ -1,6 +1,14 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
+  {
+    path: 'account/forgot-password',
+    loadComponent: () => import('./account/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    path: 'account/reset-password',
+    loadComponent: () => import('./account/reset-password').then((m) => m.ResetPassword),
+  },
   { path: '', pathMatch: 'full', loadComponent: () => import('./home').then((m) => m.Home) },
   {
     path: 'account/register',

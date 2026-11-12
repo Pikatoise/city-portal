@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: steps 2 and 3 are implemented and independently reviewed. Registration, Email confirmation, and their login/profile dependencies are available. Steps 4-6 and owner completion review remain pending. Verification evidence and limitations are recorded below.
+Status: steps 2-4 are implemented and independently reviewed. Registration, Email confirmation, authentication, password recovery, and profile editing are available. Steps 5-6 and owner completion review remain pending. Verification evidence and limitations are recorded below.
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -77,6 +77,8 @@ Implementation dependency: step 3 includes login, logout, and profile reading so
 Implement login, logout, current-account retrieval, CSRF handling, protected account access, and password recovery in the API and interface. Apply the agreed session, token, abuse-control, and response policies.
 
 Completion: the agreed success and failure scenarios pass, including unauthorized requests, invalid CSRF tokens, and invalid or reused recovery links. Passwords, cookies, and confirmation or recovery links do not appear in ordinary logs.
+
+Implementation: purpose-specific recovery links and quotas reuse the protected Notifications queue. Recovery links expire after one hour, are consumed atomically with password/session changes, and never confirm Email. Password change/reset also invalidates outstanding recovery links. Profile edits enforce confirmation, the current session, and the expected account version. Login, confirmation, profile edits, and password writes coordinate email/account locks in that order to avoid stale account writes. Angular provides anonymous recovery/reset pages, confirmed-profile forms, version-conflict reloads, and separate login after password changes.
 
 ### 5. Deliver Administrative Role Management
 
@@ -230,7 +232,7 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Steps 2 and 3 are implemented and independently reviewed, with owner review pending. [DEVELOPMENT.md](../DEVELOPMENT.md) records the implemented configuration for keys, SMTP, trusted proxies, explicit schemas, and scheduling. Continue with recovery and profile editing in issue #3, then administration and delivery inspection/replay in issue #4.
+Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implementation and independent review of issues #1-#3 are complete; owner completion review remains in issue #5. [DEVELOPMENT.md](../DEVELOPMENT.md) records configuration and local verification. The next implementation task is administration and delivery inspection/replay in issue #4.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
@@ -287,11 +289,11 @@ None remain from the stage 1 interview. Remaining implementation workflows are l
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: steps 2 and 3 implemented. Issue #2 includes registration, confirmation, durable Email, and its login/profile/logout dependencies. Recovery, profile editing, administration, delivery inspection/replay screens, and final stage acceptance remain pending.
+- Implementation: steps 2-4 implemented. Issue #2 delivers registration, confirmation, durable Email, and login/profile/logout dependencies; issue #3 adds recovery and profile name/password editing. Administration, delivery inspection/replay screens, and final stage acceptance remain pending.
 - Documentation verification: local setup, explicit EF/Wolverine/Quartz schema deployment, SMTP, persistent keys, trusted proxies, and verification commands are documented. Local credentials, private keys, and build/runtime artifacts are excluded from Git and image build contexts.
-- Application verification: 47 backend tests and 23 frontend tests pass. The HTTPS registration-to-confirmation smoke and live OpenAPI comparison pass. Commands and evidence are recorded below. No remote Actions run is claimed before push.
+- Application verification: 54 backend tests and 31 frontend tests pass. The HTTPS smoke covers registration, confirmation, recovery, profile edits, password changes, session revocation, and logout. Evidence is recorded below. GitHub Actions for foundation/registration commit `cfe3503` passed; issue #3 verification below is local unless explicitly stated otherwise.
 - Independent review: separate agents reviewed specification compliance and coding standards after implementation. Review found and resolved stale confirmation fragments, malformed-link presentation, missing-delivery loading after retention, and session revocation between authentication and profile lookup. Tests now prove the actual HTTP outage path and await duplicate handling rather than relying on a short delay. Both reviewers confirmed their findings resolved.
-- Limitations: visual browser validation could not run because the connected browser/native automation host was unavailable. Automated frontend tests and actual HTTPS SSR/API checks pass. Local browser certificate trust remains a documented manual choice; system trust was not changed. Password recovery, profile editing, administration and delivery inspection/replay remain subsequent work. SMTP acceptance followed by database acknowledgement failure can still duplicate external Email, as agreed.
+- Limitations: recovery/reset screens rendered in the embedded browser through the local development server, and the recovery secret was removed from history. Full HTTPS browser acceptance remains pending because the embedded browser rejected the local CA; HTTP development requests cannot issue the required Secure CSRF cookie. Automated frontend tests and certificate-verified HTTPS API smoke pass. System certificate trust was not changed. Administration and delivery inspection/replay remain subsequent work. SMTP acknowledgement followed by database failure can still duplicate external Email, as agreed.
 - Owner completion review: pending.
 
 ### Foundation Verification (2026-11-11)
@@ -352,6 +354,29 @@ Confirmation links use URL fragments, which do not reach proxy request logs. The
 | Explicit action, fresh CSRF/JSON requests and separate login | `removes the confirmation secret from history and requires an explicit POST action`, `fetches fresh CSRF protection across consecutive identity writes`, `creates an account with the exact password and asks for separate login without claiming mail sent`. |
 | Latest-request delivery UI, resend, errors and authentication | `shows profile loading, failed mail and later SMTP acceptance without exposing internal queue states`, `does not let an older profile response overwrite the latest requested mail status`, `resends only from the profile and treats persisted work as loading until SMTP accepts it`, `keeps failed login feedback generic and clears the password`. |
 
+### Password Recovery and Profile Editing Verification (2026-11-12)
+
+| Check | Result |
+| --- | --- |
+| `dotnet test CityPortal.slnx --configuration Release --no-restore --logger "trx;LogFileName=stage-one-recovery-final.trx" --results-directory .local/test-results` | Passed: 54, Failed: 0, Skipped: 0; TRX counters verified. Real PostgreSQL, RabbitMQ, and SMTP. |
+| `dotnet format CityPortal.slnx --verify-no-changes --no-restore` | Passed; Release compilation passes build-time style checks. |
+| `npm.cmd test -- --watch=false`, `npm.cmd run build`, `npm.cmd run format:check`, `npm.cmd run api:check` | Passed: 31 frontend tests, production SSR build, formatting, and generated client consistency. |
+| Docker API/Worker/frontend images and explicit migration | Passed; existing data retained and repeat migration succeeds. Existing links default to confirmation purpose. |
+| `python scripts/check-registration.py --ca .local/cityportal-root.crt` | Passed through HTTPS and Mailpit: confirmation, version-checked name edit/stale rejection, one-time recovery, old-password rejection, change-password, revocation, separate login, logout. |
+| Independent standards/specification review | Found and fixed undocumented null assumptions and login/profile-version concurrency. Both reviewers confirmed resolution. |
+| Embedded browser | Recovery and reset pages render; reset fragment is removed before submission. Full HTTPS browser acceptance remains pending due to local CA rejection. |
+
+| Requirement | Evidence |
+| --- | --- |
+| Confirmed-only edits, authorization, current password, version conflict, CSRF, all-session revocation and separate login | `ProfileEdits_WithVersionAndCurrentPassword_EnforcePermissionsAndRevokeEverySessionAsync`. |
+| Purpose isolation, replacement, exact expiry, invalid tokens, one-time concurrent reset, preservation of unconfirmed status | `Recovery_WithReplacementExpiryAndConcurrentConsumption_PreservesConfirmationAndHasOneWinnerAsync`. |
+| Unknown/suppressed 202 equivalence, independent five-per-hour quotas, shared IP quota and route casing | `Recovery_ForUnknownAndSuppressedAccounts_ReturnsSameResponseAndSeparatesMailQuotasAsync`. |
+| Queue rollback preserves previous link; failed password write rolls back consumption and session revocation | `Recovery_WhenQueueWriteFails_RollsBackReplacementAndPasswordResetFailuresPreserveLinkAsync`. |
+| First-writer version protection and post-authentication session recheck | `ProfileEdits_WhenConcurrent_KeepFirstVersionAndRejectStaleOrRevokedWritersAsync`. |
+| Login and profile writes share the email/account lock order | `DisplayName_WhenLoginCompetes_SerializesBeforeCredentialSessionWriteAsync`. |
+| Russian multipart recovery mail, recovery route and stated lifetime | `RecoveryMail_WhenDelivered_UsesRecoveryPageAndRussianMultipartTemplateAsync`. |
+| Angular generic recovery response, explicit reset, secret/history cleanup, invalid/expired links, conflict reload and password completion | Eight cases in `frontend/src/app/account/recovery.spec.ts`; existing 23 frontend cases also pass. |
+
 Update this section as work proceeds. Include the completed step, verification evidence, unresolved limitations, and review outcome.
 
 ## Specification Changes
@@ -369,5 +394,6 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Added the owner-reviewed C# style baseline and stage checks. | Created .editorconfig and CODE_STYLE.md from the edited sample, including omitted braces for single statements and readable single-line signatures. AGENTS.md and CORE.md link the conventions; stage 1 scaffolding must add build/CI enforcement. |
 | 2026-11-11 | Implemented and independently reviewed the application foundation. | Added API/Worker, Angular SSR host with CSR account/staff placeholders, module migrations, generated client, real infrastructure checks, Compose HTTPS, local setup, and CI. Recorded actual verification and the browser automation limitation; remaining account workflows and owner review keep stage 1 open. |
 | 2026-11-12 | Implemented and independently reviewed registration and Email confirmation. | Delivered step 3 with login/profile/logout dependencies, protected durable Email, distributed limits, persistent keys, explicit message/scheduler migrations, and recorded verification. Recovery/profile editing remain step 4; administration and delivery replay remain step 5. No new business rules. |
+| 2026-11-12 | Implemented and independently reviewed password recovery and profile editing. | Delivered step 4, purpose-specific link persistence, atomic password/session changes, coordinated account-write locks, generated API client, Angular screens, and verification evidence. Implementation tasks #1-#3 are complete; stage/owner acceptance stays in #5. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.
