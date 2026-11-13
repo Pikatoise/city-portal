@@ -1,12 +1,8 @@
 # Local Development
 
-This guide covers the stage 1 application foundation and local configuration for
-registration, Email confirmation, password recovery, and profile editing. The
-current implementation and actual verification status are recorded in
-[STAGE_1.md](stages/STAGE_1.md). Administration and Email inspection/replay are
-implemented; their technical acceptance, independent reviews and owner review
-are complete. The first-run setup wizard in #6 is implemented and verified;
-the owner accepted the revised wizard on 2026-11-13 and Stage 1 is complete.
+This guide covers installation, local development, and operational checks for
+the completed account, administration, and durable Email workflows. Contracts
+and the owner acceptance record are in [STAGE_1.md](stages/STAGE_1.md).
 
 ## First-Run Setup
 
@@ -77,10 +73,12 @@ see [Docker merge rules](https://docs.docker.com/reference/compose-file/merge/)
 and [healthy dependency ordering](https://docs.docker.com/compose/how-tos/startup-order).
 This override prepares network access; the development Mailpit configuration is
 still a local receiver, not an external mail provider.
-## Initial Administrator and Staff Screens
 
-Register an ordinary account and confirm its Email first. After explicit
-migration, provision the first administrator with the existing account Email:
+## Legacy Administrator Bootstrap and Staff Screens
+
+Fresh installations create their administrator in the wizard. For an existing
+installation without an administrator, register an ordinary account and confirm
+its Email. After explicit migration, provision it with the existing account Email:
 
 ```powershell
 docker compose run --rm --no-deps api --bootstrap-admin resident@example.test
@@ -109,8 +107,10 @@ Set `CITY_TIME_ZONE` in `.env` for Compose, or `City__TimeZone` for the API dire
 UTC is the neutral development default. IANA identifiers such as `Europe/Moscow`
 are suitable; supported Windows identifiers are normalized to IANA. Invalid
 configuration fails startup. Public `/api/system/info` includes `timeZone`,
-which the administrative screens use to display UTC timestamps. This is
-deployment configuration, with no city-settings write endpoint or screen.
+which the administrative screens use to display UTC timestamps. Fresh
+installations persist the wizard time zone; deployment configuration is the
+fallback for existing databases. There is no general city-settings editing
+endpoint or screen.
 
 If using the ignored project-local SDK, enable it only in the current shell:
 
@@ -137,10 +137,9 @@ profile data. Password changes require the current password. Change/reset
 revokes all account sessions, invalidates outstanding recovery links, and
 requires separate login. Confirmation links and quotas remain independent.
 
-The explicit `PasswordRecoveryPurpose` migration classifies existing links as
-confirmation links. Run the migration command below before starting updated
-API and Worker processes. `scripts/check-registration.py` now exercises recovery
-and profile/password changes as well as the existing HTTPS registration flow.
+The HTTPS smoke helper also exercises recovery and profile/password changes.
+Apply all migrations through the common procedure below before starting updated
+API and Worker processes.
 
 ## Prerequisites
 
@@ -331,11 +330,18 @@ account or consuming registration quota:
 python scripts/check-registration.py --ca .local/cityportal-root.crt --shell-only
 ```
 
+CI runs `check-registration.py --install` against a fresh disposable database in
+local setup mode before checking normal account workflows. No key environment
+variable is needed. This test mode creates an administrator with random
+credentials; use the browser wizard for an installation you intend to keep.
+`--smtp-host` is available for this test initialization path; its Compose default
+is `mailpit`.
+
 The final browser acceptance used an isolated headless Edge context with a
 context-scoped development-certificate exception. Separate Python HTTPS checks
 verified the exported CA and hostname. This did not install Windows trust or
 change normal browser certificate behavior. See the stage specification for
-the scenario evidence and local owner-review instructions.
+the acceptance evidence and remaining deployment checks.
 
 ## Operational Boundaries
 
@@ -354,10 +360,3 @@ the scenario evidence and local owner-review instructions.
 - [Mailpit configuration](https://mailpit.axllent.org/docs/configuration/).
 - [Npgsql GSS encryption configuration](https://www.npgsql.org/doc/security.html).
 - [curl certificate and revocation options](https://curl.se/docs/manpage.html).
-
-CI runs `check-registration.py --install` against a fresh disposable database in
-local setup mode before checking normal account workflows. No key environment
-variable is needed. This test mode creates an administrator with random
-credentials; use the browser wizard for an installation you intend to keep.
-`--smtp-host` is available for this test initialization path; its Compose default
-is `mailpit`.

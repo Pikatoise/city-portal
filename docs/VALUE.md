@@ -14,7 +14,13 @@ Public news, advertisements, and comments are readable without an account. Anony
 
 Each installation serves one city. Configurable settings include portal name, branding, city and region, time zone, coordinates, districts and locations, contacts, SEO metadata, and external services. Changing city settings must not reinterpret or migrate existing content.
 
-Each new installation offers a first-run setup wizard, similar to WordPress installation. The installer configures the site name, city, optional region, time zone, first administrator's Email/display name/password, and SMTP settings with a test message. Email remains the login. The installer-created administrator receives immediate access without Email confirmation; ordinary registration retains its confirmation rules. Installation runs with access restricted to the server itself, including remote access through an SSH tunnel, and needs no installation key. The owner opens network access only after setup; the public configuration disables setup. Before completion, only the setup page is available: other application pages redirect to it, and home/account/staff navigation and linked branding are hidden. Normal navigation becomes available after successful setup. The wizard also closes permanently after success. Settings and administrator creation are atomic and survive restarts. Existing account databases are preserved and cannot be taken over through the wizard. Later settings editing, branding, SEO and integration-specific fields are introduced with their owning workflows. The application is reusable for different cities without source-code changes.
+### First-Run Installation
+
+A new installation provides a one-time wizard for site name, city, optional region, time zone, first administrator's Email/display name/password, and SMTP settings with a test message. Email remains the login. The first administrator has immediate access without confirmation; ordinary registration keeps its confirmation rules.
+
+The owner completes setup with access restricted to the server or an SSH tunnel, then opens network access. No installation key is required. Until setup succeeds, only the wizard is available and normal navigation is hidden. Settings and administrator creation are atomic and survive restarts. Successful setup closes the wizard permanently; existing account databases cannot be taken over through it.
+
+Later settings editing, branding, SEO, and integration fields arrive with their owning workflows. Detailed installation contracts belong in [STAGE_1.md](stages/STAGE_1.md#first-run-setup-contract).
 
 ## Users and Accounts
 
@@ -39,7 +45,7 @@ Accounts are unified and may hold multiple roles. Access depends on role, owners
 - Unconfirmed users can log in, view their own profile, resend confirmation from that profile, and log out. Staff operations require confirmed Email. Password recovery remains available without login; invalid or expired confirmation-link pages only explain the result, with replacement confirmation requests available in the profile.
 - If the Email service is unavailable, registration may still create an unconfirmed account. User-facing Email delivery states are "Отправлено" and "Ошибка, повторите письмо". "Отправлено" means acceptance by the outgoing mail server, not verified inbox delivery. Show a loading indicator without a separate status during the initial attempt. After a failed attempt, show "Ошибка, повторите письмо" while background retries continue; change it to "Отправлено" if a later attempt succeeds. Confirmation remains required for the actions listed above.
 
-The detailed stage 1 account constraints, link and session lifetimes, abuse limits, administration screens, and acceptance contracts are recorded in [STAGE_1.md](stages/STAGE_1.md). New same-purpose links replace previous links, and changing or resetting a password ends all existing sessions.
+Detailed account constraints, link and session lifetimes, abuse limits, administration screens, and acceptance contracts are recorded in [STAGE_1.md](stages/STAGE_1.md). New same-purpose links replace previous links, and changing or resetting a password ends all existing sessions.
 
 ### Account Blocking
 

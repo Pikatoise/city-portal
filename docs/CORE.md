@@ -1,6 +1,6 @@
 # CityPortal Technical Design and Implementation Direction
 
-## Purpose and Status
+## Purpose
 
 This document records the approved technical direction, working method, and delivery order for CityPortal. Product purpose, user capabilities, business rules, and scope are defined in [VALUE.md](VALUE.md).
 
@@ -70,9 +70,11 @@ City-specific configuration includes portal name and branding, city and region n
 
 Specify the configuration model, persistence, and permissions before implementing the relevant settings. Store timestamps in UTC and display them in the configured city time zone.
 
-Stage 1 implements a one-time setup wizard. Identity owns the installation marker and initial public site defaults alongside initial-administrator provisioning; Notifications owns encrypted SMTP configuration. The contexts share one coordinated transaction. Setup uses the bootstrap/role advisory lock and CSRF protection. The owner completes setup through loopback-only access or an SSH tunnel before enabling network access; no installation key is used. `Installation:Enabled` defaults to false in the API and is enabled only in the local Compose configuration. Public mode disables setup, reports unready until installation is complete, and starts its public proxy only after API readiness. It tests SMTP before committing and creates an immediately active administrator, as agreed by the owner. Persisted SMTP defaults are read by the Worker for each delivery; changes from installation need no process restart. The completed wizard cannot reopen. Before completion, Node redirects non-setup application page requests before SSR, and Angular guards all non-setup routes using installation state loaded before rendering. Navigation, linked branding and the normal footer remain hidden until completion. Status failures keep other pages closed; static assets and bootstrap API requests remain available to support the wizard.
+The completed Stage 1 wizard persists Identity-owned installation/public defaults and the initial administrator with Notifications-owned encrypted SMTP settings in one coordinated transaction. The Worker reads persisted SMTP settings for each delivery. Existing account databases migrate to installed state while retaining deployment defaults and legacy administrator bootstrap.
 
-Public metadata exposes the site name, city, region and IANA time zone for Angular branding, public SSR and administrative timestamp display. Metadata contains no mail credentials. Existing account databases are migrated to installed state without changing accounts; deployment defaults, including `City:TimeZone` (UTC development default), remain fallback for them. The CLI bootstrap remains available for existing installations with a confirmed account and no administrator. A fresh installation uses the wizard instead. `PUBLIC_ORIGIN` supplies the public HTTPS link origin in Compose; connection strings, protection keys and local/public access mode remain deployment configuration. See STAGE_1.md for the agreed contract and verification evidence.
+Setup is enabled only for local installation and disabled in public mode. Public API readiness requires completed installation. Node page gating and Angular guards keep other application pages unavailable until setup succeeds; status failures keep access closed. Public metadata exposes branding, city, region, and IANA time zone without credentials.
+
+The detailed setup, concurrency, and migration contract belongs in [STAGE_1.md](stages/STAGE_1.md#first-run-setup-contract). Local access, SSH tunnels, public-origin configuration, and the public Compose override belong in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Identity and Authorization
 
@@ -174,7 +176,7 @@ Use Dapper only for a demonstrated query benefit. Evaluate a dedicated search en
 
 ## Testing, Observability, and Operations
 
-Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Introduce build-time code-style diagnostics and a formatting check when scaffolding the solution; code review covers conventions that built-in tooling cannot enforce.
+Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Keep build-time code-style diagnostics and the CI formatting check; code review covers conventions that built-in tooling cannot enforce.
 
 Use xUnit and Testcontainers with real PostgreSQL for transaction, query, migration, and concurrency integration tests. Add unit tests for state transitions and selected end-to-end Angular/API workflows.
 
@@ -192,7 +194,7 @@ Deliver functional stages in this order:
 
 | Stage | Scope |
 | --- | --- |
-| 1 | Accounts, roles, and Email; initial Identity and Notifications modules and supporting infrastructure. |
+| 1 (complete) | Accounts, roles, Email, first-run installation, and the Identity/Notifications foundation. |
 | 2 | Complete news workflow, including published corrections, revision history, Media, public SSR pages, and basic news search. |
 | 3 | Citizen suggestions, assignment, conversion into articles, and 72-hour deletion. |
 | 4 | Classifieds, moderation, reports, account and listing blocking, and lifecycle management. |
@@ -215,4 +217,4 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-The current specification is [Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md). Its owner interview is complete, and agreed workflows, permissions, contracts, transaction boundaries, and acceptance criteria are recorded there. Steps 2-5 implement the foundation, account workflows, durable Email, administrator provisioning, role management and retained history, and delivery inspection/replay. Implementation tasks #1-#4 are complete. Issue #5 technical acceptance, independent reviews and owner acceptance of the original workflows are complete. The newly approved first-run setup extension is tracked in #6 of [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) and is implemented, technically verified and owner-accepted on 2026-11-13. Stage 1 is complete. Agree newly discovered business decisions with the owner before implementing the affected workflow.
+[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts and verification summary remain the baseline for delivered workflows. Stage 2 is next in the delivery order; its specification has not yet been agreed. Tracking is maintained in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
