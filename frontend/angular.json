@@ -54,6 +54,22 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "prototype": {
+              "fileReplacements": [
+                {
+                  "replace": "src/main.ts",
+                  "with": "src/app/news-prototype/main.prototype.ts"
+                }
+              ],
+              "server": false,
+              "ssr": false,
+              "outputMode": "static",
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "outputPath": "dist/news-prototype",
+              "tsConfig": "tsconfig.prototype.json"
             }
           },
           "defaultConfiguration": "production"
@@ -66,6 +82,9 @@
             },
             "development": {
               "buildTarget": "city-portal:build:development"
+            },
+            "prototype": {
+              "buildTarget": "city-portal:build:prototype"
             }
           },
           "defaultConfiguration": "development"

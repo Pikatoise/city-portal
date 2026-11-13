@@ -1,0 +1,147 @@
+<header [class]="'home-top design-' + design()">
+  <div class="top-inner">
+    @switch (design()) {
+      @case ('A') {
+        <div class="portal-line">
+          <div class="identity">
+            <a
+              class="brand"
+              routerLink="/"
+              [queryParams]="{ screen: 'home', variant: 'B', top: design() }"
+              >{{ name() }}<span aria-hidden="true"></span
+            ></a>
+            <div class="city-weather">
+              <div class="city-date">
+                <span>{{ city() }}</span><time>{{ today }}</time>
+              </div>
+              <span
+                class="temperature"
+                aria-label="Демонстрационная температура: плюс 3 градуса Цельсия"
+                title="Демонстрационные данные"
+                >+3 °C</span
+              >
+            </div>
+          </div>
+          <nav aria-label="Основная навигация">
+            <a
+              class="active"
+              routerLink="/"
+              [queryParams]="{ screen: 'home', variant: 'B', top: design() }"
+              >Главная</a
+            ><a routerLink="/" [queryParams]="{ screen: 'editor', variant: 'B', top: design() }"
+              >Редактор статьи ↗</a
+            >
+          </nav>
+        </div>
+        <div class="portal-tools">
+          <nav class="category-links" aria-label="Категории новостей">
+            <button (click)="category.emit('')">Все новости</button>
+            @for (item of ['Город', 'Культура', 'Транспорт']; track item) {
+              <button (click)="category.emit(item)">{{ item }}</button>
+            }
+          </nav>
+          <form (ngSubmit)="search.emit(searchText)" role="search">
+            <input
+              name="portal-search"
+              [(ngModel)]="searchText"
+              aria-label="Поиск новостей"
+              placeholder="Поиск по новостям"
+            /><button aria-label="Найти новости">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="10.5" cy="10.5" r="6.5" />
+                <path d="m16 16 4.5 4.5" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      }
+      @case ('B') {
+        <div class="newspaper-nameplate">
+          <p class="edition">
+            {{ city() }}<span>{{ today }}</span>
+          </p>
+          <a
+            class="brand"
+            routerLink="/"
+            [queryParams]="{ screen: 'home', variant: 'B', top: design() }"
+            >{{ name() }}<span aria-hidden="true"></span></a
+          ><a
+            class="workspace"
+            routerLink="/"
+            [queryParams]="{ screen: 'editor', variant: 'B', top: design() }"
+            >Редактор статьи ↗</a
+          >
+        </div>
+        <p class="newspaper-caption">Городские новости. Истории людей. Жизнь рядом.</p>
+        <div class="newspaper-bottom">
+          <nav class="category-links" aria-label="Категории новостей">
+            <button (click)="category.emit('')">Все новости</button>
+            @for (item of ['Город', 'Культура', 'Транспорт']; track item) {
+              <button (click)="category.emit(item)">{{ item }}</button>
+            }
+          </nav>
+          <form (ngSubmit)="search.emit(searchText)" role="search">
+            <input
+              name="newspaper-search"
+              [(ngModel)]="searchText"
+              aria-label="Поиск новостей"
+              placeholder="Найти новость"
+            /><button aria-label="Найти новости">↗</button>
+          </form>
+        </div>
+      }
+      @case ('C') {
+        <div class="service-line">
+          <a
+            class="brand"
+            routerLink="/"
+            [queryParams]="{ screen: 'home', variant: 'B', top: design() }"
+            >{{ name() }}<span aria-hidden="true"></span
+          ></a>
+
+          <nav aria-label="Основная навигация">
+            <a
+              class="active"
+              routerLink="/"
+              [queryParams]="{ screen: 'home', variant: 'B', top: design() }"
+              >Главная</a
+            ><a routerLink="/" [queryParams]="{ screen: 'editor', variant: 'B', top: design() }"
+              >Редактор статьи ↗</a
+            >
+          </nav>
+        </div>
+        <div class="city-desk">
+          <div class="city-context">
+            <span class="local-marker">{{ city() }} · {{ today }}</span>
+            <h1>Что происходит рядом</h1>
+          </div>
+          <div class="desk-search">
+            <form (ngSubmit)="search.emit(searchText)" role="search">
+              <input
+                name="desk-search"
+                [(ngModel)]="searchText"
+                aria-label="Поиск новостей"
+                placeholder="Найти событие, место или историю"
+              /><button aria-label="Найти новости">Найти ↗</button>
+            </form>
+            <nav class="category-links" aria-label="Категории новостей">
+              <button (click)="category.emit('')">Все новости</button>
+              @for (item of ['Город', 'Культура', 'Транспорт']; track item) {
+                <button (click)="category.emit(item)">{{ item }}</button>
+              }
+            </nav>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</header>

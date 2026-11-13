@@ -242,7 +242,7 @@ Independent specification and coding-style reviews resolved findings in link han
 
 ### Owner Acceptance and Limitations
 
-The owner accepted the account/administration workflows on 2026-11-12 and the revised wizard and page isolation on 2026-11-13. Stage 1 is closed. No Stage 2 specification has been agreed yet.
+The owner accepted the account/administration workflows on 2026-11-12 and the revised wizard and page isolation on 2026-11-13. Stage 1 is closed. Subsequent planning is recorded in [Stage 2](STAGE_2.md); it does not change this acceptance record.
 
 - Minor visual refinements are deferred.
 - Browser checks used a scoped local-certificate exception with separate CA/hostname-verified HTTPS checks; system trust was unchanged.

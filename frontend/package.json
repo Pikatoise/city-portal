@@ -12,7 +12,8 @@
     "refresh:api": "node scripts/refresh-api.mjs",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "api:check": "node scripts/check-api.mjs"
+    "api:check": "node scripts/check-api.mjs",
+    "prototype": "ng serve --configuration prototype --proxy-config proxy.conf.json --host 127.0.0.1 --port 4300"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
@@ -33,6 +34,9 @@
     "@angular/build": "22.2.6",
     "@angular/cli": "22.2.6",
     "@angular/compiler-cli": "22.2.5",
+    "@tiptap/core": "3.34.0",
+    "@tiptap/pm": "3.34.0",
+    "@tiptap/starter-kit": "3.34.0",
     "@types/express": "5.0.6",
     "@types/node": "22.20.5",
     "jsdom": "30.1.3",
