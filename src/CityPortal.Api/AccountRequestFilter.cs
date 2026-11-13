@@ -17,6 +17,8 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         AccountOperations accounts = http.RequestServices.GetRequiredService<AccountOperations>();
         string ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         string path = (http.Request.Path.Value ?? string.Empty).TrimEnd('/').ToLowerInvariant();
+        if (path == "/api/installation/complete")
+            await accounts.EnforceIpLimitAsync(ip, "installation", 10, TimeSpan.FromMinutes(10), http.RequestAborted);
         if (path == "/api/auth/register")
             await accounts.EnforceIpLimitAsync(ip, "registration", 5, TimeSpan.FromHours(1), http.RequestAborted);
         if (path == "/api/auth/login")

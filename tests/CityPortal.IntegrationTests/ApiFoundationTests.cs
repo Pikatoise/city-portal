@@ -5,8 +5,14 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CityPortal.IntegrationTests;
 
-public sealed class ApiFoundationTests
+public sealed class ApiFoundationTests : IClassFixture<RegistrationFixture>
 {
+    private readonly RegistrationFixture _fixture;
+
+    public ApiFoundationTests(RegistrationFixture fixture)
+    {
+        _fixture = fixture;
+    }
     private const string _unavailableDatabase = "Host=127.0.0.1;Port=1;Database=unavailable;Username=test;Password=test;Timeout=1";
     private const string _unavailableMessaging = "amqp://test:test@127.0.0.1:1";
 
@@ -15,7 +21,8 @@ public sealed class ApiFoundationTests
     [InlineData("Russian Standard Time", "Europe/Moscow")]
     public async Task SystemInfo_WithConfiguredCityTimeZone_ReturnsBrowserCompatibleIdentifierAsync(string configuredId, string expectedId)
     {
-        await using var factory = new ApiFactory("Development", _unavailableDatabase, _unavailableMessaging);
+        (ApiFactory factory, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
         await using WebApplicationFactory<Program> configured = factory.WithWebHostBuilder(builder => builder.UseSetting("City:TimeZone", configuredId));
         using HttpClient client = configured.CreateClient();
         using var body = JsonDocument.Parse(await client.GetStringAsync("/api/system/info"));
@@ -25,7 +32,8 @@ public sealed class ApiFoundationTests
     [Fact]
     public async Task SystemInfo_ReturnsOnlyPublicApplicationMetadataAsync()
     {
-        await using var factory = new ApiFactory("Development", _unavailableDatabase, _unavailableMessaging);
+        (ApiFactory factory, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
         using HttpClient client = factory.CreateClient();
 
         using HttpResponseMessage response = await client.GetAsync("/api/system/info", CancellationToken.None);
@@ -35,7 +43,9 @@ public sealed class ApiFoundationTests
         Assert.Equal("CityPortal", body.RootElement.GetProperty("name").GetString());
         Assert.Equal(1, body.RootElement.GetProperty("stage").GetInt32());
         Assert.Equal("UTC", body.RootElement.GetProperty("timeZone").GetString());
-        Assert.Equal(3, body.RootElement.EnumerateObject().Count());
+        Assert.Equal("", body.RootElement.GetProperty("city").GetString());
+        Assert.Equal("", body.RootElement.GetProperty("region").GetString());
+        Assert.Equal(5, body.RootElement.EnumerateObject().Count());
     }
 
     [Fact]

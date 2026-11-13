@@ -37,5 +37,9 @@ export type { ForgotPassword$Params as ForgotPassword$Params } from './fn/auth/f
 export { forgotPassword as forgotPassword } from './fn/auth/forgot-password';
 export type { ResetPassword$Params as ResetPassword$Params } from './fn/auth/reset-password';
 export { resetPassword as resetPassword } from './fn/auth/reset-password';
+export type { GetInstallationStatus$Params as GetInstallationStatus$Params } from './fn/installation/get-installation-status';
+export { getInstallationStatus as getInstallationStatus } from './fn/installation/get-installation-status';
+export type { InstallSite$Params as InstallSite$Params } from './fn/installation/install-site';
+export { installSite as installSite } from './fn/installation/install-site';
 export type { GetSystemInfo$Params as GetSystemInfo$Params } from './fn/system/get-system-info';
 export { getSystemInfo as getSystemInfo } from './fn/system/get-system-info';

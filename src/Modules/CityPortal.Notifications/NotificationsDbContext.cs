@@ -13,10 +13,12 @@ internal sealed class NotificationsDbContext : DbContext
     public DbSet<EmailAttempt> Attempts => Set<EmailAttempt>();
 
     public DbSet<EmailReplay> Replays => Set<EmailReplay>();
+    public DbSet<MailConfiguration> MailConfigurations => Set<MailConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("notifications");
+        modelBuilder.Entity<MailConfiguration>().ToTable("MailConfiguration");
         modelBuilder.Entity<EmailDelivery>(entity =>
         {
             entity.ToTable("EmailDeliveries");

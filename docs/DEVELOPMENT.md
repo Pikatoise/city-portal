@@ -4,8 +4,79 @@ This guide covers the stage 1 application foundation and local configuration for
 registration, Email confirmation, password recovery, and profile editing. The
 current implementation and actual verification status are recorded in
 [STAGE_1.md](stages/STAGE_1.md). Administration and Email inspection/replay are
-implemented; final stage acceptance and owner review remain pending.
+implemented; their technical acceptance, independent reviews and owner review
+are complete. The first-run setup wizard in #6 is implemented and verified;
+the owner accepted the revised wizard on 2026-11-13 and Stage 1 is complete.
 
+## First-Run Setup
+
+After explicit migrations, a new empty installation redirects browser visitors
+to `/setup`. Use the base Compose configuration, which publishes all ports only
+on `127.0.0.1` and enables local setup. No installation key is required. CSRF
+protection, rate limits and one-time completion remain enforced. Until setup completes, all other application pages redirect to the wizard and the normal header navigation/logo link and footer are hidden. Normal page access and navigation return automatically on completion. If installation state cannot be verified, other pages stay unavailable.
+
+For a remote server, keep its ports bound to loopback and use an SSH tunnel:
+
+```powershell
+ssh -L 8443:127.0.0.1:8443 user@server
+```
+
+Open `https://localhost:8443/setup` through the tunnel. Set `PUBLIC_ORIGIN` to the
+final public HTTPS origin before completing setup; persisted mail settings use
+it for confirmation and recovery links. For a purely local development site,
+the default is `https://localhost:8443`.
+
+The wizard asks for the site name, city, optional region, time zone, administrator
+Email/display name/password, and SMTP host/port/sender/optional credentials.
+Select STARTTLS (usually 587), TLS on connection (usually 465), or no TLS for the
+isolated local receiver. For Compose Mailpit use `mailpit`, port `1025`, no TLS,
+and a fictional sender such as `noreply@cityportal.test`.
+
+Completion sends a test message to the proposed administrator. SMTP or database
+failure leaves installation retryable. On success, the administrator is
+confirmed and can log in immediately through the normal login page. The site
+defaults, administrator, bootstrap audit and encrypted SMTP configuration commit
+together. The API and Worker share the persistent protection-key volume; losing
+those keys also makes stored SMTP credentials unreadable.
+
+The wizard closes permanently after completion. The Worker reads the persisted
+mail settings for each delivery, without a restart. Migrations mark databases
+already containing accounts as installed and preserve their data and fallback
+deployment settings. Their existing administrator/bootstrap procedure below
+continues to work; the wizard never resets an existing account database.
+
+## Opening Network Access After Setup
+
+The base configuration stays local. After completing setup and checking the
+site, configure a real DNS hostname in `SITE_DOMAIN` and ensure `PUBLIC_ORIGIN`
+was set to its final `https://` origin before installation. Prepare DNS and the
+server's firewall for HTTPS. Then deliberately apply the public override:
+
+```powershell
+docker compose -f compose.yaml -f compose.public.yaml config --quiet
+docker compose -f compose.yaml -f compose.public.yaml up -d --wait
+```
+
+The override disables installation, switches API/Worker to Production, replaces
+the proxy's loopback development port with network ports 80/443 and uses Caddy's
+public HTTPS configuration. API, Worker, database, broker and mail inspection
+ports remain loopback-only. The proxy depends on healthy API readiness; an
+uninstalled site with setup disabled is unready, so the public proxy cannot
+start through this procedure. Public `/setup` is unavailable, and direct setup
+completion also returns 403. Completed installations stay closed in local mode.
+
+For standalone API hosting, setup is disabled by default. Enable
+`Installation__Enabled=true` only while access is restricted to the server,
+then disable it before exposing the host or adding a public reverse proxy.
+The forwarded client-IP header is not treated as proof of local installer access.
+Host-side Angular SSR binds to loopback unless `HOST` is explicitly set;
+Compose sets `HOST=0.0.0.0` only inside the unpublished frontend container.
+
+Compose 2.24.4+ is required for port replacement with `!override`;
+see [Docker merge rules](https://docs.docker.com/reference/compose-file/merge/)
+and [healthy dependency ordering](https://docs.docker.com/compose/how-tos/startup-order).
+This override prepares network access; the development Mailpit configuration is
+still a local receiver, not an external mail provider.
 ## Initial Administrator and Staff Screens
 
 Register an ordinary account and confirm its Email first. After explicit
@@ -73,7 +144,7 @@ and profile/password changes as well as the existing HTTPS registration flow.
 
 ## Prerequisites
 
-- Docker Desktop with Linux containers and Docker Compose v2 or later.
+- Docker Desktop with Linux containers and Docker Compose 2.24.4 or later.
 - For host development, the .NET SDK pinned by `global.json` and Node.js 26.8.1.
 - Git. No cloud Email provider or public domain is required for local development.
 
@@ -120,7 +191,7 @@ development runs the API in `Development` to expose OpenAPI and Scalar. This
 Compose configuration is a development environment, not a public deployment.
 The frontend trusts Caddy's forwarded headers only in Compose. Its port is not
 published to the host; requests enter through Caddy. Direct host development does
-not enable that trust. The SSR host allowlist remains limited to local hostnames.
+not enable that trust. The SSR host allowlist includes local hostnames and, in public mode, only the explicit SITE_DOMAIN hostname; wildcards are rejected.
 
 The API trusts forwarded client IP and scheme headers only from the configured
 Caddy address. Compose uses the local subnet `172.30.88.0/24` and reserves
@@ -253,6 +324,19 @@ uses the actual registration limit, so repeated runs can return HTTP 429.
 python scripts/check-registration.py --ca .local/cityportal-root.crt
 ```
 
+To check public SSR and private staff browser shells without creating another
+account or consuming registration quota:
+
+```powershell
+python scripts/check-registration.py --ca .local/cityportal-root.crt --shell-only
+```
+
+The final browser acceptance used an isolated headless Edge context with a
+context-scoped development-certificate exception. Separate Python HTTPS checks
+verified the exported CA and hostname. This did not install Windows trust or
+change normal browser certificate behavior. See the stage specification for
+the scenario evidence and local owner-review instructions.
+
 ## Operational Boundaries
 
 - Health probes verify process/dependency availability. They do not prove Email
@@ -270,3 +354,10 @@ python scripts/check-registration.py --ca .local/cityportal-root.crt
 - [Mailpit configuration](https://mailpit.axllent.org/docs/configuration/).
 - [Npgsql GSS encryption configuration](https://www.npgsql.org/doc/security.html).
 - [curl certificate and revocation options](https://curl.se/docs/manpage.html).
+
+CI runs `check-registration.py --install` against a fresh disposable database in
+local setup mode before checking normal account workflows. No key environment
+variable is needed. This test mode creates an administrator with random
+credentials; use the browser wizard for an installation you intend to keep.
+`--smtp-host` is available for this test initialization path; its Compose default
+is `mailpit`.

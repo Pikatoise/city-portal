@@ -14,6 +14,8 @@ export type { CsrfResponse } from './models/csrf-response';
 export type { EmailDeliveryPage } from './models/email-delivery-page';
 export type { EmailDeliverySummary } from './models/email-delivery-summary';
 export type { ForgotPasswordRequest } from './models/forgot-password-request';
+export type { InstallationStatusResponse } from './models/installation-status-response';
+export type { InstallSiteRequest } from './models/install-site-request';
 export type { LoginRequest } from './models/login-request';
 export type { RegisterRequest } from './models/register-request';
 export type { ReplayEmailRequest } from './models/replay-email-request';

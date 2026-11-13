@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Status: steps 2-5 are implemented. Account workflows, administrator setup, role management/history, and Email inspection/replay are available. Steps 2-4 were independently reviewed; final stage verification, remaining independent review, and owner completion review remain in step 6. Verification evidence and limitations are recorded below.
+Status: complete. Implementation, technical verification and owner review are finished. On 2026-11-13 the owner accepted the revised first-run wizard, local-only keyless setup and setup-only page access, and authorized stopping the server, committing, completing GitHub tracking and pushing. Minor visual refinements remain deferred.
 
 Product requirements come from [VALUE.md](../VALUE.md), and technical requirements come from [CORE.md](../CORE.md). Follow the stage workflow in [AGENTS.md](../../AGENTS.md#stage-workflow). This document describes stage 1 only. Business rules below were agreed through the owner interview; concrete API and storage conventions translate those rules into an implementation plan.
 
@@ -60,7 +60,7 @@ Completion: the application starts through the documented local procedure, migra
 
 Foundation implementation: `CityPortal.slnx` contains API, Worker, Identity, Notifications, and integration-test projects. Module DbContexts remain internal. Public module operations register services and apply owned migrations. The API `--migrate` command is an explicit deployment step; ordinary startup never migrates. Notifications initially owns its schema and migration history, with delivery records and handlers introduced in step 3.
 
-The read-only endpoint GET `/api/system/info` returns public `name`, `stage`, and `timeZone` metadata and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client for connectivity and configured administrative timestamp display. Account workflows and administrative staff screens replace the original placeholders. OpenAPI and Scalar are available only in Development.
+The read-only endpoint GET `/api/system/info` returns public `name`, `stage`, `city`, `region`, and `timeZone` metadata and has OpenAPI operation ID `getSystemInfo`. Angular uses its generated TypeScript client for connectivity and configured administrative timestamp display. Account workflows and administrative staff screens replace the original placeholders. OpenAPI and Scalar are available only in Development.
 
 Both .NET processes expose `/health/live` and `/health/ready`. Liveness does not depend on external services; readiness requires PostgreSQL connectivity, applied module/messaging/scheduler schemas, and a successful RabbitMQ connection. JSON logs and OpenTelemetry instrumentation are configured, with OTLP export enabled when an endpoint is configured. [DEVELOPMENT.md](../DEVELOPMENT.md) documents Compose, local credentials, HTTPS, migrations, persistent protection keys, trusted proxy configuration, and checks. Step 3 adds Wolverine delivery, SMTP sending, and Quartz retention.
 
@@ -234,13 +234,23 @@ Provide a server-side bootstrap command that accepts the Email of an existing co
 
 The owner interview resolved the stage 1 business questions. Track implementation in the order of steps 2-6 above, splitting each workflow into reviewable tasks with acceptance examples from this document. The repository is [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal), with `main` as its default branch.
 
-Implementation tracking is established in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3): [foundation #1](https://github.com/Pikatoise/city-portal/issues/1), [registration and confirmation #2](https://github.com/Pikatoise/city-portal/issues/2), [authentication and recovery #3](https://github.com/Pikatoise/city-portal/issues/3), [administration #4](https://github.com/Pikatoise/city-portal/issues/4), and [stage acceptance #5](https://github.com/Pikatoise/city-portal/issues/5). Implementation of issues #1-#4 is complete; final acceptance, remaining independent review and owner completion review remain in #5. [DEVELOPMENT.md](../DEVELOPMENT.md) records configuration and local verification. Do not describe stage 2 before the owner's stage 1 completion review.
+Implementation tasks #1-#4, final acceptance #5 and first-run setup #6 are complete in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). The owner accepted the original workflows on 2026-11-12 and the revised wizard on 2026-11-13. Stage 1 is complete. [DEVELOPMENT.md](../DEVELOPMENT.md) records local setup and verification. No Stage 2 specification is included in this change.
 
 If implementation reveals a new business question or requires changing these contracts, agree the affected behavior with the owner and update the owning specifications in the same session.
 
 ## Open Business Decisions
 
-None remain from the stage 1 interview. Remaining implementation workflows are listed above. The stage itself is not complete until application acceptance checks and the owner's completion review pass.
+None remain for Stage 1. The owner approved the following first-run extension and accepted its delivered result.
+
+### First-Run Setup Contract
+
+New installations configure site name, city, optional region, IANA time zone, the first administrator's Email/display name/password, and SMTP host/port/sender/optional credentials. Email remains the login; the installer-created administrator is immediately confirmed and receives RegularUser and Administrator roles. SMTP supports STARTTLS, TLS on connection, or no TLS for a local receiver. A bounded 15-second SMTP test precedes the coordinated commit of account, bootstrap audit, public settings and protected SMTP configuration. SMTP acceptance is not proof of inbox delivery. Failure leaves setup retryable; concurrent completion has one winner and the completed wizard cannot reopen.
+
+Setup needs no key. The owner restricts access to loopback, using an SSH tunnel for a remote host, and opens network access only after installation. Local Compose explicitly enables Installation:Enabled; the API defaults it to false. Public mode disables completion regardless of client-IP headers and remains unready until the installation marker exists. The public proxy waits for healthy API readiness before publishing ports 80/443. Its SSR allowlist includes only local hostnames and the configured SITE_DOMAIN; wildcard host configuration is rejected. CSRF protection and the ten-attempt/ten-minute IP limit remain enforced. Status exposes installed and canInstall, never credentials.
+
+Before completion, only the wizard application page is available. Node redirects other page requests before SSR/CSR shell delivery; Angular loads shared installation state before rendering and guards every non-setup route. Home/account/staff navigation, linked branding and the normal footer are hidden. Status failures leave other pages closed. Assets and bootstrap API requests remain available. Successful completion updates shared state and restores navigation without a reload; normal login remains a separate action.
+
+Identity owns the installation marker/public defaults beside initial-administrator provisioning. Notifications owns encrypted SMTP configuration and reads it for each delivery without restarting. Contexts share one transaction and setup uses the bootstrap/role advisory lock. Existing account databases are marked installed by migration without changing credentials or data; deployment metadata/mail defaults and CLI bootstrap remain available for them. Public metadata supplies name, city, region and timeZone. PUBLIC_ORIGIN is set before initial setup. Later settings editing, branding uploads, SEO and integration-specific settings remain outside this extension.
 
 ## Stage Acceptance Criteria
 
@@ -291,12 +301,12 @@ None remain from the stage 1 interview. Remaining implementation workflows are l
 ### Current Progress
 
 - Specification: owner interview complete; agreed rules and implementation contracts recorded.
-- Implementation: steps 2-5 implemented. Issues #1-#4 deliver the foundation, account workflows, role management, and Email inspection/replay. Final stage acceptance and owner review remain in #5.
+- Implementation: all Stage 1 workflows and first-run setup are complete and owner-accepted.
 - Documentation verification: local setup, explicit EF/Wolverine/Quartz schema deployment, SMTP, persistent keys, trusted proxies, and verification commands are documented. Local credentials, private keys, and build/runtime artifacts are excluded from Git and image build contexts.
 - Application verification: 67 backend tests and 39 frontend tests pass. The HTTPS smoke covers account workflows; administration integration tests use actual HTTP, PostgreSQL, RabbitMQ, SMTP, and the bootstrap command in an isolated process. Docker images, explicit/repeat migrations, and live OpenAPI comparison pass. Prior GitHub Actions for `cfe3503` and `74ce081` passed; current local evidence is below.
 - Independent review: separate agents reviewed specification compliance and coding standards after implementation. Review found and resolved stale confirmation fragments, malformed-link presentation, missing-delivery loading after retention, and session revocation between authentication and profile lookup. Tests now prove the actual HTTP outage path and await duplicate handling rather than relying on a short delay. Both reviewers confirmed their findings resolved.
-- Limitations: full HTTPS browser acceptance, including the new administrative screens, remains in #5 because the embedded browser rejected the local CA; HTTP development requests cannot issue the required Secure CSRF cookie. Angular DOM tests and certificate-verified HTTPS smoke pass. System trust was not changed. SMTP acknowledgement followed by database failure can still duplicate external Email, as agreed. The machine's system SDK changed during issue #4; verification used the pinned 10.0.403 SDK from ignored local storage without changing global SDK selection.
-- Owner completion review: pending.
+- Limitations: local browser checks used a scoped certificate exception with separate CA/hostname-verified HTTPS checks; system trust is unchanged. SMTP acknowledgement followed by database failure can still duplicate external Email, as agreed. Real-provider TLS and public DNS/certificate issuance remain deployment checks. Minor design refinements are deferred.
+- Owner completion review: complete, with explicit acceptance of the revised wizard and page isolation on 2026-11-13.
 
 ### Foundation Verification (2026-11-11)
 
@@ -405,7 +415,88 @@ The Identity administration operation serializes bootstrap and role writes with 
 | Configured city-zone metadata, including Windows-to-IANA normalization | Two `SystemInfo_WithConfiguredCityTimeZone_ReturnsBrowserCompatibleIdentifierAsync` cases. |
 | Angular filters, versioned writes, conflict reload, self-removal, replay/error presentation, and city-zone time display | Eight cases in `frontend/src/app/staff/administration.spec.ts`; all prior frontend cases also pass. |
 
-Update this section as work proceeds. Include the completed step, verification evidence, unresolved limitations, and review outcome.
+### Final Stage Acceptance (2026-11-13, Issue #5)
+
+The original foundation/account workflows and administrator delivery were verified, then the owner reviewed and accepted the final wizard and navigation changes. Technical evidence for setup and its subsequent revisions follows below. The newly added in-flight role revocation case and the staff SSR correction were also verified before completion.
+
+| Requirement | Evidence |
+| --- | --- |
+| Revocation defeats an already-started role write without target changes or audit | Roles_WhenRevocationWins_RejectsAlreadyStartedWriteWithoutChangingTargetAsync; deterministic PostgreSQL blocking relationships, 403 and unchanged roles/version/history. |
+| Staff pages use browser rendering and cannot enter shared SSR HTML | staff/** client route and check-registration.py shell checks against real HTTPS; pre-fix staff SSR was reproduced and corrected. |
+| Account lifecycle, durable broker/Worker recovery, application restart and administration | Real HTTPS browser and Mailpit checks exercised registration during outage, recovery delivery, explicit/consumed confirmation, profile edits, recovery/password changes, revoked sessions, retained cookies after restart, administrator roles/history and SMTP replay. |
+| Stage completion | The owner explicitly confirmed everything works and authorized stopping servers, committing, closing tracking and pushing on 2026-11-13. |
+
+### Original First-Run Setup Verification (2026-11-13, Issue #6)
+
+This is historical evidence for the original key-based version. The keyless and setup-only revisions below supersede its key/header and page-access requirements.
+
+The owner approved Email login, immediate access for the first administrator without Email confirmation, and SMTP configuration in the wizard. The new setup follows the contract above. The API, Worker and Angular container images build; explicit migrations and normal startup succeed on the retained local installation. Existing data is preserved and its wizard stays closed. New public metadata includes city and region; the generated client and live contract match. CI now generates an installer key and runs the actual first-run workflow before the account smoke on its empty database. The same `check-registration.py --install` path passed locally against another empty database through CA-verified HTTPS, including the complete subsequent account lifecycle.
+
+| Requirement | Evidence |
+| --- | --- |
+| Pending setup discloses only installed state, requires key/CSRF and blocks ordinary registration | `Setup_WhenPending_RequiresKeyCsrfAndExplicitCompletionAsync`; no SMTP connection or installation/account/audit/mail-config rows are created on rejected requests. |
+| Concurrent completion creates one confirmed administrator and one installation; public and protected defaults persist | `Setup_WhenConcurrent_CreatesOneActiveAdministratorAndPersistsPublicAndProtectedDefaultsAsync`; one 204, one 409, one SMTP message, normal login/admin access, public city/name/zone and ciphertext excluding raw SMTP password/server. |
+| SMTP failure and failure after Identity writes leave no partial setup; retry succeeds | Two `Setup_WhenSmtpOrStorageFails_RollsBackAllInstallationWritesAndCanRetryAsync` cases, including an actual PostgreSQL rejection trigger on Notifications storage. |
+| Invalid time zone, password or site name cannot send SMTP or create partial data | Three `Setup_WithInvalidInput_DoesNotSendMailOrCreateAccountsAsync` cases. |
+| Existing account schema upgrade closes setup without changing account credentials | `SetupMigration_WithExistingAccounts_PreservesAccountsAndClosesWizardAsync`; re-applies the actual migration and verifies normal login and deployment fallback fields. |
+| Worker reads persisted SMTP server, public origin and brand across a new host | `Delivery_WithStoredSmtpConfiguration_UsesPersistedServerAndBrandAcrossNewHostAsync`; SMTP reaches the configured receiver rather than its different fallback receiver, and decoded MIME contains the persisted origin/name. |
+| Installed UI hides the form; completion sends key only in a header, fresh CSRF and correct implicit-TLS flags, then updates branding | `Setup_WhenInstalled_HidesCredentialsAndCompletionForm`, `Setup_OnSuccess_UsesKeyHeaderFreshCsrfTlsAndUpdatesBranding`. |
+| SMTP failure keeps inputs and retry requests get new CSRF; a concurrent winner closes the form | `Setup_OnSmtpFailure_RetainsInputsAndAllowsRetryWithFreshCsrf`, `Setup_WhenAnotherInstallerWins_ClosesWizardAndClearsCredentials`. |
+| Actual HTTPS browser installation, SMTP failure/retry, immediate administrator login and public SSR branding | Local `.local/setup-acceptance/results.json`: `FreshInstallation_RedirectsToWizard`, `SmtpFailure_LeavesInstallationPendingAndRetainsInputs`, `Setup_ClosesPermanentlyAndRendersPersistedPublicBranding`, `FirstAdministrator_CanLoginImmediatelyWithoutEmailConfirmation`. |
+| Already-running Worker uses new SMTP/branding; mobile page stays within viewport and has no unhandled errors | `RunningWorker_UsesWizardSmtpAndBrandingWithoutRestart`, `Browser_NoUnhandledErrorsOrMobilePageOverflow`; Mailpit receives a real recovery message with the configured brand and public HTTPS link origin. Mobile screenshot inspected. |
+
+Verification results: the complete backend run passed 76 of 77 tests; the only failure was an assertion against raw MIME-encoded text. That assertion now decodes MIME and its focused rerun passes 1/1. TRX counters were parsed; no production behavior was changed for that repair. The current 77 distinct backend cases have passing evidence across those runs. All 43 frontend cases pass. Production SSR build, generated-client drift, Prettier, solution formatting, a clean Release build with zero warnings/errors, live OpenAPI comparison, and CA/hostname-verified HTTPS shell checks pass. Workflow YAML syntax/format was checked with Prettier. These are local results; no new remote CI result is claimed. The independent CA-verified setup/account smoke passed with `--install --smtp-host 127.0.0.1` against the isolated host API; CI uses the Compose default `mailpit`.
+
+Independent backend review checked setup authorization, atomicity, concurrency, protected configuration and legacy behavior without finding a confirmed defect. The reviewer requested direct rollback/concurrency/migration evidence, now provided above. A second reviewer stopped at its usage limit; frontend/standards inspection was completed inline and through browser acceptance. No review result is claimed for that stopped run.
+
+Browser acceptance used a separate empty PostgreSQL database and isolated application processes, with a browser-context certificate exception plus separate CA-verified HTTPS checks. Existing local accounts/volumes were retained. Tests used local SMTP without TLS; real-provider credentials and TLS connectivity remain deployment checks. Temporary credentials, keys, logs and screenshots remain ignored local artifacts. The original workflows remain owner-accepted; acceptance of the new wizard is still pending in #5 before stage closure. The temporary test processes and proxy were stopped after verification; the normal seven-service Compose site remains running.
+
+### Keyless Local Setup Verification (2026-11-13)
+
+The owner replaced the installation key with a local-first deployment workflow. The key field, header, environment option and CI key generation are removed. Local Compose enables setup and publishes only loopback ports. The API defaults setup to disabled. The separate `compose.public.yaml` disables setup, uses Production API/Worker settings and waits for API readiness before starting Caddy with public HTTPS on ports 80/443. The public configuration has been validated but was not applied to this machine.
+
+| Requirement | Evidence |
+| --- | --- |
+| Local setup works without a key and still requires CSRF | `Setup_WhenPending_RequiresCsrfAndExplicitCompletionAsync`; concurrent completion and SMTP/storage rollback cases also run without any key header. |
+| Public mode rejects setup regardless of forwarded client-IP claims | `Setup_InPublicMode_RejectsCompletionRegardlessOfForwardedLoopbackAddressAsync`: 403, no SMTP connection and no installation/account/audit/mail-settings writes. |
+| Public mode cannot become ready before installation; liveness remains independent | Two `Setup_InPublicMode_BecomesReadyOnlyAfterInstallationWhileLivenessStaysHealthyAsync` cases: pending 503, installed 200, liveness 200 in both. |
+| Public-mode UI has no setup form; enabled local form has no key field/header | `Setup_InPublicMode_HidesInstallationForm`, `Setup_OnSuccess_UsesFreshCsrfWithoutInstallationKeyAndUpdatesBranding`. |
+| Existing installation and infrastructure paths remain valid | All 14 selected `InstallationTests` and `InfrastructureFoundationTests` cases pass; TRX counters parsed. |
+| Frontend workflows remain valid | All 44 frontend tests pass; production SSR build, Prettier and generated API drift checks pass. |
+| Local/public networking configuration is correctly separated | Parsed effective Compose configurations: every local published port binds 127.0.0.1; public proxy ports replace 8443 with only 80/443, API setup is false and proxy dependency is service_healthy. Caddy public configuration validates in a container with networking disabled. |
+| Explicit public hostname works without allowing arbitrary hosts | Real built Node SSR request with configured Host returns 200 and SSR HTML; an unconfigured Host returns 400. No public socket was opened for this test. |
+| Owner's live review instance needs no key and retains HTTPS CSRF | `https://localhost:8444/setup` renders the keyless form; status is installed=false/canInstall=true. CA-verified HTTPS request and real Edge rendering pass. Host API binds 127.0.0.1; host frontend now honors HOST and defaults to loopback. |
+
+Solution formatting and whitespace checks pass. These are local checks; no public ports were opened and no new remote CI result is claimed. Existing databases and owner review data are retained. The main-site workflow and review instance remain local. Owner review of the revised wizard remains in #5 before stage closure.
+
+### Setup-Only Page Access Verification (2026-11-13)
+
+The owner required the wizard to be the only accessible application page during first-run setup. The home, personal-account and staff navigation links, linked logo and normal footer are hidden until setup completes. Static resources and the bootstrap API calls remain available. The implementation replaces the old one-time browser redirect with a shared installation state, a child-route guard covering every non-setup Angular route, and Node page-request gating before SSR/CSR shell delivery. Status errors leave other pages closed.
+
+| Requirement | Evidence |
+| --- | --- |
+| Hide normal navigation/linked branding during setup and restore it after completion | `PendingSetup_HidesNavigationAndLogoLinkUntilCompletion`; the successful setup component test also verifies shared state becomes installed. |
+| Direct in-app navigation cannot activate other application pages | `PendingSetup_RedirectsEveryNormalRouteBeforeItsPageCanRender` uses the actual route tree and exercises home, registration, recovery, profile, staff and unknown routes. |
+| Unknown/failed installation status exposes neither other pages nor navigation | `FailedStatus_KeepsOtherPagesAndNavigationClosed`. |
+| Completed installation allows normal account routes | `CompletedSetup_AllowsLoginPageWithoutRedirectingToWizard`. |
+| Server-side isolation works without client JavaScript | Built Node server checks against a controlled HTTP status service: pending page requests return 302 to `/setup`, completed state restores SSR/home navigation and account shells, unavailable state returns 503 without login content. The wizard shell remains available for bootstrap/retry. |
+| Actual owner-review instance remains pending and shows only the wizard | Real Edge and CA-verified HTTPS checks at 8444 confirm direct home/login/registration/staff redirects and absence of navigation, linked logo and footer. Owner review database was not completed or reset. |
+
+All 48 frontend tests pass. Production SSR build, formatting, generated-client drift and workflow YAML checks pass. The smoke helper now initializes a fresh test site before expecting normal SSR/private shells and checks redirect isolation when used against a pending site; CI follows the initial redirect to the wizard shell. The main frontend image was rebuilt, and the review instance restarted on the same database. These are local checks, with no new remote CI run claimed. Owner review remains in #5.
+
+### Owner Completion Review
+Completed on 2026-11-13. The owner confirmed that the revised wizard works, accepted the setup-only page access and hidden navigation, and explicitly authorized stopping the local servers, committing all changes, completing task tracking and pushing. Stage 1 is closed. Prior pending-review and local-only evidence entries above are historical snapshots; this completion record supersedes their status. Minor design refinements remain deferred. No Stage 2 specification is included in this change.
+
+On 2026-11-12 the owner accepted the currently delivered result, deferred minor design adjustments, and added the first-run setup requirement. This acceptance applies to the verified account/administration workflows above; it does not accept an unimplemented setup wizard or close the extended stage. Disposable local review credentials remain in `.local/browser/accounts.json`. Normal interactive browser access still requires accepting the local certificate warning or the documented manual trust setup.
+
+The learning review should cover these concrete flows:
+
+1. Registration stores the account, link and protected delivery intent in one coordinated database transaction. PostgreSQL rollback removes all of them; broker downtime leaves committed Outbox work recoverable.
+2. The Worker sends Email after commit. Sent means SMTP acceptance. A crash after SMTP acceptance but before database acknowledgement can duplicate Email; one-time links and duplicate handling prevent repeating the account change.
+3. Role writes serialize the effective-permission check, last-administrator protection, versioned membership write and retained actor history. The new in-flight revocation test demonstrates why checking permissions only before waiting would be insufficient.
+4. Password change/reset revokes all persisted sessions. Logout revokes the current session. Client-side staff visibility accompanies API authorization; staff data is excluded from SSR and shared caches.
+
+Owner acceptance is recorded above from the explicit review response, rather than inferred from technical tests.
 
 ## Specification Changes
 
@@ -423,6 +514,7 @@ Update this section as work proceeds. Include the completed step, verification e
 | 2026-11-11 | Implemented and independently reviewed the application foundation. | Added API/Worker, Angular SSR host with CSR account/staff placeholders, module migrations, generated client, real infrastructure checks, Compose HTTPS, local setup, and CI. Recorded actual verification and the browser automation limitation; remaining account workflows and owner review keep stage 1 open. |
 | 2026-11-12 | Implemented and independently reviewed registration and Email confirmation. | Delivered step 3 with login/profile/logout dependencies, protected durable Email, distributed limits, persistent keys, explicit message/scheduler migrations, and recorded verification. Recovery/profile editing remain step 4; administration and delivery replay remain step 5. No new business rules. |
 | 2026-11-12 | Implemented and independently reviewed password recovery and profile editing. | Delivered step 4, purpose-specific link persistence, atomic password/session changes, coordinated account-write locks, generated API client, Angular screens, and verification evidence. Implementation tasks #1-#3 are complete; stage/owner acceptance stays in #5. |
+| 2026-11-13 | Implemented and verified first-run setup. | Owner approved Email login, an immediately active first administrator and SMTP in the wizard. Added atomic setup/defaults, protected mail settings, legacy migration, public branding and direct browser/infrastructure evidence. VALUE.md, CORE.md and DEVELOPMENT.md are synchronized; owner review of this extension remains in #5. |
 | 2026-11-12 | Implemented administrator setup, role management, and Email inspection/replay. | Delivered step 5 with serialized role invariants, retained audit, versioned replay/Outbox coordination, administrative screens, and configured city-zone timestamp display. Implementation tasks #1-#4 are complete; final independent review, browser acceptance and owner review remain in #5. |
 
 For subsequent changes, record the changed requirement or decision, its reason, and the affected specification sections. Update those sections in the same work session so the specification describes the current agreement.

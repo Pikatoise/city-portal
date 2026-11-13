@@ -26,7 +26,7 @@ public sealed class RegistrationFixture : IAsyncLifetime
         Assert.Equal(0, result.ExitCode);
     }
 
-    public async Task<(ApiFactory Factory, string ConnectionString)> CreateAsync(TimeProvider? time = null)
+    public async Task<(ApiFactory Factory, string ConnectionString)> CreateAsync(TimeProvider? time = null, bool installed = true)
     {
         string name = "registration_" + Guid.NewGuid().ToString("N");
         await using var connection = new NpgsqlConnection(_database.GetConnectionString());
@@ -38,6 +38,13 @@ public sealed class RegistrationFixture : IAsyncLifetime
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();
+        if (installed)
+        {
+            await using var siteConnection = new NpgsqlConnection(settings.ConnectionString);
+            await siteConnection.OpenAsync();
+            await using var site = new NpgsqlCommand("INSERT INTO identity.\"SiteConfiguration\" (\"Id\") VALUES (1)", siteConnection);
+            await site.ExecuteNonQueryAsync();
+        }
         return (factory, settings.ConnectionString);
     }
 }

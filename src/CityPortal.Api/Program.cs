@@ -34,6 +34,7 @@ public partial class Program
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
+        builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
         builder.Services.AddControllers(options => options.Filters.Add<AccountRequestFilter>());
         builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, cancellationToken) =>
         {
@@ -94,7 +95,8 @@ public partial class Program
         {
             if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase)
-                || context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase))
+                || context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase)
+                || context.Request.Path.StartsWithSegments("/api/installation", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Headers.CacheControl = "no-store";
                 context.Response.Headers.Pragma = "no-cache";

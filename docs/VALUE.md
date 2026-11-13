@@ -14,6 +14,8 @@ Public news, advertisements, and comments are readable without an account. Anony
 
 Each installation serves one city. Configurable settings include portal name, branding, city and region, time zone, coordinates, districts and locations, contacts, SEO metadata, and external services. Changing city settings must not reinterpret or migrate existing content.
 
+Each new installation offers a first-run setup wizard, similar to WordPress installation. The installer configures the site name, city, optional region, time zone, first administrator's Email/display name/password, and SMTP settings with a test message. Email remains the login. The installer-created administrator receives immediate access without Email confirmation; ordinary registration retains its confirmation rules. Installation runs with access restricted to the server itself, including remote access through an SSH tunnel, and needs no installation key. The owner opens network access only after setup; the public configuration disables setup. Before completion, only the setup page is available: other application pages redirect to it, and home/account/staff navigation and linked branding are hidden. Normal navigation becomes available after successful setup. The wizard also closes permanently after success. Settings and administrator creation are atomic and survive restarts. Existing account databases are preserved and cannot be taken over through the wizard. Later settings editing, branding, SEO and integration-specific fields are introduced with their owning workflows. The application is reusable for different cities without source-code changes.
+
 ## Users and Accounts
 
 | User or role | Main responsibility |

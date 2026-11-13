@@ -154,6 +154,66 @@ public sealed class AdministrationTests : IClassFixture<RegistrationFixture>
     }
 
     [Fact]
+    public async Task Roles_WhenRevocationWins_RejectsAlreadyStartedWriteWithoutChangingTargetAsync()
+    {
+        (ApiFactory factory, string database) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        AccountResponse first = await SeedAsync(factory, database, "winningadmin@example.test");
+        AccountResponse second = await SeedAsync(factory, database, "revokedadmin@example.test");
+        AccountResponse target = await SeedAsync(factory, database, "untouched@example.test");
+        await AdminAsync(factory, admin => admin.BootstrapAsync(first.Email, CancellationToken.None));
+        (_, Guid firstSession, _) = await LoginAsync(factory, first.Email);
+        AccountSummary secondAdmin = await AdminAsync(factory, admin => admin.ChangeRolesAsync(first.Id, firstSession, second.Id, ["Administrator"], 2, CancellationToken.None));
+        (_, Guid secondSession, _) = await LoginAsync(factory, second.Email);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var blocker = new NpgsqlConnection(database);
+        await blocker.OpenAsync(timeout.Token);
+        await using NpgsqlTransaction transaction = await blocker.BeginTransactionAsync(timeout.Token);
+        await using var emailLock = new NpgsqlCommand("SELECT pg_advisory_xact_lock(hashtextextended(@key, 0))", blocker, transaction);
+        emailLock.Parameters.AddWithValue("key", "email:" + first.Email.ToUpperInvariant());
+        await emailLock.ExecuteNonQueryAsync(timeout.Token);
+        Task<AccountSummary> revoke = AdminAsync(factory, admin => admin.ChangeRolesAsync(first.Id, firstSession, second.Id, [], secondAdmin.Version, timeout.Token));
+        await using var observer = new NpgsqlConnection(database);
+        await observer.OpenAsync(timeout.Token);
+
+        async Task<int> WaitForBlockedBackendAsync(int blockerPid)
+        {
+            await using var query = new NpgsqlCommand("SELECT pid FROM pg_stat_activity WHERE @blocker = ANY(pg_blocking_pids(pid)) AND wait_event = 'advisory' LIMIT 1", observer);
+            query.Parameters.AddWithValue("blocker", blockerPid);
+            while (true)
+            {
+                object? result = await query.ExecuteScalarAsync(timeout.Token);
+                if (result is int pid)
+                    return pid;
+                await Task.Yield();
+            }
+        }
+
+        Task<AccountSummary> pending;
+        try
+        {
+            // Revocation owns the administration lock while its actor's Email lock is held here.
+            int revokerPid = await WaitForBlockedBackendAsync(blocker.ProcessID);
+            pending = AdminAsync(factory, admin => admin.ChangeRolesAsync(second.Id, secondSession, target.Id, ["Author"], 2, timeout.Token));
+            // Observe the second write inside PostgreSQL before allowing revocation to commit.
+            await WaitForBlockedBackendAsync(revokerPid);
+        }
+        finally
+        {
+            await transaction.CommitAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(["RegularUser"], (await revoke).Roles);
+        AccountOperationException denied = await Assert.ThrowsAsync<AccountOperationException>(() => pending);
+        Assert.Equal(403, denied.Status);
+        Assert.Equal("administrator_required", denied.Code);
+        AccountSummary preserved = await AdminAsync(factory, admin => admin.GetAsync(first.Id, firstSession, target.Id, CancellationToken.None));
+        Assert.Equal(2, preserved.Version);
+        Assert.Equal(["RegularUser"], preserved.Roles);
+        Assert.Empty((await AdminAsync(factory, admin => admin.HistoryAsync(first.Id, firstSession, target.Id, 1, 20, CancellationToken.None))).Items);
+    }
+
+    [Fact]
     public async Task RoleWrite_WhenAuditFails_RollsBackMembershipAndVersionAsync()
     {
         (ApiFactory factory, string database) = await _fixture.CreateAsync();

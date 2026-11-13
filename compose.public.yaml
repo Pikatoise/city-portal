@@ -1,0 +1,26 @@
+# Apply only after completing setup with the loopback-only base configuration.
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Installation__Enabled: "false"
+  worker:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Installation__Enabled: "false"
+  frontend:
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN before enabling public access}
+  proxy:
+    ports: !override
+      - 0.0.0.0:80:80
+      - 0.0.0.0:443:443
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN before enabling public access}
+    volumes:
+      - ./infra/Caddyfile.public:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_started

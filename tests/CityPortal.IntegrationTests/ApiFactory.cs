@@ -23,6 +23,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environment);
+        builder.UseSetting("Installation:Enabled", "true");
         builder.UseSetting("ConnectionStrings:Database", _database);
         builder.UseSetting("ConnectionStrings:Messaging", _messaging);
         if (_time is not null)

@@ -213,7 +213,8 @@ footer {
   font-weight: 600;
   margin-top: 12px;
 }
-.account-panel input:not([type='checkbox']) {
+.account-panel input:not([type='checkbox']),
+.account-panel select {
   width: 100%;
   font: inherit;
   color: inherit;
@@ -351,7 +352,8 @@ button:disabled {
   max-width: 560px;
   margin: 24px 0;
 }
-.staff-filters select {
+.staff-filters select,
+.staff-filters input {
   padding: 12px;
   border: 1px solid #b9c7b8;
   border-radius: 4px;
@@ -363,6 +365,7 @@ button:disabled {
 }
 .staff-table table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   text-align: left;
 }

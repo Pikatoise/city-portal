@@ -6,7 +6,9 @@
  * Public application metadata for the frontend connection check.
  */
 export interface SystemInfoResponse {
+  city: string;
   name: string;
+  region: string;
   stage: (number | string);
   timeZone: string;
 }

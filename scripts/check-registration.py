@@ -26,6 +26,9 @@ def main():
     parser.add_argument("--origin", default="https://localhost:8443")
     parser.add_argument("--mailpit", default="http://localhost:8025")
     parser.add_argument("--ca", required=True)
+    parser.add_argument("--shell-only", action="store_true", help="Check public SSR and private browser shells without creating an account.")
+    parser.add_argument("--install", action="store_true", help="Initialize an empty disposable test site in local setup mode.")
+    parser.add_argument("--smtp-host", default="mailpit", help="SMTP host visible from the API, used only by --install.")
     arguments = parser.parse_args()
     origin = arguments.origin.rstrip("/")
     require(urllib.parse.urlsplit(origin).scheme == "https", "HTTPS origin required.")
@@ -57,6 +60,35 @@ def main():
     def mail_json(path):
         with urllib.request.urlopen(arguments.mailpit.rstrip("/") + path, timeout=10) as response:
             return json.load(response)
+
+    if arguments.install and not request("/api/installation/status")["installed"]:
+        setup_email = f"setup-{secrets.token_hex(8)}@example.test"
+        request("/api/installation/complete", expected=204, body={
+            "email": setup_email, "displayName": "SetupAdmin", "password": secrets.token_hex(12) + "!",
+            "name": "TestPortal", "city": "TestCity", "region": "TestRegion", "timeZone": "UTC",
+            "smtpHost": arguments.smtp_host, "smtpPort": 1025, "senderAddress": "noreply@cityportal.test", "useTls": False,
+        })
+        require(request("/api/installation/status")["installed"], "Installation did not persist.")
+
+    installed = request("/api/installation/status")["installed"]
+    for path in ("/staff/accounts", "/staff/email-deliveries", "/"):
+        with client.open(origin + path, timeout=20) as response:
+            require(response.status == 200, "Application shell unavailable.")
+            html = response.read().decode("utf-8")
+            if not installed:
+                require(response.geturl() == origin + "/setup", "Uninstalled site exposed another page.")
+                require("no-store" in response.headers.get("Cache-Control", ""), "Setup response can be cached.")
+            elif path == "/":
+                require('ng-server-context="ssr"' in html, "Public homepage is not server-rendered.")
+            else:
+                require("no-store" in response.headers.get("Cache-Control", ""), "Staff shell can be cached.")
+                require('ng-server-context="ssr"' not in html, "Staff page incorrectly uses server rendering.")
+                require("<app-admin-accounts" not in html and "<app-email-deliveries" not in html,
+                        "Staff component entered server-rendered HTML.")
+    if arguments.shell_only:
+        print("Application page isolation and rendering checks passed.")
+        return
+    require(installed, "Complete local setup first or use --install for a disposable test site.")
 
     suffix = secrets.token_hex(8)
     email = f"smoke-{suffix}@example.test"

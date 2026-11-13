@@ -7,13 +7,14 @@ x-backend-environment: &backend-environment
   ConnectionStrings__Messaging: amqp://${RABBITMQ_USER:-cityportal}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
   Security__DataProtectionKeysPath: /var/cityportal/keys
   Security__TrustedProxies__0: ${PROXY_ADDRESS:-172.30.88.10}
-  Mail__PublicOrigin: https://localhost:8443
+  Mail__PublicOrigin: ${PUBLIC_ORIGIN:-https://localhost:8443}
   Mail__SmtpHost: mailpit
   Mail__SmtpPort: 1025
   Mail__UseTls: 'false'
   Mail__SenderAddress: noreply@cityportal.test
   Mail__PortalName: CityPortal
   City__TimeZone: ${CITY_TIME_ZONE:-UTC}
+  Installation__Enabled: 'true'
 
 services:
   postgres:
@@ -97,6 +98,7 @@ services:
       PORT: 4000
       HOST: 0.0.0.0
       TRUST_PROXY_HEADERS: 'true'
+      API_INTERNAL_ORIGIN: http://api:8080
 
   proxy:
     image: caddy:2.11.9-alpine

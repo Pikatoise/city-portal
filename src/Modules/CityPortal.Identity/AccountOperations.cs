@@ -38,6 +38,8 @@ public sealed class AccountOperations
 
     public async Task<AccountResponse> RegisterAsync(string? email, string? displayName, string? password, CancellationToken cancellationToken)
     {
+        if (!await _context.Sites.AnyAsync(cancellationToken))
+            throw new AccountOperationException(409, "installation_required", "Complete site installation before registration.");
         (string cleanEmail, string cleanName) = AccountValidation.ValidateRegistration(email, displayName, password);
         string normalized = cleanEmail.ToUpperInvariant();
         await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);

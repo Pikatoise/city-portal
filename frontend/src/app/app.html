@@ -1,13 +1,30 @@
 ﻿<a class="skip-link" href="#main-content">Перейти к содержимому</a>
 <header class="site-header">
-  <a class="brand" routerLink="/" aria-label="CityPortal, главная">CityPortal<span></span></a>
-  <nav aria-label="Основная навигация">
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
-      >Главная</a
-    >
-    <a routerLink="/account" routerLinkActive="active">Личный кабинет</a>
-    <a routerLink="/staff" routerLinkActive="active">Для сотрудников</a>
-  </nav>
+  @if (installation.installed()) {
+    <a class="brand" routerLink="/" [attr.aria-label]="site.name() + ', главная'"
+      >{{ site.name() }}<span></span
+    ></a>
+    <nav aria-label="Основная навигация">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+        >Главная</a
+      >
+      <a routerLink="/account" routerLinkActive="active">Личный кабинет</a>
+      <a routerLink="/staff" routerLinkActive="active">Для сотрудников</a>
+    </nav>
+  } @else {
+    <span class="brand">{{ site.name() }}<span></span></span>
+  }
 </header>
-<main id="main-content"><router-outlet /></main>
-<footer>CityPortal · Городской портал в разработке</footer>
+<main id="main-content">
+  @if (installation.failed()) {
+    <p role="alert">
+      Не удалось проверить состояние сайта.
+      <button type="button" (click)="installation.load()">Повторить</button>
+    </p>
+  } @else if (installation.status()) {
+    <router-outlet />
+  }
+</main>
+@if (installation.installed()) {
+  <footer>{{ site.name() }} · {{ site.city() || 'Городской портал в разработке' }}</footer>
+}

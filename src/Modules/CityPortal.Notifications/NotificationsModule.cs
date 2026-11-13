@@ -18,6 +18,7 @@ public static class NotificationsModule
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "notifications")));
         services.TryAddSingleton(TimeProvider.System);
         services.AddOptions<AccountMailOptions>();
+        services.AddScoped(provider => new MailConfigurationStore(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDataProtectionProvider>(), provider.GetRequiredService<IOptions<AccountMailOptions>>()));
         services.AddScoped(provider => new EmailAdministration(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IAccountMailLinkValidator>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new AccountMailQueue(provider.GetRequiredService<NotificationsDbContext>(),
             provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IDataProtectionProvider>()));
@@ -46,8 +47,8 @@ public static class NotificationsModule
         services.Configure<AccountMailOptions>(configuration.GetSection("Mail"));
         services.AddScoped(provider => new AccountMailDeliveryService(provider.GetRequiredService<NotificationsDbContext>(),
             provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IAccountMailLinkValidator>(),
-            provider.GetRequiredService<IDataProtectionProvider>(), provider.GetRequiredService<IOptions<AccountMailOptions>>(),
-            provider.GetRequiredService<TimeProvider>()));
+            provider.GetRequiredService<IDataProtectionProvider>(),
+            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<MailConfigurationStore>()));
         services.AddScoped(provider => new EmailRetentionJob(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<TimeProvider>()));
         services.AddQuartz("CityPortal.Email", quartz =>
         {

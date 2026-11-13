@@ -13,11 +13,13 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
     public DbSet<AccountSession> Sessions => Set<AccountSession>();
     public DbSet<RequestAttempt> RequestAttempts => Set<RequestAttempt>();
     public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
+    public DbSet<SiteConfiguration> Sites => Set<SiteConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.HasDefaultSchema("identity");
+        builder.Entity<SiteConfiguration>().ToTable("SiteConfiguration");
         builder.Entity<Account>().Property(account => account.DisplayName).HasMaxLength(20);
         builder.Entity<Account>().Property(account => account.Email).HasMaxLength(254);
         builder.Entity<Account>().Property(account => account.NormalizedEmail).HasMaxLength(254);

@@ -26,6 +26,51 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
     }
 
     [Fact]
+    public async Task Delivery_WithStoredSmtpConfiguration_UsesPersistedServerAndBrandAcrossNewHostAsync()
+    {
+        using IHost host = _fixture.BuildHost(false, true);
+        await host.StartAsync(CancellationToken.None);
+        await using var configuredSmtp = new TestSmtp();
+        int previousConnections = _fixture.Smtp.ConnectionCount;
+        await _fixture.ConfigureMailAsync(host, new AccountMailOptions
+        {
+            SmtpHost = "127.0.0.1",
+            SmtpPort = configuredSmtp.Port,
+            UseTls = false,
+            PortalName = "ConfiguredPortal",
+            PublicOrigin = "https://configured.example.test",
+            SenderAddress = "sender@example.test"
+        });
+        try
+        {
+            AccountMailRequest request = _fixture.NewRequest();
+            await _fixture.QueueAsync(host, request, commit: true);
+            await host.StopAsync(CancellationToken.None);
+            using IHost restarted = _fixture.BuildHost(false, true);
+            await restarted.StartAsync(CancellationToken.None);
+            try
+            {
+                await _fixture.DeliverAsync(restarted, request.MessageId, 0);
+                Assert.Equal("Sent", await _fixture.StateAsync(request.MessageId));
+                string captured = Assert.Single(configuredSmtp.Accepted);
+                using var content = new MemoryStream(Encoding.UTF8.GetBytes(captured));
+                MimeKit.MimeMessage parsed = await MimeKit.MimeMessage.LoadAsync(content);
+                Assert.Contains("ConfiguredPortal", parsed.Subject);
+                Assert.Contains("https://configured.example.test/account/confirm-email", parsed.TextBody);
+                Assert.Equal(previousConnections, _fixture.Smtp.ConnectionCount);
+            }
+            finally
+            {
+                await restarted.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            await _fixture.ExecuteAsync("DELETE FROM notifications.\"MailConfiguration\"", Guid.Empty, DateTimeOffset.UtcNow);
+        }
+    }
+
+    [Fact]
     public async Task Replay_WhenSmtpRecovers_RestartsRetryBudgetKeepsAttemptNumbersAndRetainsAuditAsync()
     {
         using IHost host = _fixture.BuildHost(false, true);
@@ -320,6 +365,16 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
                     if (deliveryServices)
                         services.AddAccountMailWorker(configuration, _database.GetConnectionString());
                 }).UseAccountMailMessaging(_database.GetConnectionString(), Broker.GetConnectionString(), consume).Build();
+        }
+
+        public async Task ConfigureMailAsync(IHost host, AccountMailOptions options)
+        {
+            await using var connection = new NpgsqlConnection(_database.GetConnectionString());
+            await connection.OpenAsync();
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+            await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<MailConfigurationStore>().SaveAsync(options, connection, transaction, CancellationToken.None);
+            await transaction.CommitAsync();
         }
 
         public AccountMailRequest NewRequest(string purpose = "confirmation") => new()

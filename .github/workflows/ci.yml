@@ -80,14 +80,15 @@ jobs:
           done
           test -s /tmp/cityportal-root.crt
           curl --fail --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/api/system/info
-          curl --fail --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
+          curl --fail --location --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
           grep -q '<app-root' /tmp/cityportal.html
       - name: Check live OpenAPI contract against client snapshot
         run: |
           curl --fail http://localhost:5080/openapi/v1.json > /tmp/cityportal-openapi.json
           python3 scripts/check-openapi.py frontend/openapi.json /tmp/cityportal-openapi.json
-      - name: Check registration and confirmation through HTTPS and SMTP
-        run: python3 scripts/check-registration.py --ca /tmp/cityportal-root.crt
+      - name: Check first-run setup and accounts through HTTPS and SMTP
+        run: |
+          python3 scripts/check-registration.py --ca /tmp/cityportal-root.crt --install
       - name: Show container logs on failure
         if: failure()
         run: docker compose logs --tail 100

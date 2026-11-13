@@ -1,4 +1,5 @@
 using CityPortal.Api.Contracts;
+using CityPortal.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CityPortal.Api.Controllers;
@@ -9,14 +10,20 @@ namespace CityPortal.Api.Controllers;
 public sealed class SystemController : ControllerBase
 {
     private readonly TimeZoneInfo _timeZone;
+    private readonly SiteInstallation _installation;
 
-    public SystemController(TimeZoneInfo timeZone)
+    public SystemController(TimeZoneInfo timeZone, SiteInstallation installation)
     {
         _timeZone = timeZone;
+        _installation = installation;
     }
 
     /// <summary>Returns public application metadata.</summary>
     [HttpGet("info", Name = "getSystemInfo")]
     [ProducesResponseType<SystemInfoResponse>(StatusCodes.Status200OK)]
-    public ActionResult<SystemInfoResponse> GetInfo() => Ok(new SystemInfoResponse("CityPortal", 1) { TimeZone = _timeZone.Id });
+    public async Task<ActionResult<SystemInfoResponse>> GetInfoAsync(CancellationToken cancellationToken)
+    {
+        InstallationInfo site = await _installation.GetAsync(cancellationToken);
+        return Ok(new SystemInfoResponse(site.Name ?? "CityPortal", 1) { TimeZone = site.TimeZone ?? _timeZone.Id, City = site.City ?? "", Region = site.Region ?? "" });
+    }
 }

@@ -149,6 +149,23 @@ namespace CityPortal.Notifications.Migrations
                     b.ToTable("Replays", "notifications");
                 });
 
+            modelBuilder.Entity("CityPortal.Notifications.MailConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ProtectedOptions")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MailConfiguration", "notifications");
+                });
+
             modelBuilder.Entity("CityPortal.Notifications.EmailAttempt", b =>
                 {
                     b.HasOne("CityPortal.Notifications.EmailDelivery", null)

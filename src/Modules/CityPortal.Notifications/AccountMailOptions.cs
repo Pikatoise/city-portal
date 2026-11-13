@@ -17,4 +17,6 @@ public sealed class AccountMailOptions
     public string? Password { get; set; }
 
     public bool UseTls { get; set; } = true;
+
+    public bool ImplicitTls { get; set; }
 }

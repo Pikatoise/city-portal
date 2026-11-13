@@ -693,6 +693,62 @@
         }
       }
     },
+    "/api/installation/status": {
+      "get": {
+        "tags": [
+          "Installation"
+        ],
+        "operationId": "getInstallationStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/installation/complete": {
+      "post": {
+        "tags": [
+          "Installation"
+        ],
+        "operationId": "installSite",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallSiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/system/info": {
       "get": {
         "tags": [
@@ -1100,6 +1156,99 @@
         },
         "description": "Requests a recovery Email without disclosing account existence."
       },
+      "InstallationStatusResponse": {
+        "required": [
+          "installed",
+          "canInstall"
+        ],
+        "type": "object",
+        "properties": {
+          "installed": {
+            "type": "boolean"
+          },
+          "canInstall": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InstallSiteRequest": {
+        "required": [
+          "email",
+          "displayName",
+          "password",
+          "name",
+          "city",
+          "timeZone",
+          "smtpHost",
+          "senderAddress"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "city": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "region": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "timeZone": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "smtpHost": {
+            "maxLength": 253,
+            "type": "string"
+          },
+          "smtpPort": {
+            "maximum": 65535,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "senderAddress": {
+            "maxLength": 254,
+            "type": "string"
+          },
+          "smtpUsername": {
+            "maxLength": 1000,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "smtpPassword": {
+            "maxLength": 1000,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "useTls": {
+            "type": "boolean"
+          },
+          "implicitTls": {
+            "type": "boolean"
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "properties": {
@@ -1272,7 +1421,9 @@
         "required": [
           "name",
           "stage",
-          "timeZone"
+          "timeZone",
+          "city",
+          "region"
         ],
         "type": "object",
         "properties": {
@@ -1289,6 +1440,12 @@
           },
           "timeZone": {
             "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
           }
         },
         "description": "Public application metadata for the frontend connection check."
@@ -1304,6 +1461,9 @@
     },
     {
       "name": "Auth"
+    },
+    {
+      "name": "Installation"
     },
     {
       "name": "System"

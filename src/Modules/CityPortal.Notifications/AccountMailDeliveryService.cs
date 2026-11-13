@@ -7,7 +7,6 @@ using MailKit.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Options;
 using MimeKit;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
@@ -21,17 +20,17 @@ public sealed class AccountMailDeliveryService
     private readonly IDbContextOutbox _outbox;
     private readonly IAccountMailLinkValidator _validator;
     private readonly IDataProtector _protector;
-    private readonly AccountMailOptions _options;
+    private readonly MailConfigurationStore _configuration;
     private readonly TimeProvider _time;
 
     internal AccountMailDeliveryService(NotificationsDbContext context, IDbContextOutbox outbox, IAccountMailLinkValidator validator,
-        IDataProtectionProvider protection, IOptions<AccountMailOptions> options, TimeProvider time)
+        IDataProtectionProvider protection, TimeProvider time, MailConfigurationStore configuration)
     {
         _context = context;
         _outbox = outbox;
         _validator = validator;
         _protector = protection.CreateProtector("CityPortal.AccountMail.v1");
-        _options = options.Value;
+        _configuration = configuration;
         _time = time;
     }
 
@@ -143,17 +142,18 @@ public sealed class AccountMailDeliveryService
 
     private async Task SendAsync(EmailDelivery delivery, AccountMailPayload payload, CancellationToken cancellationToken)
     {
+        AccountMailOptions options = await _configuration.GetAsync(cancellationToken);
         bool recovery = delivery.Purpose == "recovery";
         string page = recovery ? "reset-password" : "confirm-email";
-        string link = $"{_options.PublicOrigin.TrimEnd('/')}/account/{page}#linkId={delivery.LinkId:D}&token={Uri.EscapeDataString(payload.Token)}";
-        string portal = _options.PortalName;
+        string link = $"{options.PublicOrigin.TrimEnd('/')}/account/{page}#linkId={delivery.LinkId:D}&token={Uri.EscapeDataString(payload.Token)}";
+        string portal = options.PortalName;
         string action = recovery ? "Восстановить пароль" : "Подтвердить Email";
         string instruction = recovery ? "Чтобы задать новый пароль, откройте ссылку:" : "Подтвердите Email, открыв ссылку и нажав кнопку подтверждения:";
         string footer = recovery
             ? "Ссылка действует 1 час с момента создания. Если вы не запрашивали восстановление пароля, проигнорируйте письмо."
             : "Ссылка действует 24 часа с момента создания. Если вы не регистрировались, проигнорируйте письмо.";
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(portal, _options.SenderAddress));
+        message.From.Add(new MailboxAddress(portal, options.SenderAddress));
         message.To.Add(MailboxAddress.Parse(payload.Recipient));
         message.MessageId = $"{delivery.Id:N}@cityportal.invalid";
         message.Subject = $"{portal}: {(recovery ? "восстановление пароля" : "подтверждение Email")}";
@@ -164,10 +164,10 @@ public sealed class AccountMailDeliveryService
         };
         message.Body = body.ToMessageBody();
         using var client = new SmtpClient { Timeout = 30000 };
-        await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, _options.UseTls ? SecureSocketOptions.StartTls : SecureSocketOptions.None, cancellationToken);
+        await client.ConnectAsync(options.SmtpHost, options.SmtpPort, options.ImplicitTls ? SecureSocketOptions.SslOnConnect : options.UseTls ? SecureSocketOptions.StartTls : SecureSocketOptions.None, cancellationToken);
 
-        if (!string.IsNullOrEmpty(_options.Username))
-            await client.AuthenticateAsync(_options.Username, _options.Password ?? "", cancellationToken);
+        if (!string.IsNullOrEmpty(options.Username))
+            await client.AuthenticateAsync(options.Username, options.Password ?? "", cancellationToken);
 
         await client.SendAsync(message, cancellationToken);
         // SMTP acceptance is final even if QUIT subsequently fails.
