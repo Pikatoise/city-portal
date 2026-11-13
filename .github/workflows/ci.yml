@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Initialize local-only CI credentials
         shell: bash
         run: |
@@ -80,7 +80,7 @@ jobs:
           done
           test -s /tmp/cityportal-root.crt
           curl --fail --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/api/system/info
-          curl --fail --location --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 20 --retry-all-errors --retry-delay 2 --cacert /tmp/cityportal-root.crt https://localhost:8443/ > /tmp/cityportal.html
           grep -q '<app-root' /tmp/cityportal.html
       - name: Check live OpenAPI contract against client snapshot
         run: |

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CityClock } from './city-clock';
@@ -170,7 +170,7 @@ import {
     </section>
   `,
 })
-export class Accounts {
+export class Accounts implements OnInit {
   protected readonly clock = inject(CityClock);
   private readonly api = inject(AdministrationApi);
   private readonly ownAccount = inject(AccountApi);
@@ -189,7 +189,7 @@ export class Accounts {
   protected readonly error = signal('');
   protected readonly notice = signal('');
 
-  constructor() {
+  ngOnInit(): void {
     void this.initialize();
   }
 

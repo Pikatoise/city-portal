@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api } from './api/api';
@@ -158,7 +158,7 @@ import { SiteMetadata } from './site-metadata';
     </section>
   `,
 })
-export class Setup {
+export class Setup implements OnInit {
   private readonly installation = inject(InstallationState);
   private readonly api = inject(Api);
   private readonly site = inject(SiteMetadata);
@@ -182,7 +182,7 @@ export class Setup {
   protected smtpUsername = '';
   protected smtpPassword = '';
 
-  constructor() {
+  ngOnInit(): void {
     void this.load();
   }
 

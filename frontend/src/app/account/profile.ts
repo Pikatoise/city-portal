@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
@@ -155,7 +155,7 @@ const roleLabels: Record<string, string> = {
     </section>
   `,
 })
-export class Profile {
+export class Profile implements OnInit {
   private readonly api = inject(AccountApi);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -180,6 +180,9 @@ export class Profile {
       this.destroyed = true;
       clearTimeout(this.timer);
     });
+  }
+
+  ngOnInit(): void {
     void this.refresh();
     this.tick();
   }

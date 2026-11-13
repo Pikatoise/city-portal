@@ -61,6 +61,11 @@ def main():
         with urllib.request.urlopen(arguments.mailpit.rstrip("/") + path, timeout=10) as response:
             return json.load(response)
 
+    def mail_message(message_id):
+        if not isinstance(message_id, str) or re.fullmatch(r"[A-Za-z0-9_-]+", message_id) is None:
+            raise AssertionError("Invalid Mailpit message ID.")
+        return mail_json("/api/v1/message/" + message_id)
+
     if arguments.install and not request("/api/installation/status")["installed"]:
         setup_email = f"setup-{secrets.token_hex(8)}@example.test"
         request("/api/installation/complete", expected=204, body={
@@ -113,7 +118,7 @@ def main():
         messages = mail_json("/api/v1/messages?limit=100")["messages"]
         for summary in messages:
             if any(address["Address"].lower() == email for address in summary["To"]):
-                message = mail_json("/api/v1/message/" + summary["ID"])
+                message = mail_message(summary["ID"])
                 break
         if message is not None:
             break
@@ -154,7 +159,7 @@ def main():
     while time.monotonic() < deadline:
         for summary in mail_json("/api/v1/messages?limit=100")["messages"]:
             if any(address["Address"].lower() == email for address in summary["To"]):
-                captured = mail_json("/api/v1/message/" + summary["ID"])
+                captured = mail_message(summary["ID"])
                 recovery = next((url for url in re.findall(r"https://[^\s<>\"]+", captured["Text"]) if "/account/reset-password" in url), None)
                 if recovery:
                     require(captured["HTML"] and "1 час" in captured["Text"], "Recovery multipart template/lifetime missing.")

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CityClock } from './city-clock';
@@ -131,7 +131,7 @@ const errors: Record<string, string> = {
     </section>
   `,
 })
-export class EmailDeliveries {
+export class EmailDeliveries implements OnInit {
   protected readonly clock = inject(CityClock);
   private readonly api = inject(AdministrationApi);
   protected state = '';
@@ -141,7 +141,7 @@ export class EmailDeliveries {
   protected readonly error = signal('');
   protected readonly notice = signal('');
 
-  constructor() {
+  ngOnInit(): void {
     void this.load(1);
   }
   protected stateLabel(state: string): string {

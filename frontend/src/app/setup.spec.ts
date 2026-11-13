@@ -25,9 +25,13 @@ describe('First-run setup', () => {
     canInstall = !installed,
   ): Promise<ComponentFixture<Setup>> {
     const fixture = TestBed.createComponent(Setup);
+    fixture.detectChanges();
     http.expectOne('/api/installation/status').flush({ installed, canInstall });
     await fixture.whenStable();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).not.toContain('Проверяем состояние установки');
+    });
     return fixture;
   }
 
