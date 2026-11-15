@@ -23,6 +23,38 @@ namespace CityPortal.Notifications.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("CityPortal.Notifications.AccountNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Read")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("AccountId", "CreatedAtUtc");
+
+                    b.ToTable("AccountNotifications", "notifications");
+                });
+
             modelBuilder.Entity("CityPortal.Notifications.EmailAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -91,6 +123,10 @@ namespace CityPortal.Notifications.Migrations
 
                     b.Property<DateTimeOffset?>("NextAttemptAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NotificationType")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("ProtectedPayload")
                         .IsRequired()
@@ -164,6 +200,46 @@ namespace CityPortal.Notifications.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("MailConfiguration", "notifications");
+                });
+
+            modelBuilder.Entity("CityPortal.Notifications.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("Account")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Email")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("AccountId", "Type");
+
+                    b.ToTable("Preferences", "notifications");
+                });
+
+            modelBuilder.Entity("CityPortal.Notifications.WorkflowReceipt", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("EventId", "AccountId", "Type");
+
+                    b.ToTable("WorkflowReceipts", "notifications");
                 });
 
             modelBuilder.Entity("CityPortal.Notifications.EmailAttempt", b =>

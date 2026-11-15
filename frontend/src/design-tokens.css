@@ -1,0 +1,93 @@
+:root {
+  color-scheme: light;
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-feature: Georgia, serif;
+  --color-page: #f7f9f6;
+  --color-surface: #fff;
+  --color-surface-muted: #edf1e9;
+  --color-ink: #233c31;
+  --color-muted: #667364;
+  --color-action: #294c38;
+  --color-action-hover: #3e6250;
+  --color-border: #9eaf98;
+  --color-divider: #233c311a;
+  --color-brand-dot: #b37635;
+  --color-error: #992d24;
+  --color-warning-surface: #fff2d5;
+  --color-hover: #edf1e966;
+  --radius-control: 6px;
+  --radius-media: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --gutter-header: 6vw;
+  --gutter-page: 8vw;
+  --gutter-article: 7vw;
+  --duration-feedback: 180ms;
+  --duration-carousel: 380ms;
+}
+
+@media (max-width: 800px) {
+  :root {
+    --gutter-page: 5vw;
+  }
+}
+@media (max-width: 700px) {
+  :root {
+    --gutter-header: 5vw;
+  }
+}
+
+/* Shared control primitives; component variants may specialize them. */
+:where(button, input, select, textarea) {
+  font-family: var(--font-ui);
+}
+:where(button) {
+  color: var(--color-action);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 8px 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-feedback),
+    color var(--duration-feedback),
+    border-color var(--duration-feedback);
+}
+:where(button:hover:not(:disabled)) {
+  background-color: var(--color-surface-muted);
+}
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
+  background-color: var(--color-page);
+  font-size: 16px;
+  padding: 10px 12px;
+}
+:where(textarea) {
+  resize: vertical;
+}
+:where(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--color-action);
+}
+:where(input:disabled, textarea:disabled, select:disabled) {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+:where(a) {
+  text-underline-offset: 4px;
+}
+:where(input, select, textarea, button, a, [tabindex]) {
+  scroll-margin-block: 100px 24px;
+}
+::selection {
+  color: var(--color-ink);
+  background: #d7e3d2;
+}

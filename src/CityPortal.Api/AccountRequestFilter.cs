@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CityPortal.Identity;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -6,6 +7,7 @@ namespace CityPortal.Api;
 
 internal sealed class AccountRequestFilter : IAsyncResourceFilter
 {
+    private static readonly SemaphoreSlim _mediaUpload = new(1);
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         HttpContext http = context.HttpContext;
@@ -17,6 +19,15 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         AccountOperations accounts = http.RequestServices.GetRequiredService<AccountOperations>();
         string ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         string path = (http.Request.Path.Value ?? string.Empty).TrimEnd('/').ToLowerInvariant();
+        if (path == "/api/media/images")
+        {
+            await accounts.EnforceIpLimitAsync(ip, "media-upload-ip", 60, TimeSpan.FromMinutes(10), http.RequestAborted);
+            await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "media-upload-account", 20, TimeSpan.FromMinutes(10), http.RequestAborted);
+            if (!http.User.IsInRole("Author") || !bool.TryParse(http.User.FindFirstValue("email_confirmed"), out bool confirmed) || !confirmed)
+                throw new AccountOperationException(403, "media_permission_required", "A confirmed author is required.");
+        }
+        else if (path.StartsWith("/api/media/", StringComparison.Ordinal))
+            await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "media-mutation", 30, TimeSpan.FromMinutes(1), http.RequestAborted);
         if (path == "/api/installation/complete")
             await accounts.EnforceIpLimitAsync(ip, "installation", 10, TimeSpan.FromMinutes(10), http.RequestAborted);
         if (path == "/api/auth/register")
@@ -33,6 +44,16 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         {
             throw new AccountOperationException(400, "invalid_csrf", "A valid CSRF token is required.");
         }
-        await next();
+        if (path != "/api/media/images")
+        {
+            await next();
+            return;
+        }
+        // Acquire before model binding so multipart buffering cannot defeat the processor's memory bound.
+        if (!await _mediaUpload.WaitAsync(0, http.RequestAborted))
+            throw new AccountOperationException(429, "media_processing_busy", "Image processing is busy. Retry shortly.", retryAfterSeconds: 2);
+        try
+        { await next(); }
+        finally { _mediaUpload.Release(); }
     }
 }

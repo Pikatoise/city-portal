@@ -9,6 +9,10 @@ namespace CityPortal.Identity;
 
 public sealed class AccountOperations
 {
+    public Task<WorkflowRecipient[]> FindNotificationRecipientsAsync(Guid[] accountIds, CancellationToken cancellationToken) =>
+        _context.Users.AsNoTracking().Where(account => accountIds.Contains(account.Id) && account.EmailConfirmed && account.Email != null)
+            .Select(account => new WorkflowRecipient(account.Id, account.Email!)).ToArrayAsync(cancellationToken);
+
     private readonly IdentityDbContext _context;
     private readonly AccountMailQueue _mail;
     private readonly TimeProvider _time;

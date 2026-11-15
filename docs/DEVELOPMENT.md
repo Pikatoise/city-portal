@@ -169,12 +169,14 @@ Changing `.env` later does not change an existing database user's password.
 The local PostgreSQL connection disables GSS encryption because this development
 stack uses password authentication without Kerberos.
 
+Set separate random `MEDIA_ACCESS_KEY` and `MEDIA_SECRET_KEY` values too. Media uses a private RustFS bucket; see [MEDIA.md](MEDIA.md) for processing, access, and recovery contracts.
+
 ## Build, Migrate, and Start
 
 ```powershell
 docker compose config --quiet
 docker compose build
-docker compose up -d --wait postgres rabbitmq mailpit
+docker compose up -d --wait postgres rabbitmq mailpit media-store
 docker compose run --rm --no-deps api --migrate
 docker compose up -d api worker frontend proxy
 docker compose ps
@@ -245,8 +247,9 @@ validation still use the exported root. Linux curl needs only `--cacert`.
 | `http://localhost:15672/`                | RabbitMQ management UI with `.env` credentials.       |
 | `localhost:5432`                         | PostgreSQL database `cityportal`, user `cityportal`.  |
 | `localhost:5672`                         | RabbitMQ AMQP.                                        |
+| `http://localhost:9000/`                 | Private RustFS S3 endpoint; credentials required.      |
 
-All published ports bind to loopback. PostgreSQL, RabbitMQ, Mailpit, and Caddy
+All published ports bind to loopback. PostgreSQL, RabbitMQ, Mailpit, RustFS, and Caddy
 retain their state in named volumes across `docker compose down` and restart.
 Never remove volumes as a routine recovery step.
 
@@ -349,8 +352,7 @@ the acceptance evidence and remaining deployment checks.
   delivery or application business correctness.
 - Configure trusted proxy addresses, protected persistent keys, SMTP credentials,
   and production HTTPS for the deployment environment.
-- Redis and S3-compatible storage remain selected infrastructure; this foundation
-  does not start them before a concrete workflow uses them.
+- Redis remains selected infrastructure for a justified later workflow. Media now starts private S3-compatible RustFS storage with a persistent volume and loopback-only port 9000.
 
 ## References
 

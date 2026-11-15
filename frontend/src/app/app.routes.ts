@@ -8,6 +8,18 @@ export const routes: Routes = [
     canActivateChild: [requireInstallation],
     children: [
       {
+        path: 'account/notifications',
+        loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
+      },
+      {
+        path: 'account/media',
+        loadComponent: () => import('./media/media-library').then((m) => m.MediaLibrary),
+      },
+      {
+        path: 'staff/media',
+        loadComponent: () => import('./media/media-library').then((m) => m.MediaLibrary),
+      },
+      {
         path: 'account/forgot-password',
         loadComponent: () => import('./account/forgot-password').then((m) => m.ForgotPassword),
       },

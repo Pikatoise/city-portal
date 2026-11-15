@@ -54,13 +54,13 @@ jobs:
       - name: Initialize local-only CI credentials
         shell: bash
         run: |
-          printf 'POSTGRES_PASSWORD=%s\nRABBITMQ_USER=cityportal\nRABBITMQ_PASSWORD=%s\n' "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env
+          printf 'POSTGRES_PASSWORD=%s\nRABBITMQ_USER=cityportal\nRABBITMQ_PASSWORD=%s\nMEDIA_ACCESS_KEY=%s\nMEDIA_SECRET_KEY=%s\n' "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env
       - name: Validate Compose
         run: docker compose config --quiet
       - name: Build images
         run: docker compose build
       - name: Start infrastructure
-        run: docker compose up --detach --wait postgres rabbitmq mailpit
+        run: docker compose up --detach --wait postgres rabbitmq mailpit media-store
       - name: Apply migrations explicitly
         run: docker compose run --rm --no-deps api --migrate
       - name: Start application

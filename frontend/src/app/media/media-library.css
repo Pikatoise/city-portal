@@ -1,0 +1,246 @@
+:host {
+  display: block;
+}
+.media-workspace {
+  padding-block: 40px 48px;
+}
+h1 {
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.2;
+  letter-spacing: -1px;
+  margin: 8px 0 12px;
+}
+h2 {
+  font-size: 21px;
+  margin: 0 0 8px;
+}
+h3 {
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+p {
+  line-height: 1.6;
+}
+.muted,
+.state {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.page-heading,
+.collection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.page-heading p:last-child,
+.collection-heading p {
+  margin: 0;
+}
+.media-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  border-bottom: 1px solid var(--color-divider);
+  margin: 32px 0;
+}
+.media-tabs button {
+  border: 0;
+  border-radius: 0;
+  padding: 12px 0;
+  color: var(--color-muted);
+  background: transparent;
+}
+.media-tabs .current {
+  color: var(--color-ink);
+  box-shadow: inset 0 -2px var(--color-action);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.primary,
+.upload-label {
+  color: var(--color-surface);
+  background: var(--color-action);
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-control);
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.primary:hover:not(:disabled),
+.upload-label:hover:not(.disabled) {
+  background: var(--color-action-hover);
+}
+.upload-label {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  cursor: pointer;
+  margin: 0;
+}
+.upload-label input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+.upload-label:focus-within {
+  outline: 2px solid var(--color-action);
+  outline-offset: 4px;
+}
+button {
+  font-size: 14px;
+}
+button:disabled,
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 32px 24px;
+}
+.image-card {
+  min-width: 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.image-area {
+  aspect-ratio: 3 / 2;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-media);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.image-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  min-height: 0;
+}
+.image-area span {
+  color: var(--color-muted);
+  font-size: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.card-copy {
+  padding-block: 16px 24px;
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.card-actions button {
+  font-size: 13px;
+}
+.feedback {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.text-link {
+  border: 0;
+  padding-inline: 0;
+  text-decoration: underline;
+  background: transparent;
+}
+.notice {
+  background: var(--color-surface-muted);
+  padding: 16px;
+  font-size: 14px;
+}
+.request-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.request-row p {
+  margin-bottom: 0;
+}
+.empty {
+  padding-block: 40px;
+}
+.paging {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 32px;
+  font-size: 14px;
+}
+.retention-note {
+  font-size: 13px;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-divider);
+  margin-top: 40px;
+  padding-top: 24px;
+  max-width: 80ch;
+}
+.history {
+  border-top: 1px solid var(--color-divider);
+  margin-top: 40px;
+  padding-top: 32px;
+}
+.history-entry {
+  padding-block: 20px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.history-entry p:last-child {
+  margin-bottom: 0;
+}
+dialog {
+  width: min(560px, 92vw);
+  max-height: 85svh;
+  overflow-y: auto;
+  background: var(--color-page);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 28px;
+}
+dialog::backdrop {
+  background: #233c3166;
+}
+dialog label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+dialog input,
+dialog textarea,
+dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font-weight: 400;
+}
+@media (max-width: 700px) {
+  .media-workspace {
+    padding-top: 28px;
+  }
+  .page-heading,
+  .collection-heading,
+  .request-row {
+    align-items: start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .image-grid {
+    gap: 24px;
+  }
+  dialog {
+    padding: 20px;
+  }
+}

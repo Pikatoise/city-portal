@@ -2,7 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-// Three new studies of the area before news; the same B news layout follows each.
+// Selected homepage header.
 @Component({
   selector: 'app-home-top',
   imports: [FormsModule, RouterLink],
@@ -12,9 +12,11 @@ import { RouterLink } from '@angular/router';
 export class HomeTop {
   readonly name = input.required<string>();
   readonly city = input('Белогорск');
-  readonly design = input('A');
+  readonly categories = input.required<string[]>();
+  readonly showCategories = input(true);
   readonly search = output<string>();
   readonly category = output<string>();
+  readonly allNews = output<void>();
   readonly today = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',

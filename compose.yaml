@@ -15,8 +15,29 @@ x-backend-environment: &backend-environment
   Mail__PortalName: CityPortal
   City__TimeZone: ${CITY_TIME_ZONE:-UTC}
   Installation__Enabled: 'true'
+  Media__Endpoint: http://media-store:9000
+  Media__AllowHttp: 'true'
+  Media__AccessKey: ${MEDIA_ACCESS_KEY:?Set MEDIA_ACCESS_KEY in .env}
+  Media__SecretKey: ${MEDIA_SECRET_KEY:?Set MEDIA_SECRET_KEY in .env}
+  Media__Bucket: cityportal-media
 
 services:
+  media-store:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    environment:
+      RUSTFS_ACCESS_KEY: ${MEDIA_ACCESS_KEY:?Set MEDIA_ACCESS_KEY in .env}
+      RUSTFS_SECRET_KEY: ${MEDIA_SECRET_KEY:?Set MEDIA_SECRET_KEY in .env}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_ENABLE: 'false'
+    ports:
+      - 127.0.0.1:9000:9000
+    volumes:
+      - media-data:/data
+    healthcheck:
+      test: [CMD, curl, -fsS, http://localhost:9000/health]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   postgres:
     image: postgres:18.6-alpine3.24
     environment:
@@ -122,6 +143,7 @@ networks:
         - subnet: ${COMPOSE_SUBNET:-172.30.88.0/24}
 
 volumes:
+  media-data:
   postgres-data:
   rabbitmq-data:
   mailpit-data:

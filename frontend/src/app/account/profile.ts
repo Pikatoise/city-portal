@@ -27,6 +27,14 @@ const roleLabels: Record<string, string> = {
       <p class="eyebrow">Личный кабинет</p>
       <h1 id="profile-title">Профиль</h1>
       @if (profile(); as account) {
+        <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>
+        @if (
+          account.roles.includes('Author') ||
+          account.roles.includes('Moderator') ||
+          account.roles.includes('Administrator')
+        ) {
+          <p><a routerLink="/account/media">Медиатека и общие шаблоны</a></p>
+        }
         <dl class="profile-fields">
           <dt>Email</dt>
           <dd>{{ account.email }}</dd>

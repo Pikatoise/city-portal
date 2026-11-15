@@ -58,11 +58,15 @@ Detailed account constraints, link and session lifetimes, abuse limits, administ
 
 ## Public Website
 
+The public pages and account/staff workspaces share the visual language documented in [UI_STYLE.md](UI_STYLE.md), based on the owner-reviewed news screens. Styling changes preserve agreed content, permissions, and navigation.
+
 ### Navigation and Homepage
+
+The category/search bar also includes an All News button that opens the complete detailed list with search, filters, and pagination, without a preselected category or query. Latest and category buttons retain homepage block scrolling. Hide the category/search bar on the detailed list; retain the site header and the list's own search/filter controls.
 
 Navigation includes Home, News, Classifieds, Submit News, User Account, Login and Registration, About, Contacts, and Terms and Rules.
 
-The Stage 2 homepage presents editor-selected featured news as its main block and a general feed of all latest news, with categories and search. Editors and administrators select up to five featured articles for the large card. Show one at a time, with previous/next arrows only when more than one is selected. Keep first-publication order, newest first, and immediately remove withdrawn articles. Three small cards alongside are the latest articles from the general news feed, not editorial selections; the remaining general news continues below as wide rows. Recent advertisements and access to story suggestions and advertisement creation arrive with their owning stages.
+The Stage 2 homepage presents editorial selections, a five-item latest-news block, and two category blocks of five stories each. Editors and administrators select up to five featured articles for the large card. Show one at a time, with previous/next arrows only when more than one is selected. Keep first-publication order, newest first, and immediately remove withdrawn articles. Three small cards alongside start the latest-news block; the next two stories continue below as wide rows. Category blocks follow as wide rows, newest first. Stories may repeat across blocks. Each block ends with a link to the detailed news list; category links preselect that category. Transport and Culture are prototype examples; production category selection and order remain open. Recent advertisements and access to story suggestions and advertisement creation arrive with their owning stages.
 
 ### News and Article Content
 
@@ -70,7 +74,7 @@ The news section provides a chronological feed, categories and tags, search and 
 
 Show the author's current account display name in all articles; account name changes update the displayed credit without changing article authorship. Articles have optional separate SEO title and description. When absent, use the article title and summary; the cover supplies the link-preview image when present. SEO overrides belong to the article revision and follow the same review/publication rules as other content.
 
-Without a search query, sort news by first publication time, newest first; later corrections do not move an article to the top. Search covers title, summary, and body, accounts for Russian word forms, and sorts by relevance. Search only current published revisions. Filters include category, one tag, and a first-publication date range, combinable with search. News lists use numbered pages of 20 articles.
+Without a search query, sort news by first publication time, newest first; later corrections do not move an article to the top. Search covers title, summary, and body, accounts for Russian word forms, and sorts by relevance. Search only current published revisions. Filters include category, one tag, and a first-publication date range, combinable with search. Homepage search opens the detailed news list, which contains all filters and numbered pages of 20 articles. The sticky category bar starts with Latest and scrolls to the latest-news or matching category block on the homepage. Its category entries match the displayed homepage blocks. Homepage blocks have no inline filter row or pagination.
 
 The current URL and previous URLs of a withdrawn article display "Материал снят с публикации" without article content or the withdrawal reason. Never-published content remains unavailable to anonymous readers.
 

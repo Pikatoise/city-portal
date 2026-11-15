@@ -1,86 +1,124 @@
 <a class="skip-link" href="#prototype-content">Перейти к содержимому</a>
-@if (screen() === 'home') {
+@if (screen() !== 'editor') {
   <app-home-top
     [name]="site.name()"
     [city]="site.city() || 'Белогорск'"
-    [design]="top()"
+    [categories]="homeCategories"
+    [showCategories]="screen() === 'home'"
     (search)="searchNews($event)"
     (category)="filterNews($event)"
+    (allNews)="openList()"
   />
 } @else {
-  <header class="site-header" [class.compact-header]="variant() === 'B'">
-    <a class="brand" routerLink="/" [queryParams]="{ variant: variant(), screen: 'home' }"
+  <header class="site-header compact-header">
+    <a class="brand" routerLink="/" [queryParams]="{ screen: 'home' }"
       >{{ site.name() }}<span aria-hidden="true"></span
     ></a>
     <nav aria-label="Основная навигация">
-      <a
-        routerLink="/"
-        [queryParams]="{ variant: variant(), screen: 'home' }"
-        [class.active]="screen() === 'home'"
+      <a routerLink="/" [queryParams]="{ screen: 'home' }" [class.active]="screen() === 'home'"
         >Главная</a
       >
-      <a
-        routerLink="/"
-        [queryParams]="{ variant: variant(), screen: 'editor' }"
-        [class.active]="screen() === 'editor'"
+      <a routerLink="/" [queryParams]="{ screen: 'editor' }" [class.active]="screen() === 'editor'"
         >Редактор статьи</a
       >
     </nav>
   </header>
 }
 
-<main id="prototype-content" [class]="'prototype variant-' + variant()">
+<main
+  id="prototype-content"
+  class="prototype variant-B"
+  [class.news-page]="screen() !== 'editor'"
+  [class.news-list-page]="screen() === 'list'"
+>
   @if (message()) {
     <div class="message" role="status">
       {{ message() }} <button (click)="message.set('')" aria-label="Закрыть сообщение">×</button>
     </div>
   }
-  <section [hidden]="screen() !== 'home'" class="homepage">
-    <section class="featured-section" aria-labelledby="featured-heading">
+  @if (screen() === 'article') {
+    <app-article-reader
+      [story]="readerStory()"
+      [stories]="articles"
+      (open)="openArticle($event)"
+      (category)="openList($event)"
+      (tag)="openTag($event)"
+    />
+  }
+  <section [hidden]="screen() !== 'home' && screen() !== 'list'" class="homepage">
+    <section
+      [hidden]="screen() !== 'home'"
+      class="featured-section"
+      id="news-latest"
+      aria-labelledby="featured-heading"
+    >
       <div class="section-heading">
         <h2 id="featured-heading">Выбор редакции</h2>
         <h2 class="recent-label">Последние новости</h2>
       </div>
-      <div class="featured-grid">
-        @for (article of [featured()[featuredIndex()]]; track article.id) {
-          <article class="featured-card lead" aria-roledescription="слайд">
-            <button
-              class="art-button"
-              (click)="openArticle(article.title)"
-              [attr.aria-label]="article.title"
+      <div class="featured-grid" [style.--featured-height]="featuredHeight() + 'px'">
+        <article
+          class="featured-card lead"
+          aria-roledescription="слайд"
+          [class.draggable]="featured().length > 1"
+          [class.dragging]="featuredDrag() !== 0"
+          (pointerdown)="beginFeaturedDrag($event)"
+          (pointermove)="dragFeatured($event)"
+          (pointerup)="endFeaturedDrag($event)"
+          (pointercancel)="cancelFeaturedDrag()"
+          (lostpointercapture)="cancelFeaturedDrag()"
+          (dragstart)="$event.preventDefault()"
+        >
+          <div class="featured-viewport">
+            <div
+              class="featured-track"
+              [class.settling]="featuredSettling()"
+              [style.transform]="'translateX(calc(-100% + ' + featuredDrag() + 'px))'"
             >
-              <div [class]="'news-art scene-' + (article.id % 3)">
-                <span>{{ article.category }}</span>
-              </div>
-            </button>
-            <div class="story-copy">
-              <p class="meta">{{ article.category }} · {{ article.time }}</p>
-              <h3>
-                <button class="headline" (click)="openArticle(article.title)">
-                  {{ article.title }}
-                </button>
-              </h3>
-              <p class="story-summary">{{ article.summary }}</p>
-              <span class="byline">Анна Лесная · {{ article.date }}</span>
+              @for (article of featuredSlides(); track $index) {
+                <div
+                  class="featured-slide"
+                  [attr.aria-hidden]="$index !== 1"
+                  [attr.inert]="$index !== 1 ? '' : null"
+                >
+                  <button
+                    class="art-button"
+                    (click)="openFeaturedArticle($event, article.id)"
+                    [attr.aria-label]="article.title"
+                  >
+                    <div [class]="'news-art scene-' + (article.id % 3)">
+                      <span>{{ article.category }}</span>
+                    </div>
+                  </button>
+                  <div class="story-copy">
+                    <p class="meta">{{ article.category }} · {{ article.time }}</p>
+                    <h3>
+                      <button class="headline" (click)="openFeaturedArticle($event, article.id)">
+                        {{ article.title }}
+                      </button>
+                    </h3>
+                    <p class="story-summary">{{ article.summary }}</p>
+                    <span class="byline">Анна Лесная · {{ formatDate(article.date) }}</span>
+                  </div>
+                </div>
+              }
             </div>
-            @if (featured().length > 1) {
-              <nav class="featured-arrows" aria-label="Переключение выбора редакции">
-                <button (click)="moveFeatured(-1)" aria-label="Предыдущая избранная новость">
-                  ←
-                </button>
-                <span aria-live="polite">{{ featuredIndex() + 1 }} / {{ featured().length }}</span>
-                <button (click)="moveFeatured(1)" aria-label="Следующая избранная новость">
-                  →
-                </button>
-              </nav>
-            }
-          </article>
-        }
+          </div>
+          @if (featured().length > 1) {
+            <nav class="featured-arrows" aria-label="Переключение выбора редакции">
+              <button (click)="moveFeatured(-1)" aria-label="Предыдущая избранная новость">
+                ←
+              </button>
+              <span aria-live="polite">{{ featuredIndex() + 1 }} / {{ featured().length }}</span>
+              <button (click)="moveFeatured(1)" aria-label="Следующая избранная новость">→</button>
+            </nav>
+          }
+        </article>
         @for (article of recentCards; track article.id) {
           <article class="featured-card recent-card" aria-label="Последняя новость">
             <button
               class="art-button"
-              (click)="openArticle(article.title)"
+              (click)="openArticle(article.id)"
               [attr.aria-label]="article.title"
             >
               <div [class]="'news-art scene-' + (article.id % 3)"></div>
@@ -88,24 +126,21 @@
             <div class="story-copy">
               <p class="meta">{{ article.category }} · {{ article.time }}</p>
               <h3>
-                <button class="headline" (click)="openArticle(article.title)">
+                <button class="headline" (click)="openArticle(article.id)">
                   {{ article.title }}
                 </button>
               </h3>
-              <span class="byline">Анна Лесная · {{ article.date }}</span>
+              <span class="byline">Анна Лесная · {{ formatDate(article.date) }}</span>
             </div>
           </article>
         }
       </div>
     </section>
     <div class="latest-layout">
-      <aside class="discovery">
-        <p class="eyebrow">Найти своё</p>
-        <h2>Новости города</h2>
+      <aside [hidden]="screen() !== 'list'" class="discovery" aria-label="Фильтры ленты новостей">
         <label
           >Поиск<input
             type="search"
-            placeholder="Что ищем?"
             [ngModel]="query()"
             (ngModelChange)="query.set($event); latestPage.set(1)"
         /></label>
@@ -135,27 +170,28 @@
             (ngModelChange)="dateFrom.set($event); latestPage.set(1)"
         /></label>
         <label
-          >До<input
+          >Дата публикации до<input
             type="date"
             [ngModel]="dateTo()"
             (ngModelChange)="dateTo.set($event); latestPage.set(1)"
         /></label>
-        <p class="hint">
-          Демо-поиск по точному фрагменту. Поиск с русскими формами слов появится в реализации.
-        </p>
       </aside>
       <section class="latest-section" aria-labelledby="latest-heading">
-        <div class="section-heading">
-          <h2 id="latest-heading">Последние новости</h2>
-          <span>{{ filtered().length }} материалов</span>
+        <div [hidden]="screen() !== 'list'" class="section-heading">
+          <h2 id="latest-heading">Свежие новости</h2>
         </div>
-        @for (article of latest(); track article.id) {
+        @for (article of screen() === 'home' ? homeLatest : latest(); track article.id) {
           <article class="latest-item">
-            <time>{{ article.date }}<br />{{ article.time }}</time>
             <div>
-              <p class="meta">{{ article.category }}</p>
+              <p class="meta">
+                <time [attr.datetime]="article.date">{{ formatDate(article.date) }}</time> ·
+                {{ article.time }}
+                @if (!category()) {
+                  <span> · {{ article.category }}</span>
+                }
+              </p>
               <h3>
-                <button class="headline" (click)="openArticle(article.title)">
+                <button class="headline" (click)="openArticle(article.id)">
                   {{ article.title }}
                 </button>
               </h3>
@@ -166,7 +202,12 @@
         } @empty {
           <p class="empty">Ничего не найдено. Попробуй изменить фильтры.</p>
         }
-        <nav class="paging" aria-label="Страницы последних новостей">
+        @if (screen() === 'home') {
+          <div class="block-footer">
+            <button (click)="openList()">Все последние новости →</button>
+          </div>
+        }
+        <nav [hidden]="screen() !== 'list'" class="paging" aria-label="Страницы последних новостей">
           @for (page of latestPages(); track page) {
             <button
               (click)="latestPage.set(page)"
@@ -178,196 +219,38 @@
         </nav>
       </section>
     </div>
-  </section>
-  <section [hidden]="screen() !== 'editor'" class="editor-page">
-    <div class="editor-heading">
-      <div>
-        <p class="eyebrow">Мои статьи / Новая статья</p>
-        <h1>История начинается здесь</h1>
-      </div>
-      <span class="badge">{{
-        status() === 'Draft' ? 'Черновик' : status() === 'Approved' ? 'Одобрено' : 'На проверке'
-      }}</span>
-    </div>
-    <div class="save-bar">
-      <span role="status">{{ saveStatus() }}</span>
-      <div>
-        <button [disabled]="status() === 'InReview'" (click)="save()">
-          {{
-            status() === 'Approved' ? 'Сохранить и отправить на проверку' : 'Сохранить'
-          }}</button><button class="primary" [disabled]="status() !== 'Draft'" (click)="submit()">
-          Отправить редактору ↗
-        </button>
-      </div>
-    </div>
-    @if (status() === 'Approved') {
-      <p class="warning">
-        Сохранение изменений сбросит одобрение и сразу вернёт статью на проверку. Автосохранение
-        отключено.
-      </p>
-    }
-    <nav class="editor-tabs" aria-label="Разделы статьи">
-      @for (
-        item of [
-          ['text', '1. Текст'],
-          ['settings', '2. Оформление'],
-          ['preview', '3. Предпросмотр'],
-        ];
-        track item[0]
-      ) {
-        <button [class.selected]="tab() === item[0]" (click)="tab.set(item[0])">
-          {{ item[1] }}
-        </button>
-      }
-    </nav>
-    <div class="editor-layout" [attr.data-tab]="tab()">
-      <section class="writing-pane" aria-label="Текст статьи">
-        <label class="title-label"
-          >Заголовок<input
-            class="title-input"
-            [(ngModel)]="title"
-            (ngModelChange)="changed()"
-            [disabled]="status() === 'InReview'"
-            placeholder="О чём твоя история?"
-            maxlength="200"
-        /></label>
-        <label
-          >Краткое описание<textarea
-            [(ngModel)]="summary"
-            (ngModelChange)="changed()"
-            [disabled]="status() === 'InReview'"
-            rows="3"
-            maxlength="500"
-          ></textarea>
-        </label>
-        <div class="toolbar" role="toolbar" aria-label="Форматирование текста">
-          @for (
-            item of [
-              ['paragraph', 'Текст'],
-              ['heading', 'H2'],
-              ['bold', 'Ж'],
-              ['italic', 'К'],
-              ['bullet', '• Список'],
-              ['ordered', '1. Список'],
-              ['quote', '❝ Цитата'],
-            ];
-            track item[0]
-          ) {
-            <button (click)="format(item[0])" [disabled]="status() === 'InReview'">
-              {{ item[1] }}
-            </button>
+    @if (screen() === 'home') {
+      @for (block of categoryBlocks; track block.name) {
+        <section class="category-block" [id]="'news-' + block.name" [attr.aria-label]="block.name">
+          <div class="section-heading">
+            <h2>{{ block.name }}</h2>
+          </div>
+          @for (article of block.articles; track article.id) {
+            <article class="latest-item">
+              <div>
+                <p class="meta">
+                  <time [attr.datetime]="article.date">{{ formatDate(article.date) }}</time> ·
+                  {{ article.time }}
+                </p>
+                <h3>
+                  <button class="headline" (click)="openArticle(article.id)">
+                    {{ article.title }}
+                  </button>
+                </h3>
+                <p>{{ article.summary }}</p>
+              </div>
+              <div [class]="'small-art scene-' + (article.id % 3)" aria-hidden="true"></div>
+            </article>
           }
-        </div>
-        <div #editorHost class="editor-host"></div>
-        <div class="link-tools">
-          <label>Ссылка<input [(ngModel)]="linkUrl" type="url" /></label
-          ><button (click)="addLink()" [disabled]="status() === 'InReview'">Добавить ссылку</button>
-        </div>
-        <p class="hint">
-          Неполный черновик можно сохранить. Обязательные поля проверяются при отправке.
-        </p>
-      </section>
-      <aside class="settings-pane">
-        <h2>Оформление статьи</h2>
-        <fieldset [disabled]="status() === 'InReview'">
-          <label
-            >Категория<select [(ngModel)]="articleCategory" (ngModelChange)="changed()">
-              <option value="">Выбрать</option>
-              <option>Город</option>
-              <option>Культура</option>
-              <option>Транспорт</option>
-            </select></label
-          >
-          <label>Теги, через запятую<input [(ngModel)]="tags" (ngModelChange)="changed()" /></label>
-          <details open>
-            <summary>Изображения</summary>
-            <div
-              class="park-art media-thumbnail"
-              role="img"
-              aria-label="Демо-иллюстрация прогулочной дорожки"
-            ></div>
-            <p class="hint">Моя медиатека · демо-изображение</p>
-            <label>Альтернативный текст<input [(ngModel)]="alt" maxlength="500" /></label
-            ><label>Подпись<input [(ngModel)]="caption" maxlength="1000" /></label
-            ><button (click)="addImage()">Вставить в текст</button>
-            <p class="hint">
-              Загрузка, обложка, галерея и общие шаблоны будут подключены после Media.
-            </p>
-          </details>
-          <details>
-            <summary>Источники</summary>
-            <label class="check"
-              ><input type="checkbox" [(ngModel)]="usesOthers" (ngModelChange)="changed()" />
-              Использованы чужие материалы</label
-            ><label
-              >Название источника<input
-                [(ngModel)]="sourceName"
-                (ngModelChange)="changed()" /></label
-            ><label
-              >Ссылка на источник<input
-                type="url"
-                [(ngModel)]="sourceUrl"
-                (ngModelChange)="changed()"
-            /></label>
-          </details>
-          <details>
-            <summary>Для поисковиков</summary>
-            <label
-              >SEO-заголовок<input
-                [(ngModel)]="seoTitle"
-                maxlength="200"
-                (ngModelChange)="changed()" /></label
-            ><label
-              >SEO-описание<textarea
-                [(ngModel)]="seoDescription"
-                maxlength="500"
-                (ngModelChange)="changed()"
-              ></textarea>
-            </label>
-            <p class="hint">Если оставить пустыми, используем заголовок и краткое описание.</p>
-          </details>
-        </fieldset>
-      </aside>
-      <section class="preview-pane">
-        <p class="eyebrow">Предпросмотр читателя</p>
-        <p class="meta">{{ articleCategory || 'Без категории' }} · Анна Лесная</p>
-        <h2>{{ title || 'Без заголовка' }}</h2>
-        <p class="preview-summary">{{ summary }}</p>
-        <div class="article-body" [innerHTML]="preview()"></div>
-      </section>
-    </div>
-    <details class="lab">
-      <summary>Проверка прототипа: сценарии и структура документа</summary>
-      <p>
-        Состояние: {{ status() }}. Вариант: {{ variant() }}. Схема: 1. Данные хранятся в памяти.
-      </p>
-      <div class="lab-controls">
-        <label
-          >Сценарий<select [ngModel]="status()" (ngModelChange)="scenario($event)">
-            <option value="Draft">Черновик</option>
-            <option value="Approved">Одобренная версия</option>
-            <option value="InReview">На проверке</option>
-          </select></label
-        ><button (click)="save()" [disabled]="status() !== 'Draft'">Снять копию JSON</button
-        ><button (click)="restore()" [disabled]="status() !== 'Draft'">Восстановить копию</button>
-      </div>
-      <p class="hint">
-        Вставка переносит только обычный текст. HTML, скрипты и внешние изображения из буфера не
-        вставляются. Это локальная демонстрация, серверная проверка ещё не реализована.
-      </p>
-      <pre>{{ json() }}</pre>
-    </details>
+          <div class="block-footer">
+            <button (click)="openList(block.name)">Все новости: {{ block.name }} →</button>
+          </div>
+        </section>
+      }
+    }
   </section>
+  @if (screen() === 'editor') {
+    <app-editorial-workspace />
+  }
 </main>
-<footer>CityPortal · Белогорск · Прототип Stage 2</footer>
-@if (development) {
-  <div class="variant-switcher" aria-label="Варианты прототипа">
-    <button (click)="switchVariant(-1)" aria-label="Предыдущий вариант">←</button
-    ><span
-      ><small
-        >{{ screen() === 'home' ? 'Главная' : 'Редактор' }} ·
-        {{ screen() === 'home' ? top() : variant() }} / 3</small
-      >{{ layoutNames()[screen() === 'home' ? top() : variant()] }}</span
-    ><button (click)="switchVariant(1)" aria-label="Следующий вариант">→</button>
-  </div>
-}
+<footer class="site-footer">CityPortal · Белогорск · Прототип Stage 2</footer>

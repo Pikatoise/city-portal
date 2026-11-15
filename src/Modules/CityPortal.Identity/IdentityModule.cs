@@ -12,6 +12,7 @@ public static class IdentityModule
         services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString,
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "identity")));
         services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped(provider => new AccountAuthorization(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<AccountOperations>()));
         services.AddScoped(provider => new SiteInstallation(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<MailConfigurationStore>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new AccountOperations(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<AccountMailQueue>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IAccountMailLinkValidator, AccountMailLinkValidator>();

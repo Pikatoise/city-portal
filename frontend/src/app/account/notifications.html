@@ -1,0 +1,123 @@
+<section
+  class="notifications-panel"
+  aria-labelledby="notifications-title"
+  [attr.aria-busy]="busy()"
+>
+  <p class="eyebrow">Личный кабинет</p>
+  <h1 id="notifications-title">Уведомления</h1>
+  <nav class="staff-nav" aria-label="Разделы личного кабинета">
+    <a routerLink="/account">Профиль</a>
+    <a routerLink="/account/media">Медиатека</a>
+  </nav>
+  @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+    @if (signedOut()) {
+      <a routerLink="/account/login">Войти</a>
+    } @else if (!loaded()) {
+      <button type="button" class="secondary-button" (click)="load()" [disabled]="busy()">
+        Повторить
+      </button>
+    }
+  }
+  @if (busy() && !loaded()) {
+    <p role="status">Загружаем уведомления…</p>
+  }
+  @if (loaded() && !signedOut()) {
+    <p class="retention-note">
+      Уведомления хранятся 30 дней. Их удаление не меняет решения и историю материалов. Время
+      указано в зоне {{ clock.timeZone() }}.
+    </p>
+    <ul class="notification-list">
+      @for (item of items(); track item.id) {
+        <li>
+          <div>
+            <p class="notification-state">
+              {{ item.read ? 'Прочитано' : 'Новое' }} ·
+              <time [attr.datetime]="item.createdAtUtc">{{ clock.format(item.createdAtUtc) }}</time>
+            </p>
+            <h2>{{ labels[item.type] || 'Уведомление' }}</h2>
+            <p>{{ item.message }}</p>
+            @if (item.type.startsWith('template.')) {
+              <a routerLink="/account/media">Открыть медиатеку и историю решений</a>
+            }
+          </div>
+          <div class="notification-actions">
+            @if (!item.read) {
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="act(item, 'read')"
+                [disabled]="busy()"
+                [attr.aria-label]="'Отметить прочитанным: ' + labels[item.type]"
+              >
+                Прочитано
+              </button>
+            }
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="act(item, 'delete')"
+              [disabled]="busy()"
+              [attr.aria-label]="'Удалить уведомление: ' + labels[item.type]"
+            >
+              Удалить
+            </button>
+          </div>
+        </li>
+      } @empty {
+        <li><p>Уведомлений пока нет.</p></li>
+      }
+    </ul>
+    @if (total() > 20) {
+      <nav class="staff-pagination" aria-label="Страницы уведомлений">
+        <button type="button" (click)="changePage(page() - 1)" [disabled]="busy() || page() === 1">
+          Назад
+        </button>
+        <span>Страница {{ page() }}</span>
+        <button
+          type="button"
+          (click)="changePage(page() + 1)"
+          [disabled]="busy() || page() * 20 >= total()"
+        >
+          Далее
+        </button>
+      </nav>
+    }
+    <details class="preferences">
+      <summary>Настройки уведомлений</summary>
+      <p>
+        Для каждого события можно отдельно включить уведомления в аккаунте и по Email. Решения и
+        обратная связь остаются в материалах при любых настройках.
+      </p>
+      <p>Подтверждение Email и восстановление пароля отправляются независимо от этих настроек.</p>
+      @for (preference of preferences(); track preference.type) {
+        <fieldset [disabled]="busy()">
+          <legend>{{ labels[preference.type] }}</legend>
+          <label class="checkbox-label"
+            ><input
+              type="checkbox"
+              [checked]="preference.account"
+              (change)="setChannel(preference.type, 'account', $any($event.target).checked)"
+            />В аккаунте</label
+          >
+          <label class="checkbox-label"
+            ><input
+              type="checkbox"
+              [checked]="preference.email"
+              (change)="setChannel(preference.type, 'email', $any($event.target).checked)"
+            />По Email</label
+          >
+        </fieldset>
+      }
+      <button type="button" class="primary-button" (click)="save()" [disabled]="busy() || !dirty()">
+        {{ busy() ? 'Сохраняем…' : 'Сохранить настройки' }}
+      </button>
+      @if (dirty()) {
+        <p class="field-hint">Есть несохранённые изменения.</p>
+      }
+    </details>
+    @if (notice()) {
+      <p role="status">{{ notice() }}</p>
+    }
+  }
+</section>

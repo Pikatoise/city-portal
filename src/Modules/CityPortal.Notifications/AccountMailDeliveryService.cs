@@ -49,7 +49,10 @@ public sealed class AccountMailDeliveryService
         if (delivery.NextAttemptAtUtc > now)
             return;
 
-        if (delivery.ExpiresAtUtc <= now || !await _validator.IsActiveAsync(delivery.AccountId, delivery.LinkId, cancellationToken))
+        bool eligible = delivery.Purpose == "workflow"
+            ? !await _context.Preferences.AnyAsync(item => item.AccountId == delivery.AccountId && item.Type == delivery.NotificationType && !item.Email, cancellationToken)
+            : await _validator.IsActiveAsync(delivery.AccountId, delivery.LinkId, cancellationToken);
+        if (delivery.ExpiresAtUtc <= now || !eligible)
         {
             delivery.State = "Skipped";
             delivery.CompletedAtUtc = now;
@@ -152,11 +155,20 @@ public sealed class AccountMailDeliveryService
         string footer = recovery
             ? "Ссылка действует 1 час с момента создания. Если вы не запрашивали восстановление пароля, проигнорируйте письмо."
             : "Ссылка действует 24 часа с момента создания. Если вы не регистрировались, проигнорируйте письмо.";
+        if (delivery.Purpose == "workflow")
+        {
+            if (payload.WorkflowType is null || payload.WorkflowType != delivery.NotificationType || !WorkflowNotificationTypes.Contains(payload.WorkflowType))
+                throw new FormatException("Unknown workflow notification type.");
+            link = $"{options.PublicOrigin.TrimEnd('/')}/account/notifications";
+            action = "Открыть уведомления";
+            instruction = WorkflowNotificationTypes.Message(payload.WorkflowType);
+            footer = "Подробности доступны после входа в аккаунт с действующими правами доступа.";
+        }
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(portal, options.SenderAddress));
         message.To.Add(MailboxAddress.Parse(payload.Recipient));
         message.MessageId = $"{delivery.Id:N}@cityportal.invalid";
-        message.Subject = $"{portal}: {(recovery ? "восстановление пароля" : "подтверждение Email")}";
+        message.Subject = $"{portal}: {(delivery.Purpose == "workflow" ? "уведомление" : recovery ? "восстановление пароля" : "подтверждение Email")}";
         var body = new BodyBuilder
         {
             TextBody = $"{portal}\n\n{instruction}\n{link}\n\n{footer}",

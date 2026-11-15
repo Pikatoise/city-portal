@@ -26,25 +26,37 @@ public sealed class RegistrationFixture : IAsyncLifetime
         Assert.Equal(0, result.ExitCode);
     }
 
-    public async Task<(ApiFactory Factory, string ConnectionString)> CreateAsync(TimeProvider? time = null, bool installed = true)
+    public async Task RestoreDatabaseAsync(string source, string target)
+    {
+        string backup = "/tmp/media-backup-" + Guid.NewGuid().ToString("N") + ".dump";
+        string username = new NpgsqlConnectionStringBuilder(_database.GetConnectionString()).Username!;
+        ExecResult dump = await _database.ExecAsync(["pg_dump", "--username", username, "--format", "custom", "--file", backup, "--dbname", source]);
+        Assert.Equal(0, dump.ExitCode);
+        ExecResult create = await _database.ExecAsync(["createdb", "--username", username, target]);
+        Assert.Equal(0, create.ExitCode);
+        ExecResult restore = await _database.ExecAsync(["pg_restore", "--username", username, "--no-owner", "--dbname", target, backup]);
+        Assert.Equal(0, restore.ExitCode);
+    }
+
+    public async Task<(ApiFactory Factory, string ConnectionString)> CreateAsync(TimeProvider? time = null, bool installed = true, IReadOnlyDictionary<string, string>? settings = null)
     {
         string name = "registration_" + Guid.NewGuid().ToString("N");
         await using var connection = new NpgsqlConnection(_database.GetConnectionString());
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand("CREATE DATABASE " + name, connection);
         await command.ExecuteNonQueryAsync();
-        var settings = new NpgsqlConnectionStringBuilder(_database.GetConnectionString()) { Database = name };
-        var factory = new ApiFactory("Development", settings.ConnectionString, _broker.GetConnectionString(), time);
+        var databaseSettings = new NpgsqlConnectionStringBuilder(_database.GetConnectionString()) { Database = name };
+        var factory = new ApiFactory("Development", databaseSettings.ConnectionString, _broker.GetConnectionString(), time, settings);
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();
         if (installed)
         {
-            await using var siteConnection = new NpgsqlConnection(settings.ConnectionString);
+            await using var siteConnection = new NpgsqlConnection(databaseSettings.ConnectionString);
             await siteConnection.OpenAsync();
             await using var site = new NpgsqlCommand("INSERT INTO identity.\"SiteConfiguration\" (\"Id\") VALUES (1)", siteConnection);
             await site.ExecuteNonQueryAsync();
         }
-        return (factory, settings.ConnectionString);
+        return (factory, databaseSettings.ConnectionString);
     }
 }

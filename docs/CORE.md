@@ -26,6 +26,8 @@ Start with one main project per module. Extract contract projects when dependenc
 
 Each module owns its EF Core DbContext, PostgreSQL schema, and migrations within one application database per deployment. Cross-module workflows may share an explicitly coordinated transaction. Separate DbContexts do not imply separate databases or eventual consistency for every interaction.
 
+UI styling follows [UI_STYLE.md](UI_STYLE.md), with shared CSS variables for the application and visual prototypes. Preserve accepted public layouts while applying the same controls and typography to account/staff/editor screens.
+
 ## Technology Stack
 
 | Area | Confirmed direction or constraint |
@@ -49,6 +51,12 @@ Each module owns its EF Core DbContext, PostgreSQL schema, and migrations within
 | Hosting | Linux. |
 
 Pin compatible stable Angular and dependency versions when creating the solution. A dedicated search engine requires a demonstrated capability or scale need. Redis, RabbitMQ, Wolverine, Quartz.NET, and the Worker are selected infrastructure; implement their feature-specific use with the relevant workflows.
+
+## Media Storage and Processing
+
+The Media module now uses SkiaSharp 4.156.0, AWSSDK.S3 4.1.0, and private RustFS 1.0.0 for local storage. Processed payloads are staged durably in PostgreSQL before the Worker writes deterministic S3 objects; only Ready images can be attached. Media reconciliation shares the existing persistent Quartz scheduler registration. Details, configuration, authorization boundaries, and recovery evidence are in [MEDIA.md](MEDIA.md).
+
+Template decisions atomically enqueue configurable account/Email notifications through explicit Notifications operations on the same database transaction. Notifications owns channel preferences, account notices, durable deduplication receipts, and the existing Wolverine Email Outbox/Inbox delivery pipeline. Media marks image references as current or historical so template block/unblock fanout includes current drafts/publications without notifying authors solely because of retained history. News must maintain that distinction when integrating revision references.
 
 ## Frontend and Public Delivery
 
@@ -223,4 +231,4 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts and verification summary remain the baseline for delivered workflows. [Stage 2: News and Media](stages/STAGE_2.md) has completed its product interview; implementation contracts and delegated engineering defaults are recorded. Editor and homepage prototypes are prepared locally for review; production News/Media workflows have not started. Issues #7-#14 in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) track the work, with #7 in progress.
+[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts and verification summary remain the baseline for delivered workflows. [Stage 2: News and Media](stages/STAGE_2.md) has completed its product specification. Homepage and article-page visuals are owner-accepted; the author/editor workspace remains a fixture prototype. Production Media upload/storage, shared-template moderation, and configurable workflow notifications are implemented and locally verified. Production News drafting/taxonomy is next. Issues #7-#14 in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) track the stage; final owner acceptance remains outstanding.
