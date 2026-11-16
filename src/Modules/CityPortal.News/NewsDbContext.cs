@@ -20,6 +20,8 @@ internal sealed class NewsDbContext : DbContext
         model.Entity<NewsArticle>().Property(item => item.Version).IsConcurrencyToken();
         model.Entity<NewsArticle>().Property(item => item.PublicationState).HasMaxLength(32);
         model.Entity<NewsArticle>().HasIndex(item => new { item.AuthorId, item.UpdatedAtUtc });
+        model.Entity<NewsArticle>().HasIndex(item => item.ReviewerId);
+        model.Entity<ArticleRevision>().HasIndex(item => new { item.ArticleId, item.SubmittedAtUtc });
         model.Entity<ArticleRevision>().HasOne<NewsArticle>().WithMany().HasForeignKey(item => item.ArticleId);
         model.Entity<ArticleRevision>().Property(item => item.ContentJson).HasColumnType("jsonb");
         model.Entity<ArticleRevision>().Property(item => item.Title).HasMaxLength(200);
@@ -28,6 +30,7 @@ internal sealed class NewsDbContext : DbContext
         model.Entity<ArticleHistory>().HasOne<ArticleRevision>().WithMany().HasForeignKey(item => item.RevisionId);
         model.Entity<ArticleHistory>().HasIndex(item => new { item.ArticleId, item.CreatedAtUtc });
         model.Entity<ArticleHistory>().Property(item => item.Action).HasMaxLength(40);
+        model.Entity<ArticleHistory>().Property(item => item.Reason).HasMaxLength(2000);
         model.Entity<TaxonomyEntry>().Property(item => item.Kind).HasMaxLength(20);
         model.Entity<TaxonomyEntry>().Property(item => item.Name).HasMaxLength(100);
         model.Entity<TaxonomyEntry>().Property(item => item.NormalizedName).HasMaxLength(300);

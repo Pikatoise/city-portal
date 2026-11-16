@@ -368,3 +368,8 @@ the acceptance evidence and remaining deployment checks.
 - [Mailpit configuration](https://mailpit.axllent.org/docs/configuration/).
 - [Npgsql GSS encryption configuration](https://www.npgsql.org/doc/security.html).
 - [curl certificate and revocation options](https://curl.se/docs/manpage.html).
+# Editorial Review
+
+Production author drafts, submissions, recall, approved Save, and publication run at `/account/articles`. The editor queue and retained review/history UI run at `/staff/reviews`; Administrator has effective editorial permissions. Run the explicit migration command before API/Worker startup when upgrading to the EditorialReview News migration. Role changes release News assignments within the same database transaction; do not replace administration operations with direct role-table edits in production.
+
+Review/publication does not yet provide public article pages or SSR discovery. Published corrections/withdrawal remain the following slice. See [NEWS.md](NEWS.md) for the delivered boundary and verification matrix.

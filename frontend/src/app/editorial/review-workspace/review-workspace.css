@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+.review-workspace {
+  max-width: 1080px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.review-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-divider);
+  overflow-wrap: anywhere;
+}
+.review-row h2 {
+  font-size: 20px;
+}
+.review-detail {
+  max-width: 760px;
+  margin-top: 40px;
+  overflow-wrap: anywhere;
+}
+.review-detail img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+.review-detail label {
+  display: block;
+  margin: 24px 0;
+}
+.review-detail textarea {
+  display: block;
+  width: 100%;
+}
+.history-entry {
+  padding: 16px 0;
+  border-top: 1px solid var(--color-divider);
+}

@@ -8,6 +8,9 @@ internal sealed class NewsArticle
     public string PublicationState { get; set; } = "NeverPublished";
     public Guid WorkingRevisionId { get; set; }
     public Guid? PublishedRevisionId { get; set; }
+    public Guid? LastSubmittedRevisionId { get; set; }
+    public Guid? ReviewerId { get; set; }
+    public DateTimeOffset? FirstPublishedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
     public DateTimeOffset? DeletedAtUtc { get; set; }

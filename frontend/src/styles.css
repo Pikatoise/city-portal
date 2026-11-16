@@ -500,6 +500,11 @@ app-editorial-workspace :where(.tiptap, .body-copy) .park-art {
 .author-workspace .upload-label {
   margin: 0;
 }
+.author-workspace .history-snapshot img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
 .author-workspace .upload-label input {
   max-width: 240px;
 }

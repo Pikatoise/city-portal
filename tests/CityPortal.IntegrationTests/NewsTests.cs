@@ -10,7 +10,7 @@ using Npgsql;
 
 namespace CityPortal.IntegrationTests;
 
-public sealed class NewsTests : IClassFixture<MediaFixture>
+public sealed partial class NewsTests : IClassFixture<MediaFixture>
 {
     private readonly MediaFixture _fixture;
     private const string _password = "NewsPassword1!";

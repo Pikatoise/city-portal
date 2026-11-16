@@ -11,13 +11,15 @@ public sealed class ArticleOperations
     private readonly AccountAuthorization _authorization;
     private readonly MediaReferences _media;
     private readonly TimeProvider _time;
+    private readonly ReviewOperations _reviews;
 
-    internal ArticleOperations(NewsDbContext context, AccountAuthorization authorization, MediaReferences media, TimeProvider time)
+    internal ArticleOperations(NewsDbContext context, AccountAuthorization authorization, MediaReferences media, TimeProvider time, ReviewOperations reviews)
     {
         _context = context;
         _authorization = authorization;
         _media = media;
         _time = time;
+        _reviews = reviews;
     }
 
     public async Task<NewsPage<ArticleSummaryResponse>> ListAsync(Guid actorId, Guid sessionId, int page, int pageSize, string? search, CancellationToken cancellationToken)
@@ -37,8 +39,10 @@ public sealed class ArticleOperations
 
     public async Task<ArticleResponse> GetAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
     {
-        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken);
-        NewsArticle article = await _context.Articles.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id && item.AuthorId == actorId && item.DeletedAtUtc == null, cancellationToken) ?? throw NewsDatabase.Missing();
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Administrator"], cancellationToken);
+        NewsArticle? article = await _context.Articles.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id && item.AuthorId == actorId && item.DeletedAtUtc == null, cancellationToken);
+        if (article is null || !actor.Roles.Contains("Author"))
+            return (await _reviews.GetAsync(actorId, sessionId, id, cancellationToken)).Article;
         ArticleRevision revision = await _context.Revisions.AsNoTracking().SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == article.Id, cancellationToken);
         return Response(article, revision);
     }
@@ -53,7 +57,7 @@ public sealed class ArticleOperations
         Apply(revision, ArticleDocuments.Validate(new ArticleContent()));
         context.Articles.Add(article);
         context.Revisions.Add(revision);
-        context.History.Add(new ArticleHistory { Id = Guid.NewGuid(), ArticleId = article.Id, RevisionId = revision.Id, ActorId = actorId, Action = "Created", CreatedAtUtc = article.CreatedAtUtc });
+        context.History.Add(new ArticleHistory { Id = Guid.NewGuid(), ArticleId = article.Id, RevisionId = revision.Id, ActorId = actorId, Action = "Created", Version = article.Version, CreatedAtUtc = article.CreatedAtUtc });
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
         return Response(article, revision);
@@ -66,6 +70,13 @@ public sealed class ArticleOperations
         await using NewsDbContext context = await NewsDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
         NewsArticle article = await LockOwnAsync(context, id, actorId, version, cancellationToken);
         ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
+        if (revision.State == "Approved")
+        {
+            ArticleResponse response = await _reviews.SaveApprovedAsync(context, article, revision, content, scope, cancellationToken);
+            await scope.CommitAsync(cancellationToken);
+            await _reviews.FlushAfterCommitAsync();
+            return response;
+        }
         if (revision.State != "Draft" || revision.Retained)
             throw NewsDatabase.Conflict();
         ArticleContent previous = JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson)!;
@@ -87,16 +98,14 @@ public sealed class ArticleOperations
         if (article.PublicationState != "NeverPublished" || article.PublishedRevisionId.HasValue)
             throw NewsDatabase.Conflict();
         ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
-        ArticleContent content = JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson)!;
-        ValidatedArticleContent validated = ArticleDocuments.Validate(content);
-        await _media.ReplaceAsync(scope.Connection, scope.Transaction, revision.Id, actorId, null, false, false, validated.ImageIds, cancellationToken, isCurrent: false);
         article.DeletedAtUtc = _time.GetUtcNow();
         article.UpdatedAtUtc = article.DeletedAtUtc.Value;
         article.Version++;
         revision.Retained = true;
-        context.History.Add(new ArticleHistory { Id = Guid.NewGuid(), ArticleId = id, RevisionId = revision.Id, ActorId = actorId, Action = "Deleted", CreatedAtUtc = article.UpdatedAtUtc });
+        await _reviews.DeleteAsync(context, article, revision, scope, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
+        await _reviews.FlushAfterCommitAsync();
     }
 
     private static async Task<NewsArticle> LockOwnAsync(NewsDbContext context, Guid id, Guid actorId, long version, CancellationToken cancellationToken)
@@ -109,7 +118,7 @@ public sealed class ArticleOperations
         return article;
     }
 
-    private static async Task ValidateTaxonomyAsync(NewsDbContext context, ArticleContent content, ArticleContent previous, CancellationToken cancellationToken)
+    internal static async Task ValidateTaxonomyAsync(NewsDbContext context, ArticleContent content, ArticleContent previous, CancellationToken cancellationToken)
     {
         Guid[] ids = content.TagIds.Concat(content.CategoryId.HasValue ? [content.CategoryId.Value] : Array.Empty<Guid>()).Distinct().ToArray();
         TaxonomyEntry[] entries = await context.Taxonomy.Where(item => ids.Contains(item.Id)).ToArrayAsync(cancellationToken);
@@ -123,7 +132,7 @@ public sealed class ArticleOperations
         }
     }
 
-    private static void Apply(ArticleRevision revision, ValidatedArticleContent validated)
+    internal static void Apply(ArticleRevision revision, ValidatedArticleContent validated)
     {
         revision.ContentJson = JsonSerializer.Serialize(validated.Content);
         revision.Title = validated.Content.Title;
@@ -131,6 +140,6 @@ public sealed class ArticleOperations
         revision.PlainText = validated.PlainText;
     }
 
-    private static ArticleResponse Response(NewsArticle article, ArticleRevision revision) => new(article.Id, revision.Id, article.Version, revision.State,
-        JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson) ?? throw new InvalidOperationException("The stored revision is invalid."), revision.PreviewHtml, article.UpdatedAtUtc);
+    internal static ArticleResponse Response(NewsArticle article, ArticleRevision revision) => new(article.Id, revision.Id, article.Version, revision.State,
+        JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson) ?? throw new InvalidOperationException("The stored revision is invalid."), revision.PreviewHtml, article.UpdatedAtUtc, article.LastSubmittedRevisionId.HasValue, article.PublicationState);
 }

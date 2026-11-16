@@ -912,6 +912,218 @@
         }
       }
     },
+    "/api/editorial/review-queue": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "listArticleReviewQueue",
+        "parameters": [
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsPageOfReviewSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/reviews/{id}": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "getArticleReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/history": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "getArticleHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsPageOfArticleHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/{operation}": {
+      "post": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "actOnArticleReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "operation",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^(submit|recall|claim|release|takeover|return|reject|approve|publish)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/editorial/articles": {
       "get": {
         "tags": [
@@ -2236,6 +2448,58 @@
         },
         "description": "Revision-owned article fields; incomplete drafts may omit submission fields."
       },
+      "ArticleHistoryResponse": {
+        "required": [
+          "id",
+          "actorId",
+          "action",
+          "reason",
+          "reviewerId",
+          "version",
+          "createdAtUtc",
+          "revision"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reviewerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/ArticleResponse"
+          }
+        },
+        "description": "A permitted retained event and version snapshot."
+      },
       "ArticleImage": {
         "required": [
           "mediaId"
@@ -2297,6 +2561,14 @@
           "updatedAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "previouslySubmitted": {
+            "type": "boolean",
+            "default": false
+          },
+          "publicationState": {
+            "type": "string",
+            "default": "NeverPublished"
           }
         },
         "description": "A private author-owned working article and its expected version."
@@ -2983,6 +3255,48 @@
         },
         "description": "Expected version for an existing Media resource."
       },
+      "NewsPageOfArticleHistoryResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticleHistoryResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A bounded, deterministically ordered page."
+      },
       "NewsPageOfArticleSummaryResponse": {
         "required": [
           "items",
@@ -2996,6 +3310,48 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ArticleSummaryResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A bounded, deterministically ordered page."
+      },
+      "NewsPageOfReviewSummaryResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewSummaryResponse"
             }
           },
           "total": {
@@ -3227,6 +3583,108 @@
           }
         },
         "description": "Consumes a one-time recovery link and sets a new password."
+      },
+      "ReviewArticleRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A versioned editorial action with optional workflow feedback."
+      },
+      "ReviewResponse": {
+        "required": [
+          "article",
+          "authorId",
+          "reviewerId",
+          "publicationState",
+          "deleted",
+          "workingState"
+        ],
+        "type": "object",
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/ArticleResponse"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "publicationState": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "workingState": {
+            "type": "string"
+          }
+        },
+        "description": "A submitted snapshot and current assignment without unsent author content."
+      },
+      "ReviewSummaryResponse": {
+        "required": [
+          "id",
+          "version",
+          "title",
+          "state",
+          "reviewerId",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reviewerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "A bounded queue item; content and history require assignment."
       },
       "RoleHistoryItem": {
         "required": [

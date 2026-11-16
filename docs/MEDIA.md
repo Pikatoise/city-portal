@@ -64,7 +64,7 @@ On 2026-11-15 local time, the full backend regression run passed 102 tests and t
 | Database/object recovery | `Restore_MetadataAndProcessedObjects_PreservesPrivateReadsAndPendingWorkAsync` |
 | Browser contracts | `sends the selected file with a fresh CSRF token as multipart data`, `sends the removal request version and never converts resolution into rejection`, `does not request private libraries for an unconfirmed author` |
 
-Production drafts now call the Media transaction contract and use real images in the author editor; see [NEWS.md](NEWS.md). Publication/withdrawal/reviewer audiences and public blocked-image placeholders still require integration in #11-#13. The review/publication prototype remains isolated. Template notifications are implemented below; final stage acceptance remains outstanding.
+Production drafts now call the Media transaction contract and use real images in the author editor; see [NEWS.md](NEWS.md). Production review/publication now maintain retained reviewer and public Media audiences through #11. Withdrawal and public article blocked-image rendering remain #12-#13. The earlier prototype remains isolated. Template notifications are implemented below; final stage acceptance remains outstanding.
 
 ## Workflow Notifications: 2026-11-15
 

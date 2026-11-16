@@ -17,6 +17,11 @@ export const routes: Routes = [
         loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
       },
       {
+        path: 'staff/reviews',
+        loadComponent: () =>
+          import('./editorial/review-workspace/review-workspace').then((m) => m.ReviewWorkspace),
+      },
+      {
         path: 'account/notifications',
         loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
       },

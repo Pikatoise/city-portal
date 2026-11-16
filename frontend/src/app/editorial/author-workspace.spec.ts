@@ -35,6 +35,8 @@ describe('Author draft persistence', () => {
     save: vi.fn(),
     delete: vi.fn(),
     taxonomy: vi.fn(),
+    act: vi.fn(),
+    history: vi.fn(),
   };
   const account = { profile: vi.fn() };
   beforeEach(() => {
@@ -90,6 +92,75 @@ describe('Author draft persistence', () => {
     await component.create();
     return component;
   }
+
+  it('disables approved autosave and explicitly saves a new reviewed version', async () => {
+    const component = await workspace();
+    api.get.mockResolvedValue({ ...article, state: 'Approved', previouslySubmitted: true });
+    await component.open(article.id);
+    component.form().title = 'Changed approved title';
+    component.changed();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(api.save).not.toHaveBeenCalled();
+    api.save.mockResolvedValue({
+      ...article,
+      version: 2,
+      state: 'InReview',
+      content: { ...article.content, title: 'Changed approved title' },
+    });
+    await component.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(component.article()?.state).toBe('InReview');
+    expect(component.editable()).toBe(false);
+    expect(component.dirty()).toBe(false);
+    expect(api.act).not.toHaveBeenCalled();
+    component.ngOnDestroy();
+  });
+
+  it('does not submit when the required draft save fails', async () => {
+    const component = await workspace();
+    component.form().title = 'Keep this text';
+    component.changed();
+    api.save.mockRejectedValue(new HttpErrorResponse({ status: 503 }));
+    await component.workflow('submit');
+    expect(component.form().title).toBe('Keep this text');
+    expect(component.dirty()).toBe(true);
+    expect(api.act).not.toHaveBeenCalled();
+    component.ngOnDestroy();
+  });
+
+  it('retries resubmission after correcting the change description without editing saved content', async () => {
+    const component = await workspace();
+    api.act.mockRejectedValueOnce(new HttpErrorResponse({ status: 400 }));
+    await component.workflow('submit');
+    expect(component.error()).not.toBe('');
+    component.changeDescription = 'Added the missing attribution';
+    api.act.mockResolvedValueOnce({ ...article, version: 2, state: 'InReview' });
+    await component.workflow('submit');
+    expect(api.act).toHaveBeenCalledTimes(2);
+    expect(api.act).toHaveBeenLastCalledWith(
+      article.id,
+      1,
+      'submit',
+      'Added the missing attribution',
+    );
+    expect(component.article()?.state).toBe('InReview');
+    expect(component.error()).toBe('');
+    component.ngOnDestroy();
+  });
+
+  it('keeps review content read-only and recalls it through a versioned action', async () => {
+    const component = await workspace();
+    api.get.mockResolvedValue({ ...article, state: 'InReview', version: 4 });
+    await component.open(article.id);
+    expect(component.editable()).toBe(false);
+    await component.save();
+    expect(api.save).not.toHaveBeenCalled();
+    api.act.mockResolvedValue({ ...article, version: 5 });
+    await component.workflow('recall');
+    expect(api.act).toHaveBeenCalledWith(article.id, 4, 'recall', '');
+    expect(component.editable()).toBe(true);
+    component.ngOnDestroy();
+  });
 
   it('waits five idle seconds, serializes saves and preserves edits made during the first request', async () => {
     const component = await workspace();

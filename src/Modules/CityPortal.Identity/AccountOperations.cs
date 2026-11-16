@@ -9,6 +9,10 @@ namespace CityPortal.Identity;
 
 public sealed class AccountOperations
 {
+    public Task<bool> HasEditorialPermissionAsync(Guid accountId, CancellationToken cancellationToken) =>
+        _context.Users.AnyAsync(account => account.Id == accountId && account.EmailConfirmed &&
+            _context.UserRoles.Any(assignment => assignment.UserId == accountId && _context.Roles.Any(role => role.Id == assignment.RoleId && (role.Name == "Editor" || role.Name == "Administrator"))), cancellationToken);
+
     public Task<WorkflowRecipient[]> FindNotificationRecipientsAsync(Guid[] accountIds, CancellationToken cancellationToken) =>
         _context.Users.AsNoTracking().Where(account => accountIds.Contains(account.Id) && account.EmailConfirmed && account.Email != null)
             .Select(account => new WorkflowRecipient(account.Id, account.Email!)).ToArrayAsync(cancellationToken);

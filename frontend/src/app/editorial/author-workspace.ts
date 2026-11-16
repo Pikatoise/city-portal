@@ -25,7 +25,9 @@ import {
   ArticleSummaryResponse,
   TaxonomyResponse,
   newsError,
+  ArticleHistoryResponse,
 } from './news-api';
+import { articleState, reviewAction } from './workflow-labels';
 import {
   ArticleMediaFigure,
   blankBody,
@@ -59,6 +61,10 @@ const draft = (content: ArticleContent = {}): Draft => ({
   templateUrl: './author-workspace.html',
 })
 export class AuthorWorkspace implements OnInit, OnDestroy {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  constructor() {
+    this.host.nativeElement.addEventListener('error', this.imageError, true);
+  }
   private readonly api = inject(NewsApi);
   private readonly accountApi = inject(AccountApi);
   private readonly media = inject(MediaApi);
@@ -68,6 +74,25 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     () => !!this.profile()?.emailConfirmed && !!this.profile()?.roles.includes('Author'),
   );
   readonly article = signal<ArticleResponse | null>(null);
+  readonly editable = computed(
+    () =>
+      ['Draft', 'Approved'].includes(this.article()?.state ?? '') &&
+      this.article()?.publicationState !== 'Published',
+  );
+  readonly history = signal<ArticleHistoryResponse[]>([]);
+  readonly historyPage = signal(1);
+  readonly historyTotal = signal(0);
+  readonly historySnapshot = signal<ArticleHistoryResponse | null>(null);
+  readonly stateName = articleState;
+  readonly actionName = reviewAction;
+  taxonomyName(id: string | null | undefined): string {
+    return (
+      [...this.categories(), ...this.tags()].find((item) => item.id === id)?.name ??
+      id ??
+      'Не выбрана'
+    );
+  }
+  changeDescription = '';
   readonly form = signal<Draft>(draft());
   readonly rows = signal<ArticleSummaryResponse[]>([]);
   readonly categories = signal<TaxonomyResponse[]>([]);
@@ -116,6 +141,7 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     if (!host) return;
     host.nativeElement.addEventListener('error', this.imageError, true);
     this.editor = new Editor({
+      editable: this.editable(),
       element: host.nativeElement,
       extensions: [
         StarterKit.configure({
@@ -180,6 +206,7 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     void this.initialize();
   }
   ngOnDestroy(): void {
+    this.host.nativeElement.removeEventListener('error', this.imageError, true);
     this.destroyed = true;
     this.cancelTimer();
     this.editor?.destroy();
@@ -202,13 +229,21 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
   }
   private armSave(): void {
     this.cancelTimer();
-    if (!this.destroyed && !this.conflict() && !this.failed && this.dirty())
+    if (
+      !this.destroyed &&
+      !this.conflict() &&
+      !this.failed &&
+      !this.busy() &&
+      this.dirty() &&
+      this.article()?.state === 'Draft'
+    )
       this.timer = setTimeout(
         () => void this.save(),
         Math.max(0, this.changedAt + 5000 - Date.now()),
       );
   }
   changed(): void {
+    if (!this.editable()) return;
     this.edits++;
     this.changedAt = Date.now();
     this.failed = false;
@@ -252,6 +287,9 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
   private accept(article: ArticleResponse): void {
     this.cancelTimer();
     this.article.set(article);
+    this.editor?.setEditable(this.editable(), false);
+    this.history.set([]);
+    this.historySnapshot.set(null);
     this.form.set(draft(article.content));
     this.dirty.set(false);
     this.conflict.set(false);
@@ -299,7 +337,7 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     this.cancelTimer();
     if (this.savePromise) return this.savePromise;
     const article = this.article();
-    if (!article || this.conflict()) return Promise.resolve();
+    if (!article || !this.editable() || this.conflict()) return Promise.resolve();
     this.saving.set(true);
     this.error.set('');
     this.failed = false;
@@ -309,6 +347,11 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
       .save(article.id, article.version, snapshot)
       .then((saved) => {
         this.article.set(saved);
+        this.editor?.setEditable(this.editable(), false);
+        if (this.edits !== generation && saved.state !== 'Draft') {
+          this.copyBuffer.set(JSON.stringify(this.form(), null, 2));
+          this.conflict.set(true);
+        }
         if (this.edits === generation) {
           this.form.set(draft(saved.content));
           this.dirty.set(false);
@@ -327,6 +370,45 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
         this.armSave();
       });
     return this.savePromise;
+  }
+  async workflow(operation: string): Promise<void> {
+    if (this.busy() || this.conflict()) return;
+    if (operation === 'publish' && !window.confirm('Опубликовать одобренную версию?')) return;
+    this.error.set('');
+    if (this.dirty()) await this.save();
+    const article = this.article();
+    if (!article || this.dirty() || this.conflict() || this.error()) return;
+    this.cancelTimer();
+    this.busy.set(true);
+    this.editor?.setEditable(false, false);
+    try {
+      this.accept(
+        await this.api.act(article.id, article.version, operation, this.changeDescription),
+      );
+      this.changeDescription = '';
+      this.notice.set('Действие сохранено.');
+    } catch (error) {
+      this.error.set(newsError(error));
+    } finally {
+      this.busy.set(false);
+      this.editor?.setEditable(this.editable(), false);
+    }
+  }
+  async selectTab(id: string): Promise<void> {
+    this.tab.set(id);
+    if (id === 'history') await this.loadHistory();
+  }
+  async loadHistory(page = 1): Promise<void> {
+    const article = this.article();
+    if (!article) return;
+    try {
+      const result = await this.api.history(article.id, page);
+      this.history.set(result.items);
+      this.historyTotal.set(Number(result.total));
+      this.historyPage.set(page);
+    } catch (error) {
+      this.error.set(newsError(error));
+    }
   }
   async reloadCurrent(): Promise<void> {
     if (

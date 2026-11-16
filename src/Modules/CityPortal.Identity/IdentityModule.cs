@@ -16,7 +16,7 @@ public static class IdentityModule
         services.AddScoped(provider => new SiteInstallation(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<MailConfigurationStore>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new AccountOperations(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<AccountMailQueue>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IAccountMailLinkValidator, AccountMailLinkValidator>();
-        services.AddScoped(provider => new AccountAdministration(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<EmailAdministration>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped(provider => new AccountAdministration(provider.GetRequiredService<IdentityDbContext>(), provider.GetRequiredService<EmailAdministration>(), provider.GetRequiredService<TimeProvider>(), provider.GetServices<IAccountRoleChangeObserver>()));
         services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>("identity-database", tags: ["ready"],
             customTestQuery: async (context, cancellationToken) =>
                 await context.Database.CanConnectAsync(cancellationToken)

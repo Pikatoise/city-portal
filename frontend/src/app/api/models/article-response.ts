@@ -10,6 +10,8 @@ export interface ArticleResponse {
   content: ArticleContent;
   id: string;
   previewHtml: string;
+  previouslySubmitted?: boolean;
+  publicationState?: string;
   revisionId: string;
   state: string;
   updatedAtUtc: string;

@@ -11,6 +11,10 @@ import { deleteArticleDraft } from '../api/fn/editorial/delete-article-draft';
 import { listEditorialTaxonomy } from '../api/fn/editorial/list-editorial-taxonomy';
 import { createEditorialTaxonomy } from '../api/fn/editorial/create-editorial-taxonomy';
 import { saveEditorialTaxonomy } from '../api/fn/editorial/save-editorial-taxonomy';
+import { actOnArticleReview } from '../api/fn/editorial/act-on-article-review';
+import { listArticleReviewQueue } from '../api/fn/editorial/list-article-review-queue';
+import { getArticleReview } from '../api/fn/editorial/get-article-review';
+import { getArticleHistory } from '../api/fn/editorial/get-article-history';
 import { ArticleContent } from '../api/models/article-content';
 import { TaxonomyResponse } from '../api/models/taxonomy-response';
 import { errorMessage } from '../account/account-api';
@@ -19,6 +23,9 @@ export type { ArticleImage } from '../api/models/article-image';
 export type { ArticleResponse } from '../api/models/article-response';
 export type { ArticleSummaryResponse } from '../api/models/article-summary-response';
 export type { TaxonomyResponse } from '../api/models/taxonomy-response';
+export type { ReviewResponse } from '../api/models/review-response';
+export type { ReviewSummaryResponse } from '../api/models/review-summary-response';
+export type { ArticleHistoryResponse } from '../api/models/article-history-response';
 
 @Injectable({ providedIn: 'root' })
 export class NewsApi {
@@ -50,6 +57,25 @@ export class NewsApi {
     return this.write((token) =>
       deleteArticleDraft(this.http, '', { id, version, 'X-CSRF-TOKEN': token }),
     );
+  }
+  act(id: string, version: number | string, operation: string, reason = '') {
+    return this.write((token) =>
+      actOnArticleReview(this.http, '', {
+        id,
+        operation,
+        body: { version, reason },
+        'X-CSRF-TOKEN': token,
+      }),
+    );
+  }
+  reviews(mine = false, page = 1) {
+    return this.request(listArticleReviewQueue(this.http, '', { mine, page, pageSize: 20 }));
+  }
+  review(id: string) {
+    return this.request(getArticleReview(this.http, '', { id }));
+  }
+  history(id: string, page = 1) {
+    return this.request(getArticleHistory(this.http, '', { id, page, pageSize: 20 }));
   }
   async taxonomy(kind: string): Promise<TaxonomyResponse[]> {
     const entries: TaxonomyResponse[] = [];

@@ -43,8 +43,19 @@ namespace CityPortal.News.Migrations
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("RevisionId")
                         .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -87,6 +98,9 @@ namespace CityPortal.News.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<DateTimeOffset?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -94,7 +108,7 @@ namespace CityPortal.News.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ArticleId");
+                    b.HasIndex("ArticleId", "SubmittedAtUtc");
 
                     b.ToTable("Revisions", "news");
                 });
@@ -114,12 +128,21 @@ namespace CityPortal.News.Migrations
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("FirstPublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastSubmittedRevisionId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PublicationState")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
                     b.Property<Guid?>("PublishedRevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReviewerId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
@@ -133,6 +156,8 @@ namespace CityPortal.News.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ReviewerId");
 
                     b.HasIndex("AuthorId", "UpdatedAtUtc");
 

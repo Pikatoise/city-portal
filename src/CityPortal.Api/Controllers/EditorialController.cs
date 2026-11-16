@@ -16,15 +16,36 @@ public sealed class EditorialController : ControllerBase
 {
     private readonly ArticleOperations _articles;
     private readonly TaxonomyOperations _taxonomy;
+    private readonly ReviewOperations _reviews;
 
-    public EditorialController(ArticleOperations articles, TaxonomyOperations taxonomy)
+    public EditorialController(ArticleOperations articles, TaxonomyOperations taxonomy, ReviewOperations reviews)
     {
         _articles = articles;
         _taxonomy = taxonomy;
+        _reviews = reviews;
     }
 
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private Guid SessionId => Guid.Parse(User.FindFirstValue("session")!);
+
+    [HttpGet("review-queue", Name = "listArticleReviewQueue")]
+    public Task<NewsPage<ReviewSummaryResponse>> ReviewQueueAsync(CancellationToken cancellationToken, bool mine = false, int page = 1, int pageSize = 20) =>
+        _reviews.QueueAsync(ActorId, SessionId, mine, page, pageSize, cancellationToken);
+
+    [HttpGet("reviews/{id:guid}", Name = "getArticleReview")]
+    public Task<ReviewResponse> ReviewAsync(Guid id, CancellationToken cancellationToken) => _reviews.GetAsync(ActorId, SessionId, id, cancellationToken);
+
+    [HttpGet("articles/{id:guid}/history", Name = "getArticleHistory")]
+    public Task<NewsPage<ArticleHistoryResponse>> HistoryAsync(Guid id, CancellationToken cancellationToken, int page = 1, int pageSize = 20) =>
+        _reviews.HistoryAsync(ActorId, SessionId, id, page, pageSize, cancellationToken);
+
+    [HttpPost("articles/{id:guid}/{operation:regex(^(submit|recall|claim|release|takeover|return|reject|approve|publish)$)}", Name = "actOnArticleReview")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(16384)]
+    [ProducesResponseType<ArticleResponse>(200)]
+    [ProducesResponseType(409)]
+    public Task<ArticleResponse> ReviewActionAsync(Guid id, string operation, ReviewArticleRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken) =>
+        _reviews.ActAsync(ActorId, SessionId, id, request.Version, operation, request.Reason, cancellationToken);
 
     [HttpGet("articles", Name = "listOwnArticles")]
     public Task<NewsPage<ArticleSummaryResponse>> ListAsync(CancellationToken cancellationToken, int page = 1, int pageSize = 20, string? search = null) =>

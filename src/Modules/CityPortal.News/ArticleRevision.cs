@@ -10,5 +10,6 @@ internal sealed class ArticleRevision
     public string PlainText { get; set; } = "";
     public string PreviewHtml { get; set; } = "";
     public bool Retained { get; set; }
+    public DateTimeOffset? SubmittedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
 }

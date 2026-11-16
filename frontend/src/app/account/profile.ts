@@ -31,6 +31,7 @@ const roleLabels: Record<string, string> = {
           <p><a routerLink="/account/articles">Мои статьи</a></p>
         }
         @if (account.roles.includes('Editor') || account.roles.includes('Administrator')) {
+          <p><a routerLink="/staff/reviews">Редакция</a></p>
           <p><a routerLink="/staff/taxonomy">Категории и теги</a></p>
         }
         <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>

@@ -10,13 +10,15 @@ public sealed class AccountAdministration
     private readonly IdentityDbContext _context;
     private readonly EmailAdministration _mail;
     private readonly TimeProvider _time;
+    private readonly IEnumerable<IAccountRoleChangeObserver> _roleObservers;
     private static readonly string[] _roles = ["RegularUser", "Author", "Editor", "Moderator", "Administrator"];
 
-    internal AccountAdministration(IdentityDbContext context, EmailAdministration mail, TimeProvider time)
+    internal AccountAdministration(IdentityDbContext context, EmailAdministration mail, TimeProvider time, IEnumerable<IAccountRoleChangeObserver> roleObservers)
     {
         _context = context;
         _mail = mail;
         _time = time;
+        _roleObservers = roleObservers;
     }
 
     public async Task BootstrapAsync(string email, CancellationToken cancellationToken)
@@ -91,8 +93,14 @@ public sealed class AccountAdministration
         if (old.Contains("Administrator") && !desired.Contains("Administrator") && await AdministratorIds().CountAsync(cancellationToken) == 1)
             throw new AccountOperationException(409, "last_administrator", "The last administrator cannot lose the role.");
         if (!old.SequenceEqual(desired))
+        {
             await WriteRolesAsync(target, old, desired, actorId, cancellationToken);
+            foreach (IAccountRoleChangeObserver observer in _roleObservers)
+                await observer.RolesChangedAsync(actorId, targetId, old, desired, _context.Database.GetDbConnection(), transaction.GetDbTransaction(), cancellationToken);
+        }
         await transaction.CommitAsync(cancellationToken);
+        foreach (IAccountRoleChangeObserver observer in _roleObservers)
+            await observer.FlushAfterCommitAsync();
         // Self-removal is authorized by the pre-write check; do not require the removed role to project the result.
         return new AccountSummary(target.Id, target.Email ?? "", target.DisplayName, target.EmailConfirmed, desired, target.Version);
     }

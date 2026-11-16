@@ -44,7 +44,7 @@ public sealed class InfrastructureFoundationTests
         read.Parameters.AddWithValue("id", accountId);
         Assert.Equal("MigrationUser", await read.ExecuteScalarAsync(CancellationToken.None));
         await using var histories = new NpgsqlCommand("SELECT (SELECT count(*) FROM identity.\"__EFMigrationsHistory\") + (SELECT count(*) FROM notifications.\"__EFMigrationsHistory\") + (SELECT count(*) FROM news.\"__EFMigrationsHistory\")", connection);
-        Assert.Equal(12L, await histories.ExecuteScalarAsync(CancellationToken.None));
+        Assert.Equal(13L, await histories.ExecuteScalarAsync(CancellationToken.None));
         await using var news = new NpgsqlCommand("SELECT to_regclass('news.\"Articles\"') IS NOT NULL AND to_regclass('news.\"Revisions\"') IS NOT NULL AND to_regclass('news.\"Taxonomy\"') IS NOT NULL", connection);
         Assert.Equal(true, await news.ExecuteScalarAsync(CancellationToken.None));
     }

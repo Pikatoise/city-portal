@@ -47,6 +47,14 @@ export type { ForgotPassword$Params as ForgotPassword$Params } from './fn/auth/f
 export { forgotPassword as forgotPassword } from './fn/auth/forgot-password';
 export type { ResetPassword$Params as ResetPassword$Params } from './fn/auth/reset-password';
 export { resetPassword as resetPassword } from './fn/auth/reset-password';
+export type { ListArticleReviewQueue$Params as ListArticleReviewQueue$Params } from './fn/editorial/list-article-review-queue';
+export { listArticleReviewQueue as listArticleReviewQueue } from './fn/editorial/list-article-review-queue';
+export type { GetArticleReview$Params as GetArticleReview$Params } from './fn/editorial/get-article-review';
+export { getArticleReview as getArticleReview } from './fn/editorial/get-article-review';
+export type { GetArticleHistory$Params as GetArticleHistory$Params } from './fn/editorial/get-article-history';
+export { getArticleHistory as getArticleHistory } from './fn/editorial/get-article-history';
+export type { ActOnArticleReview$Params as ActOnArticleReview$Params } from './fn/editorial/act-on-article-review';
+export { actOnArticleReview as actOnArticleReview } from './fn/editorial/act-on-article-review';
 export type { ListOwnArticles$Params as ListOwnArticles$Params } from './fn/editorial/list-own-articles';
 export { listOwnArticles as listOwnArticles } from './fn/editorial/list-own-articles';
 export type { CreateArticleDraft$Params as CreateArticleDraft$Params } from './fn/editorial/create-article-draft';
