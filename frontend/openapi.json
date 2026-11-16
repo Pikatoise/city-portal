@@ -912,6 +912,113 @@
         }
       }
     },
+    "/api/editorial/homepage": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "getEditorialHomepage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomepageSelectionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "saveEditorialHomepage",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveHomepageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomepageSelectionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/featured": {
+      "put": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "setFeaturedArticle",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/editorial/publications": {
       "get": {
         "tags": [
@@ -2350,6 +2457,222 @@
         }
       }
     },
+    "/api/news/articles": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "operationId": "listPublicArticles",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "featured",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsPageOfPublicArticleSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/news/homepage": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "operationId": "getPublicHomepage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicHomepageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/news/articles/{id}/related": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "operationId": "getRelatedArticles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicArticleSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/news/{kind}": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "operationId": "listPublicTaxonomy",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^(categories|tags)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsPageOfPublicTaxonomyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/news/articles/{id}": {
       "get": {
         "tags": [
@@ -2865,6 +3188,10 @@
           "updatedAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "featured": {
+            "type": "boolean",
+            "default": false
           }
         },
         "description": "A summary from the current author's workspace."
@@ -3156,6 +3483,26 @@
         },
         "description": "Delivery metadata and sanitized failures; excludes recipient and protected mail content."
       },
+      "FeatureArticleRequest": {
+        "required": [
+          "version",
+          "featured"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "featured": {
+            "type": "boolean"
+          }
+        }
+      },
       "ForgotPasswordRequest": {
         "type": "object",
         "properties": {
@@ -3167,6 +3514,39 @@
           }
         },
         "description": "Requests a recovery Email without disclosing account existence."
+      },
+      "HomepageSelectionResponse": {
+        "required": [
+          "version",
+          "firstCategoryId",
+          "secondCategoryId"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "firstCategoryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "secondCategoryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "description": "Versioned editorial homepage category selection."
       },
       "IFormFile": {
         "type": "string",
@@ -3610,6 +3990,90 @@
         },
         "description": "A bounded, deterministically ordered page."
       },
+      "NewsPageOfPublicArticleSummaryResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicArticleSummaryResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A bounded, deterministically ordered page."
+      },
+      "NewsPageOfPublicTaxonomyResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicTaxonomyResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A bounded, deterministically ordered page."
+      },
       "NewsPageOfReviewSummaryResponse": {
         "required": [
           "items",
@@ -3798,6 +4262,132 @@
           }
         },
         "description": "Only the current publication, with no private revision identifiers or workflow state."
+      },
+      "PublicArticleSummaryResponse": {
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "canonicalUrl",
+          "categoryId",
+          "tagIds",
+          "cover",
+          "firstPublishedAtUtc",
+          "authorDisplayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "canonicalUrl": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "cover": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ArticleImage"
+              }
+            ]
+          },
+          "firstPublishedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "authorDisplayName": {
+            "type": "string"
+          }
+        },
+        "description": "A public card summary; never exposes working revision content, body, or storage keys."
+      },
+      "PublicCategoryBlock": {
+        "required": [
+          "category",
+          "articles"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/PublicTaxonomyResponse"
+          },
+          "articles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicArticleSummaryResponse"
+            }
+          }
+        },
+        "description": "A selected category and up to five current publications."
+      },
+      "PublicHomepageResponse": {
+        "required": [
+          "featured",
+          "latest",
+          "categories"
+        ],
+        "type": "object",
+        "properties": {
+          "featured": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicArticleSummaryResponse"
+            }
+          },
+          "latest": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicArticleSummaryResponse"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicCategoryBlock"
+            }
+          }
+        },
+        "description": "Bounded, current-publication-only homepage blocks."
+      },
+      "PublicTaxonomyResponse": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "description": "A taxonomy name without private counts or staff metadata."
       },
       "RegisterRequest": {
         "type": "object",
@@ -4114,6 +4704,32 @@
           }
         },
         "description": "Save an incomplete draft only if its expected record version is current."
+      },
+      "SaveHomepageRequest": {
+        "required": [
+          "version",
+          "firstCategoryId",
+          "secondCategoryId"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "firstCategoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "secondCategoryId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "SaveTaxonomyRequest": {
         "required": [

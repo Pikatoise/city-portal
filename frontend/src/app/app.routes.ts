@@ -8,6 +8,11 @@ export const routes: Routes = [
     canActivateChild: [requireInstallation],
     children: [
       {
+        path: 'news',
+        data: { list: true },
+        loadComponent: () => import('./news/discovery').then((m) => m.Discovery),
+      },
+      {
         path: 'account/articles',
         loadComponent: () => import('./editorial/author-workspace').then((m) => m.AuthorWorkspace),
         canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
@@ -55,7 +60,11 @@ export const routes: Routes = [
         path: 'account/reset-password',
         loadComponent: () => import('./account/reset-password').then((m) => m.ResetPassword),
       },
-      { path: '', pathMatch: 'full', loadComponent: () => import('./home').then((m) => m.Home) },
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () => import('./news/discovery').then((m) => m.Discovery),
+      },
       {
         path: 'account/register',
         loadComponent: () => import('./account/register').then((m) => m.Register),

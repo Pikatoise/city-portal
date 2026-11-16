@@ -13,11 +13,48 @@
     <p>Нужны права редактора и подтверждённый Email.</p>
   }
   @if (allowed()) {
+    <button type="button" (click)="configureHomepage()" [disabled]="busy()">
+      Настроить категории главной
+    </button>
+    @if (selection()) {
+      <section class="homepage-selection">
+        <h2>Категории на главной</h2>
+        <p>Выбери две разные категории в порядке показа.</p>
+        <label
+          >Первый блок<select [(ngModel)]="firstCategoryId">
+            <option value="">Выбери категорию</option>
+            @for (item of categories(); track item.id) {
+              <option [value]="item.id">{{ item.name }}</option>
+            }
+          </select></label
+        >
+        <label
+          >Второй блок<select [(ngModel)]="secondCategoryId">
+            <option value="">Выбери категорию</option>
+            @for (item of categories(); track item.id) {
+              <option [value]="item.id">{{ item.name }}</option>
+            }
+          </select></label
+        >
+        <button
+          type="button"
+          (click)="saveHomepage()"
+          [disabled]="
+            busy() || !firstCategoryId || !secondCategoryId || firstCategoryId === secondCategoryId
+          "
+        >
+          Сохранить категории
+        </button>
+      </section>
+    }
     <button type="button" (click)="load(page())" [disabled]="busy()">Обновить</button>
     @for (row of rows(); track row.id) {
       <article>
         <h2>{{ row.title }}</h2>
         <div class="actions">
+          <button type="button" (click)="feature(row)" [disabled]="busy()">
+            {{ row.featured ? 'Убрать из выбора редакции' : 'Добавить в выбор редакции' }}
+          </button>
           <button type="button" (click)="openPublic(row.id)" [disabled]="busy()">
             Открыть статью
           </button>

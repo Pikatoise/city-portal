@@ -11,6 +11,8 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         HttpContext http = context.HttpContext;
+        if (http.Request.Path.StartsWithSegments("/api/news"))
+            http.Response.Headers.CacheControl = "no-store";
         if (HttpMethods.IsGet(http.Request.Method) || HttpMethods.IsHead(http.Request.Method) || HttpMethods.IsOptions(http.Request.Method))
         {
             await next();

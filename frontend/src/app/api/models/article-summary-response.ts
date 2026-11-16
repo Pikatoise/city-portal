@@ -6,6 +6,7 @@
  * A summary from the current author's workspace.
  */
 export interface ArticleSummaryResponse {
+  featured?: boolean;
   id: string;
   state: string;
   title: string;

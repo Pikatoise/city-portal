@@ -20,6 +20,13 @@ public sealed class AccountOperations
     public Task<string?> GetPublicDisplayNameAsync(Guid accountId, CancellationToken cancellationToken) =>
         _context.Users.AsNoTracking().Where(account => account.Id == accountId).Select(account => account.DisplayName).SingleOrDefaultAsync(cancellationToken);
 
+    public Task<Dictionary<Guid, string>> GetPublicDisplayNamesAsync(Guid[] accountIds, CancellationToken cancellationToken)
+    {
+        if (accountIds.Length > 100)
+            throw new ArgumentException("At most 100 public names can be requested.", nameof(accountIds));
+        return _context.Users.AsNoTracking().Where(account => accountIds.Contains(account.Id)).ToDictionaryAsync(account => account.Id, account => account.DisplayName, cancellationToken);
+    }
+
     private readonly IdentityDbContext _context;
     private readonly AccountMailQueue _mail;
     private readonly TimeProvider _time;

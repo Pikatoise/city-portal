@@ -1,5 +1,7 @@
-<main class="public-article">
-  <nav><a routerLink="/">На главную</a></nav>
+<section class="public-article">
+  <nav class="breadcrumbs" aria-label="Путь к статье">
+    <a routerLink="/">Главная</a><span aria-hidden="true">/</span><a routerLink="/news">Новости</a>
+  </nav>
   @switch (state()) {
     @case ('withdrawn') {
       <h1>Материал снят с публикации</h1>
@@ -59,6 +61,20 @@
             </ul>
           }
           <footer>
+            @if (article.content.categoryId) {
+              <a routerLink="/news" [queryParams]="{ categoryId: article.content.categoryId }"
+                >Новости категории</a
+              >
+            }
+            <nav aria-label="Теги статьи">
+              @for (tagId of article.content.tagIds; track tagId) {
+                @for (entry of taxonomy(); track entry.id) {
+                  @if (entry.id === tagId) {
+                    <a routerLink="/news" [queryParams]="{ tagId }">{{ entry.name }}</a>
+                  }
+                }
+              }
+            </nav>
             <p>{{ article.authorDisplayName }}</p>
             <p>
               Опубликовано
@@ -74,7 +90,18 @@
             </p>
           </footer>
         </article>
+        @if (related().length) {
+          <section aria-labelledby="related-heading">
+            <h2 id="related-heading">Читайте также</h2>
+            @for (story of related(); track story.id) {
+              <app-news-card [story]="story" />
+            }
+          </section>
+        }
+        @if (relatedFailed()) {
+          <p role="status">Похожие новости сейчас недоступны.</p>
+        }
       }
     }
   }
-</main>
+</section>

@@ -7,7 +7,14 @@ import { NewsApi } from './news-api';
 import { Publications } from './publications';
 
 describe('Editorial publications', () => {
-  const api = { publications: vi.fn(), act: vi.fn() };
+  const api = {
+    publications: vi.fn(),
+    act: vi.fn(),
+    homepage: vi.fn(),
+    taxonomy: vi.fn(),
+    saveHomepage: vi.fn(),
+    feature: vi.fn(),
+  };
   const accounts = { profile: vi.fn() };
   const row = {
     id: 'article-id',
@@ -30,6 +37,37 @@ describe('Editorial publications', () => {
     });
   });
   afterEach(() => TestBed.resetTestingModule());
+  it('retains category order input when a stale homepage save fails', async () => {
+    api.homepage.mockResolvedValue({ version: 3, firstCategoryId: 'a', secondCategoryId: 'b' });
+    api.taxonomy.mockResolvedValue([
+      { id: 'a', name: 'A', archived: false },
+      { id: 'b', name: 'B', archived: false },
+      { id: 'c', name: 'Archived', archived: true },
+    ]);
+    const fixture = TestBed.createComponent(Publications);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.configureHomepage();
+    const component = fixture.componentInstance;
+    expect(component.categories().map((item) => item.id)).toEqual(['a', 'b']);
+    component.firstCategoryId = 'b';
+    component.secondCategoryId = 'a';
+    api.saveHomepage.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+    await component.saveHomepage();
+    expect(api.saveHomepage).toHaveBeenCalledWith(3, 'b', 'a');
+    expect(component.firstCategoryId).toBe('b');
+    expect(component.secondCategoryId).toBe('a');
+    expect(component.selection()?.version).toBe(3);
+  });
+  it('sends the article version when adding and removing editorial selections', async () => {
+    const fixture = TestBed.createComponent(Publications);
+    await fixture.componentInstance.ngOnInit();
+    api.feature.mockResolvedValue({});
+    await fixture.componentInstance.feature(row);
+    expect(api.feature).toHaveBeenCalledWith(row.id, 7, true);
+    await fixture.componentInstance.feature({ ...row, featured: true, version: 8 });
+    expect(api.feature).toHaveBeenCalledWith(row.id, 8, false);
+  });
 
   it('requires a reason and retains withdrawal input on a stale version', async () => {
     const fixture = TestBed.createComponent(Publications);

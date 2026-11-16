@@ -21,6 +21,9 @@ import { correctPublishedArticle } from '../api/fn/editorial/correct-published-a
 import { createArticleWorkingVersion } from '../api/fn/editorial/create-article-working-version';
 import { getEditorialPublication } from '../api/fn/editorial/get-editorial-publication';
 import { listEditorialPublications } from '../api/fn/editorial/list-editorial-publications';
+import { getEditorialHomepage } from '../api/fn/editorial/get-editorial-homepage';
+import { saveEditorialHomepage } from '../api/fn/editorial/save-editorial-homepage';
+import { setFeaturedArticle } from '../api/fn/editorial/set-featured-article';
 import { TaxonomyResponse } from '../api/models/taxonomy-response';
 import { errorMessage } from '../account/account-api';
 export type { ArticleContent } from '../api/models/article-content';
@@ -98,6 +101,22 @@ export class NewsApi {
   }
   publications(page = 1) {
     return this.request(listEditorialPublications(this.http, '', { page, pageSize: 20 }));
+  }
+  homepage() {
+    return this.request(getEditorialHomepage(this.http, ''));
+  }
+  saveHomepage(version: number | string, firstCategoryId: string, secondCategoryId: string) {
+    return this.write((token) =>
+      saveEditorialHomepage(this.http, '', {
+        body: { version, firstCategoryId, secondCategoryId },
+        'X-CSRF-TOKEN': token,
+      }),
+    );
+  }
+  feature(id: string, version: number | string, featured: boolean) {
+    return this.write((token) =>
+      setFeaturedArticle(this.http, '', { id, body: { version, featured }, 'X-CSRF-TOKEN': token }),
+    );
   }
   correct(id: string, version: number | string, content: ArticleContent, reason: string) {
     return this.write((token) =>

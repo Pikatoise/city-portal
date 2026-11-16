@@ -4,7 +4,7 @@
 
 Issue #10 implements the production author workspace at `/account/articles` and editorial category/tag management at `/staff/taxonomy`. Authors create, reopen, save, preview, and delete incomplete drafts; choose own Ready uploads or approved shared templates; and edit structured body, sources, contextual image text, taxonomy, and SEO fields. The five sections follow the accepted Text/Images/Parameters/Preview/History layout. Review actions now use production API operations rather than simulated state.
 
-Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Public discovery/search/featured/related delivery remains #13. Final owner acceptance remains at the complete Stage 2 result.
+Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Issue #13 delivers production SSR discovery, Russian search, related/featured content, ordered homepage categories and curation UI. Final owner acceptance remains at the complete Stage 2 result.
 
 ## Persistence and Permissions
 
@@ -178,3 +178,51 @@ After final withdrawal, anonymous requests to the current URL and both real alia
 Live SSR exposed a server-DOM incompatibility: Domino did not support `head.append`. The implementation now uses `appendChild` and clears article data/metadata if a partial DOM operation fails. The final frontend regression covers both missing `append` and partial-DOM failure cleanup. An initial incorrect acceptance login and the existing favicon 404 were unrelated setup/noise; deliberate withdrawn 404 responses are expected.
 
 Issue #12 is implemented and verified locally. Independent Spec and Standards/test-quality review found no blocking findings; final Stage 2 owner acceptance remains deferred to #14. Discovery, search, related/featured content, and homepage integration remain #13. This delivery does not claim a fresh SMTP outage/replay or backup/restore run, production deployment, or Stage 2 closure.
+
+
+## Issue 13: Public Discovery and Editorial Curation
+
+The production homepage at `/` and detailed list at `/news` use real current-publication data. Homepage blocks contain up to five featured selections, five latest stories (three compact cards and two wide rows), and two editor-selected ordered category blocks of up to five stories. Stories may repeat across blocks. Before initial category configuration, no category blocks are chosen automatically. Empty categories remain visible as selected blocks with a link to their list.
+
+Editors and administrators configure category order and toggle featured articles from `/staff/publications`. Category choices must be distinct active categories. The singleton category selection has its own expected version; featured writes require the article version. Identity's existing authorization transaction serializes role changes and curation before the article lock, so concurrent selections cannot exceed five. Decisions append News-owned curation audit records. Withdrawal clears featured selection in the same transaction and removes public article/media access under the existing contract. Invalid/stale/unauthorized writes do not create audit records.
+
+The public API adds `GET /news/articles`, `/news/articles/{id}/related`, `/news/categories`, `/news/tags`, and `/news/homepage`. Editorial routes are `GET/PUT /editorial/homepage` and `PUT /editorial/articles/{id}/featured`. Writes require current confirmed editorial permissions and CSRF. Public taxonomy includes only entries used in current published content, with no private counts.
+
+Search uses generated PostgreSQL revision columns and a weighted Russian `tsvector`: title A, summary B, body C. GIN indexes cover search and tags; category and partial publication-order indexes support filtering and paging. These generated values backfill existing rows and stay synchronized on draft saves, publication and editorial corrections. Public queries always join `PublishedRevisionId` and current article visibility; private/old indexed revisions cannot enter results. The implementation follows [Npgsql full-text mapping](https://www.npgsql.org/efcore/mapping/full-text-search.html) and [JSON translations](https://www.npgsql.org/efcore/mapping/translations.html).
+
+Query parameters are `query`, `categoryId`, `tagId`, `from`, `to`, `page`, `pageSize`, and `featured`. Query text is limited to 200 Unicode scalars. The default page size is 20, with an API maximum of 100. Category/tag/date/search filters combine. Inclusive date bounds use the installed city time zone and an exclusive next-local-day UTC end, including daylight-saving transitions. No-query order is first publication descending then article ID ascending; search prepends descending rank. Corrections never promote an older article. Related results prioritize shared tags then category, newest first within each group, excluding self/duplicates and capped at five.
+
+Summaries contain public card fields and current author display names from one bounded Identity batch operation, with no Email, working revision fields, history, full body, object keys or unpublished SEO. Public generated-client requests omit credentials and disable browser/transfer caching. API and SSR responses use no-store, including validation failures. No shared public cache or direct object-storage URL is introduced.
+
+The list owns search/filter controls and preserves them in navigation links. The homepage category bar scrolls to blocks and its All News link opens the unfiltered list. Article category/tag links open filtered lists. Article SSR retains canonical/alias/withdrawal and revision-owned SEO behavior, adds current related cards, and follows the existing fluid typography/media style. Related-data failure does not hide the main article. Real image failures render placeholders, including reused carousel slide elements; author/date metadata stays on one line. Category scrolling remains interruptible at 650ms, carousel settling at 380ms and content entrance at 180ms.
+
+### Requirement-to-Test Evidence
+
+| Requirement | Evidence |
+| --- | --- |
+| Russian title/summary/body inflection, combined search/taxonomy, private/old revision exclusion, immediate correction/withdrawal, current author credit | `Discovery_RussianSearchFiltersAndReplacement_UseOnlyCurrentPublicationAsync` |
+| Query/page/date/ID validation and no-store failures | `Discovery_InvalidQueriesReturnValidationAsync`; oversized query assertion in `Discovery_PagesDatesAndTiesAreBoundedAndDeterministicAsync` |
+| Non-UTC and DST local-day boundaries, deterministic ties, 20/100-item page bounds and no duplicate/omitted IDs | `Discovery_PagesDatesAndTiesAreBoundedAndDeterministicAsync` |
+| Related tag-before-category order, five-result limit, exclusion/deduplication, withdrawal and public-only taxonomy | `Discovery_RelatedAndTaxonomyUsePublicTagThenCategoryOrderAsync` |
+| Ordered category persistence, empty blocks, expected versions, distinct active choices, permissions, CSRF and audit | `Curation_CategoriesPersistOrderVersionPermissionsAndAuditAsync` |
+| Concurrent featured capacity, stale/forbidden writes, latest/featured bounds and immediate withdrawal | `Curation_ConcurrentFeaturedLimitAndWithdrawalPreserveVisibilityAsync` |
+| Explicit/repeat owned-schema migration and retained data | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`; real existing acceptance database migrated and reapplied successfully |
+| URL filter contract, numbered links, empty/errors, stale responses, five-item latest split and category order | `uses all URL filters, twenty-item pages and numbered links`; `clears results on invalid query and offers a retry`; `shows the empty result without a pagination bar`; `ignores a slow older response after a newer query`; `renders five latest items and keeps category block order` |
+| Scroll interruption and event/frame cleanup; carousel single/multiple controls; failed-image reuse and author credit | `interrupts category scrolling on wheel, touch and keys and cancels it on destruction`; `hides arrows for a single article and exposes one active slide`; `keeps image failures scoped to their media ID when slide elements are reused` |
+| Generated public-request credential/cache isolation | `omits credentials and disables transfer/browser caching for generated public requests` |
+| Editorial category conflict input retention and versioned feature toggles | `retains category order input when a stale homepage save fails`; `sends the article version when adding and removing editorial selections` |
+
+### Verification and Boundaries
+
+Final Release backend regression passed 163 tests, zero failed/skipped; the TRX was parsed and all 163 case outcomes verified, including the 12 discovery/curation cases. Frontend regression passed 90 tests in 14 files. Production Angular/SSR build and complete Prettier verification passed. Generated-client consistency and refresh against the final runtime OpenAPI passed. Solution formatting and Release build passed. No test counts from separate targeted runs are added together.
+
+An initial full backend run found an old expected migration count (13 before the new migration, now 14), and concurrent API factories racing the production process-wide upload slot. The two upload-using test classes now share an xUnit collection; dedicated production concurrency tests remain unchanged. Production throttling and upload-slot enforcement were not relaxed.
+
+Real isolated HTTPS verification exercised editor category order and featured changes through the UI, homepage/list/article SSR with no-store, Russian word-form search, category filtering, carousel navigation, related content, and 1440px/390px layouts without horizontal overflow. The test account was created solely in the local acceptance database and assigned Author/Administrator fixture roles; distinct-role restrictions and concurrent writes are verified separately by integration tests. Initial stale acceptance credentials and a filter-selector mismatch were corrected in local verification scripts, not by weakening application permissions or changing visibility.
+
+Independent Spec and Standards reviews identified scroll interruption, reused-slide image failures, missing featured author credit, and metadata wrapping. Each was fixed; focused re-review confirmed the fixes. Final HTTPS alias/withdrawal evidence is recorded below. Raw reports, credentials, screenshots and logs remain ignored local artifacts.
+
+Issue 14 still owns representative 10,000-article capacity measurements, fresh backup/restore, cross-workflow failure/recovery checks and final owner review. No new SMTP outage/replay, production deployment or Stage 2 closure is claimed here.
+
+
+The final HTTPS regression used the final API snapshot and production SSR build. Editorial correction created a new canonical URL; the real previous URL redirected directly with 307. After withdrawal, the article was absent from list, homepage and related responses, and both current and historical URLs returned no-store 404 shells without article title or private reason. Malformed public date input returned no-store 400. The final browser run recorded no page errors. Screenshots of the final 1440px homepage and 390px list were inspected; fixtures without covers display the explicit no-image state. These are local verification results, not owner acceptance.

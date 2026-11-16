@@ -11,6 +11,7 @@ using Npgsql;
 
 namespace CityPortal.IntegrationTests;
 
+[Collection("Media upload slot")]
 public sealed class MediaTests : IClassFixture<MediaFixture>
 {
     private readonly MediaFixture _fixture;

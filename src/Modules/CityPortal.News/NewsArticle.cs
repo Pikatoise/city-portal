@@ -6,6 +6,7 @@ internal sealed class NewsArticle
     public Guid AuthorId { get; set; }
     public long Version { get; set; } = 1;
     public string PublicationState { get; set; } = "NeverPublished";
+    public bool Featured { get; set; }
     public Guid WorkingRevisionId { get; set; }
     public Guid? PublishedRevisionId { get; set; }
     public Guid? LastSubmittedRevisionId { get; set; }

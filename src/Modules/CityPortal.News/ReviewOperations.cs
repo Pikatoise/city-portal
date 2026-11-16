@@ -53,7 +53,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         int total = await query.CountAsync(cancellationToken);
         ArticleSummaryResponse[] items = await query.OrderByDescending(item => item.Article.FirstPublishedAtUtc).ThenBy(item => item.Article.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(item => new ArticleSummaryResponse(item.Article.Id, item.Article.Version, item.Revision.Title, "Published", item.Article.UpdatedAtUtc)).ToArrayAsync(cancellationToken);
+            .Select(item => new ArticleSummaryResponse(item.Article.Id, item.Article.Version, item.Revision.Title, "Published", item.Article.UpdatedAtUtc, item.Article.Featured)).ToArrayAsync(cancellationToken);
         return new NewsPage<ArticleSummaryResponse>(items, total, page, pageSize);
     }
 
@@ -164,6 +164,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
                 if (reason.Length == 0)
                     throw NewsDatabase.Invalid("reason", "A withdrawal reason is required.");
                 article.PublicationState = "Withdrawn";
+                article.Featured = false;
                 revision.Retained = true;
                 await DraftAsync(context, article, revision, scope, cancellationToken);
                 break;

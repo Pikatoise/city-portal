@@ -47,6 +47,12 @@ export type { ForgotPassword$Params as ForgotPassword$Params } from './fn/auth/f
 export { forgotPassword as forgotPassword } from './fn/auth/forgot-password';
 export type { ResetPassword$Params as ResetPassword$Params } from './fn/auth/reset-password';
 export { resetPassword as resetPassword } from './fn/auth/reset-password';
+export type { GetEditorialHomepage$Params as GetEditorialHomepage$Params } from './fn/editorial/get-editorial-homepage';
+export { getEditorialHomepage as getEditorialHomepage } from './fn/editorial/get-editorial-homepage';
+export type { SaveEditorialHomepage$Params as SaveEditorialHomepage$Params } from './fn/editorial/save-editorial-homepage';
+export { saveEditorialHomepage as saveEditorialHomepage } from './fn/editorial/save-editorial-homepage';
+export type { SetFeaturedArticle$Params as SetFeaturedArticle$Params } from './fn/editorial/set-featured-article';
+export { setFeaturedArticle as setFeaturedArticle } from './fn/editorial/set-featured-article';
 export type { ListEditorialPublications$Params as ListEditorialPublications$Params } from './fn/editorial/list-editorial-publications';
 export { listEditorialPublications as listEditorialPublications } from './fn/editorial/list-editorial-publications';
 export type { GetEditorialPublication$Params as GetEditorialPublication$Params } from './fn/editorial/get-editorial-publication';
@@ -109,6 +115,14 @@ export type { TemplateRemovalQueue$Params as TemplateRemovalQueue$Params } from 
 export { templateRemovalQueue as templateRemovalQueue } from './fn/media/template-removal-queue';
 export type { ResolveTemplateRemoval$Params as ResolveTemplateRemoval$Params } from './fn/media/resolve-template-removal';
 export { resolveTemplateRemoval as resolveTemplateRemoval } from './fn/media/resolve-template-removal';
+export type { ListPublicArticles$Params as ListPublicArticles$Params } from './fn/news/list-public-articles';
+export { listPublicArticles as listPublicArticles } from './fn/news/list-public-articles';
+export type { GetPublicHomepage$Params as GetPublicHomepage$Params } from './fn/news/get-public-homepage';
+export { getPublicHomepage as getPublicHomepage } from './fn/news/get-public-homepage';
+export type { GetRelatedArticles$Params as GetRelatedArticles$Params } from './fn/news/get-related-articles';
+export { getRelatedArticles as getRelatedArticles } from './fn/news/get-related-articles';
+export type { ListPublicTaxonomy$Params as ListPublicTaxonomy$Params } from './fn/news/list-public-taxonomy';
+export { listPublicTaxonomy as listPublicTaxonomy } from './fn/news/list-public-taxonomy';
 export type { GetPublicArticle$Params as GetPublicArticle$Params } from './fn/news/get-public-article';
 export { getPublicArticle as getPublicArticle } from './fn/news/get-public-article';
 export type { GetSystemInfo$Params as GetSystemInfo$Params } from './fn/system/get-system-info';

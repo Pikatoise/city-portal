@@ -1,3 +1,6 @@
+using System.Text.Json;
+using NpgsqlTypes;
+
 namespace CityPortal.News;
 
 internal sealed class ArticleRevision
@@ -12,4 +15,12 @@ internal sealed class ArticleRevision
     public bool Retained { get; set; }
     public DateTimeOffset? SubmittedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
+
+    // Generated from the revision content so discovery filters and search always track every write.
+    public NpgsqlTsVector SearchVector { get; set; } = NpgsqlTsVector.Empty;
+    public string Summary { get; set; } = "";
+    public Guid? CategoryId { get; set; }
+    public JsonDocument Tags { get; set; } = JsonDocument.Parse("[]");
+    public Guid? CoverMediaId { get; set; }
+    public string? CoverAlt { get; set; }
 }

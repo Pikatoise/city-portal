@@ -17,16 +17,33 @@ public sealed class EditorialController : ControllerBase
     private readonly ArticleOperations _articles;
     private readonly TaxonomyOperations _taxonomy;
     private readonly ReviewOperations _reviews;
+    private readonly CurationOperations _curation;
 
-    public EditorialController(ArticleOperations articles, TaxonomyOperations taxonomy, ReviewOperations reviews)
+    public EditorialController(ArticleOperations articles, TaxonomyOperations taxonomy, ReviewOperations reviews, CurationOperations curation)
     {
         _articles = articles;
         _taxonomy = taxonomy;
         _reviews = reviews;
+        _curation = curation;
     }
 
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private Guid SessionId => Guid.Parse(User.FindFirstValue("session")!);
+
+    [HttpGet("homepage", Name = "getEditorialHomepage")]
+    public Task<HomepageSelectionResponse> HomepageAsync(CancellationToken cancellationToken) => _curation.GetAsync(ActorId, SessionId, cancellationToken);
+
+    [HttpPut("homepage", Name = "saveEditorialHomepage")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(8192)]
+    public Task<HomepageSelectionResponse> SaveHomepageAsync(SaveHomepageRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken) =>
+        _curation.SaveAsync(ActorId, SessionId, request.Version, request.FirstCategoryId, request.SecondCategoryId, cancellationToken);
+
+    [HttpPut("articles/{id:guid}/featured", Name = "setFeaturedArticle")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(8192)]
+    public Task<ArticleSummaryResponse> FeatureAsync(Guid id, FeatureArticleRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken) =>
+        _curation.FeatureAsync(ActorId, SessionId, id, request.Version, request.Featured, cancellationToken);
 
     [HttpGet("publications", Name = "listEditorialPublications")]
     public Task<NewsPage<ArticleSummaryResponse>> PublicationsAsync(CancellationToken cancellationToken, int page = 1, int pageSize = 20) =>

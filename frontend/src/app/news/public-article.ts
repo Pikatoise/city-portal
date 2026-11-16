@@ -17,15 +17,23 @@ import { Api } from '../api/api';
 import { PublicArticleResponse } from '../api/models/public-article-response';
 import { CityClock } from '../staff/city-clock';
 import { SiteMetadata } from '../site-metadata';
+import { PublicNewsApi } from './public-news-api';
+import { NewsCard } from './news-card';
+import { PublicArticleSummaryResponse } from '../api/models/public-article-summary-response';
+import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 
 @Component({
   selector: 'app-public-article',
-  imports: [RouterLink],
+  imports: [RouterLink, NewsCard],
   templateUrl: './public-article.html',
   styleUrl: './public-article.css',
 })
 export class PublicArticle implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly discovery = inject(PublicNewsApi);
+  readonly related = signal<PublicArticleSummaryResponse[]>([]);
+  readonly taxonomy = signal<PublicTaxonomyResponse[]>([]);
+  readonly relatedFailed = signal(false);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly api = inject(Api);
@@ -71,6 +79,8 @@ export class PublicArticle implements OnInit {
   async load(id: string, slug: string): Promise<void> {
     const generation = ++this.generation;
     this.article.set(null);
+    this.related.set([]);
+    this.relatedFailed.set(false);
     this.state.set('loading');
     this.clearMetadata();
     if (this.response) this.response.headers = { 'Cache-Control': 'no-store' };
@@ -113,6 +123,20 @@ export class PublicArticle implements OnInit {
       canonical.rel = 'canonical';
       canonical.href = article.canonicalUrl;
       this.document.head.appendChild(canonical);
+      // Related discovery failures must not turn an otherwise available article into an error page.
+      try {
+        const [related, categories, tags] = await Promise.all([
+          this.discovery.related(article.id),
+          this.discovery.taxonomy('categories'),
+          this.discovery.taxonomy('tags'),
+        ]);
+        if (generation === this.generation) {
+          this.related.set(related);
+          this.taxonomy.set([...categories, ...tags]);
+        }
+      } catch {
+        if (generation === this.generation) this.relatedFailed.set(true);
+      }
     } catch (error) {
       if (generation !== this.generation) return;
       this.article.set(null);

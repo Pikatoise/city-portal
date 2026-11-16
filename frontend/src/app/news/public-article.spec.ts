@@ -11,6 +11,7 @@ import { PublicArticleResponse } from '../api/models/public-article-response';
 import { SiteMetadata } from '../site-metadata';
 import { CityClock } from '../staff/city-clock';
 import { PublicArticle } from './public-article';
+import { PublicNewsApi } from './public-news-api';
 
 const publication: PublicArticleResponse = {
   id: 'article-id',
@@ -34,6 +35,7 @@ describe('Public article visibility', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: Api, useValue: { rootUrl: '' } },
+        { provide: PublicNewsApi, useValue: { related: async () => [], taxonomy: async () => [] } },
         { provide: ActivatedRoute, useValue: { paramMap: EMPTY } },
         { provide: RESPONSE_INIT, useValue: response },
         { provide: SiteMetadata, useValue: { name: signal('Portal') } },

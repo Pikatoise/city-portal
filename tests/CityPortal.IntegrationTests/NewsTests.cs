@@ -10,6 +10,7 @@ using Npgsql;
 
 namespace CityPortal.IntegrationTests;
 
+[Collection("Media upload slot")]
 public sealed partial class NewsTests : IClassFixture<MediaFixture>
 {
     private readonly MediaFixture _fixture;
