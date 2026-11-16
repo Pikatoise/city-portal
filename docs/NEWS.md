@@ -89,3 +89,7 @@ Release backend regression: 134 passed, zero failed/skipped. Frontend regression
 The UI mode change uses Tiptap's non-emitting `setEditable` form: changing permissions must not create another edit or trigger autosave. The pre-existing serialized autosave/retry regressions detected and verify this interaction. Final UI regression is 70 passed after adding change-description retry coverage. Final Release rebuild had zero warnings/errors; after the last audit clarification, all 11 News integration tests passed again. Final formatting, generated-client consistency, production Angular build, and explicit repeat migration passed. Public discovery and published-change acceptance remain outstanding; Stage 2 is open.
 
 The isolated live Worker delivered article.returned, review.resubmitted, article.approved, and article.published account notices and Email. Each observed account-notice ID matched a Sent delivery in the administration API; SMTP delivery was verified against Mailpit. These checks reuse the existing notification foundation and do not claim another SMTP outage/replay run for this slice.
+
+## Delivery Checkpoint: 2026-11-16
+
+Review and first publication are captured in pushed commit 0708b94 on prototype/stage-2-news-review, following the pushed drafting/CSS checkpoint b38ed07. The owner requested this progress checkpoint and push. Current completion evidence is recorded above; #11 remains In Progress for integration/final review. Published changes and withdrawal (#12), public delivery (#13), and final Stage 2 acceptance (#14) remain outstanding.

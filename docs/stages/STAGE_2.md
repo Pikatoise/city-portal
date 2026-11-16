@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Review and first publication are implemented locally; published changes and public delivery remain outstanding. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
+Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Review and first publication are implemented and pushed in 0708b94; published changes and public delivery remain outstanding. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -227,7 +227,7 @@ The category/search bar also includes an All News button that opens the complete
 
 The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. Following homepage review, production selection and ordering of its two category blocks remain open; Transport and Culture are prototype examples. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
 
-The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#11 are in progress; #12-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 is pushed; review/first-publication implementation is local.
+The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#11 are in progress; #12-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -282,13 +282,13 @@ Stage 1 acceptance remains closed. Concrete prototype review and Stage 2 complet
 | Shared-template moderation and library | API/UI, decisions/history, independent flags, and mandatory archival implemented locally. |
 | Template workflow notifications | Implemented: independent account/Email preferences, atomic Outbox handoff, current-reference author fanout, expiry/replay, read/delete UI, and durable deduplication. Issue #9 stays In Progress for News integration/final review. |
 | News drafts/taxonomy and validation | Implemented and verified API/UI in #10; see [NEWS.md](../NEWS.md). |
-| Review and first publication | Implemented locally in #11 with production author/reviewer UI and transactional notifications. |
+| Review and first publication | Implemented, verified, and pushed in 0708b94 under #11; final stage review remains pending. |
 | Published revisions, public SSR/search | Outstanding; #12-#13 remain Todo. |
 | Final stage acceptance and capacity verification | Outstanding; #14 remains Todo. |
 
 Latest verification: Release backend regression 134 passed, 0 failed, 0 skipped; frontend regression 70 passed. News checks cover drafts, private submitted snapshots, resubmission, assignment/role/version races, atomic notification rollback, review Media audiences, approval/explicit Save/publication, and publication versus deletion. Real HTTPS desktop/mobile workflows passed through first publication. Notification/storage evidence remains in MEDIA.md; the current requirement-to-test matrix and exact verification boundaries are in NEWS.md. Earlier independent reviews covered drafting; review/first-publication received an inline code and test-quality review. These are distinct runs, not additive totals.
 
-Next: implement published changes and withdrawal in #12, preserving current public content while an author proposal awaits approval. Direct corrections must supersede existing working content with retained text/reason; withdrawal must immediately close article and Media public access and route author-only corrections back through approval. Public SSR/discovery remains #13. The current contract and delivered review boundary are in NEWS.md. Drafting/CSS checkpoint b38ed07 is pushed; subsequent review/first-publication work is local. Final owner review remains deferred until the complete stage result. Stage 2 is open.
+Next: implement published changes and withdrawal in #12, preserving current public content while an author proposal awaits approval. Direct corrections must supersede existing working content with retained text/reason; withdrawal must immediately close article and Media public access and route author-only corrections back through approval. Public SSR/discovery remains #13. The current contract and delivered review boundary are in NEWS.md. Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed. Final owner review remains deferred until the complete stage result. Stage 2 is open.
 
 ### Implementation Notes
 
@@ -302,3 +302,7 @@ The owner requested a unified UI style across the application and prototypes. Sh
 - Verification: early prototype checks remain in PROTOTYPE.md. Current Media and production drafting/server/browser evidence is recorded in MEDIA.md and NEWS.md. Review/publication/public SSR acceptance and final stage acceptance remain pending.
 - Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Review/publication references and News notifications are implemented in #11; withdrawal and public delivery integration remain #12-#13.
 - Owner acceptance: not requested; the stage remains open.
+
+### Push Checkpoint: 2026-11-16
+
+The owner requested recording progress and pushing the current branch. Review and first publication are delivered in 0708b94, with the verification evidence above. Issues #7-#11 remain In Progress pending integration and final owner review; #12-#14 remain Todo. No Stage 2 acceptance or public news delivery is claimed. The next implementation task is #12.
