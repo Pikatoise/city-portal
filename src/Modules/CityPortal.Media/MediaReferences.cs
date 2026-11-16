@@ -7,7 +7,7 @@ namespace CityPortal.Media;
 /// <summary>News calls this operation inside its authorized publication/revision transaction.</summary>
 public sealed class MediaReferences
 {
-    public async Task ReplaceAsync(DbConnection connection, DbTransaction transaction, Guid revisionId, Guid authorId, Guid? reviewerId, bool submitted, bool isPublic, IReadOnlyCollection<Guid> imageIds, CancellationToken cancellationToken, Guid? inheritedRevisionId = null, bool isCurrent = true)
+    public async Task ReplaceAsync(DbConnection connection, DbTransaction transaction, Guid revisionId, Guid authorId, Guid? reviewerId, bool submitted, bool isPublic, IReadOnlyCollection<Guid> imageIds, CancellationToken cancellationToken, Guid? inheritedRevisionId = null, bool isCurrent = true, Guid? selectionOwnerId = null)
     {
         Guid[] ids = imageIds.Distinct().Order().ToArray();
         if (ids.Length > 20 || revisionId == Guid.Empty || authorId == Guid.Empty || isPublic && (!submitted || !isCurrent))
@@ -25,7 +25,7 @@ public sealed class MediaReferences
                 throw MediaDatabase.Conflict();
             // News validates that the inherited revision belongs to this same article before calling.
             bool retained = existing.Any(reference => reference.ImageId == id) || inheritedRevisionId.HasValue && await context.References.AnyAsync(reference => reference.RevisionId == inheritedRevisionId && reference.AuthorId == authorId && reference.ImageId == id, cancellationToken);
-            bool selectable = image.OwnerId == authorId || await context.Templates.AnyAsync(template => template.ImageId == id && template.Approval == "Approved" && !template.Archived && !template.Blocked, cancellationToken);
+            bool selectable = image.OwnerId == (selectionOwnerId ?? authorId) || await context.Templates.AnyAsync(template => template.ImageId == id && template.Approval == "Approved" && !template.Archived && !template.Blocked, cancellationToken);
             bool blocked = await context.Templates.AnyAsync(template => template.ImageId == id && template.Blocked, cancellationToken);
             if (!retained && (!selectable || blocked))
                 throw MediaDatabase.Missing();

@@ -15,7 +15,12 @@ import { actOnArticleReview } from '../api/fn/editorial/act-on-article-review';
 import { listArticleReviewQueue } from '../api/fn/editorial/list-article-review-queue';
 import { getArticleReview } from '../api/fn/editorial/get-article-review';
 import { getArticleHistory } from '../api/fn/editorial/get-article-history';
+import { getPublicArticle } from '../api/fn/news/get-public-article';
 import { ArticleContent } from '../api/models/article-content';
+import { correctPublishedArticle } from '../api/fn/editorial/correct-published-article';
+import { createArticleWorkingVersion } from '../api/fn/editorial/create-article-working-version';
+import { getEditorialPublication } from '../api/fn/editorial/get-editorial-publication';
+import { listEditorialPublications } from '../api/fn/editorial/list-editorial-publications';
 import { TaxonomyResponse } from '../api/models/taxonomy-response';
 import { errorMessage } from '../account/account-api';
 export type { ArticleContent } from '../api/models/article-content';
@@ -45,6 +50,9 @@ export class NewsApi {
   get(id: string) {
     return this.request(getOwnArticle(this.http, '', { id }));
   }
+  publicArticle(id: string) {
+    return this.request(getPublicArticle(this.http, '', { id }));
+  }
   create() {
     return this.write((token) => createArticleDraft(this.http, '', { 'X-CSRF-TOKEN': token }));
   }
@@ -59,6 +67,14 @@ export class NewsApi {
     );
   }
   act(id: string, version: number | string, operation: string, reason = '') {
+    if (operation === 'working-version')
+      return this.write((token) =>
+        createArticleWorkingVersion(this.http, '', {
+          id,
+          body: { version },
+          'X-CSRF-TOKEN': token,
+        }),
+      );
     return this.write((token) =>
       actOnArticleReview(this.http, '', {
         id,
@@ -76,6 +92,21 @@ export class NewsApi {
   }
   history(id: string, page = 1) {
     return this.request(getArticleHistory(this.http, '', { id, page, pageSize: 20 }));
+  }
+  publication(id: string) {
+    return this.request(getEditorialPublication(this.http, '', { id }));
+  }
+  publications(page = 1) {
+    return this.request(listEditorialPublications(this.http, '', { page, pageSize: 20 }));
+  }
+  correct(id: string, version: number | string, content: ArticleContent, reason: string) {
+    return this.write((token) =>
+      correctPublishedArticle(this.http, '', {
+        id,
+        body: { version, content, reason },
+        'X-CSRF-TOKEN': token,
+      }),
+    );
   }
   async taxonomy(kind: string): Promise<TaxonomyResponse[]> {
     const entries: TaxonomyResponse[] = [];

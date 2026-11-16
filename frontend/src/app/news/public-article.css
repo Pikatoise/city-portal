@@ -1,0 +1,33 @@
+.public-article {
+  max-width: 820px;
+  margin: auto;
+  padding: 2rem 1.25rem;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.1;
+}
+.summary {
+  font-size: 1.25rem;
+  line-height: 1.6;
+}
+figure {
+  margin: 2rem 0;
+}
+img,
+:host ::ng-deep .body-copy img {
+  max-width: 100%;
+  height: auto;
+}
+.body-copy {
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+figcaption,
+footer {
+  color: var(--muted, #555);
+}
+footer {
+  margin-top: 2rem;
+  border-top: 1px solid var(--line, #ddd);
+}

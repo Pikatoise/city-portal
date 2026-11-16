@@ -47,6 +47,14 @@ export type { ForgotPassword$Params as ForgotPassword$Params } from './fn/auth/f
 export { forgotPassword as forgotPassword } from './fn/auth/forgot-password';
 export type { ResetPassword$Params as ResetPassword$Params } from './fn/auth/reset-password';
 export { resetPassword as resetPassword } from './fn/auth/reset-password';
+export type { ListEditorialPublications$Params as ListEditorialPublications$Params } from './fn/editorial/list-editorial-publications';
+export { listEditorialPublications as listEditorialPublications } from './fn/editorial/list-editorial-publications';
+export type { GetEditorialPublication$Params as GetEditorialPublication$Params } from './fn/editorial/get-editorial-publication';
+export { getEditorialPublication as getEditorialPublication } from './fn/editorial/get-editorial-publication';
+export type { CreateArticleWorkingVersion$Params as CreateArticleWorkingVersion$Params } from './fn/editorial/create-article-working-version';
+export { createArticleWorkingVersion as createArticleWorkingVersion } from './fn/editorial/create-article-working-version';
+export type { CorrectPublishedArticle$Params as CorrectPublishedArticle$Params } from './fn/editorial/correct-published-article';
+export { correctPublishedArticle as correctPublishedArticle } from './fn/editorial/correct-published-article';
 export type { ListArticleReviewQueue$Params as ListArticleReviewQueue$Params } from './fn/editorial/list-article-review-queue';
 export { listArticleReviewQueue as listArticleReviewQueue } from './fn/editorial/list-article-review-queue';
 export type { GetArticleReview$Params as GetArticleReview$Params } from './fn/editorial/get-article-review';
@@ -101,5 +109,7 @@ export type { TemplateRemovalQueue$Params as TemplateRemovalQueue$Params } from 
 export { templateRemovalQueue as templateRemovalQueue } from './fn/media/template-removal-queue';
 export type { ResolveTemplateRemoval$Params as ResolveTemplateRemoval$Params } from './fn/media/resolve-template-removal';
 export { resolveTemplateRemoval as resolveTemplateRemoval } from './fn/media/resolve-template-removal';
+export type { GetPublicArticle$Params as GetPublicArticle$Params } from './fn/news/get-public-article';
+export { getPublicArticle as getPublicArticle } from './fn/news/get-public-article';
 export type { GetSystemInfo$Params as GetSystemInfo$Params } from './fn/system/get-system-info';
 export { getSystemInfo as getSystemInfo } from './fn/system/get-system-info';

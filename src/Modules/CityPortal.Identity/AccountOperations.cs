@@ -17,6 +17,9 @@ public sealed class AccountOperations
         _context.Users.AsNoTracking().Where(account => accountIds.Contains(account.Id) && account.EmailConfirmed && account.Email != null)
             .Select(account => new WorkflowRecipient(account.Id, account.Email!)).ToArrayAsync(cancellationToken);
 
+    public Task<string?> GetPublicDisplayNameAsync(Guid accountId, CancellationToken cancellationToken) =>
+        _context.Users.AsNoTracking().Where(account => account.Id == accountId).Select(account => account.DisplayName).SingleOrDefaultAsync(cancellationToken);
+
     private readonly IdentityDbContext _context;
     private readonly AccountMailQueue _mail;
     private readonly TimeProvider _time;

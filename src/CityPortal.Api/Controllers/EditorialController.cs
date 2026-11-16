@@ -28,6 +28,30 @@ public sealed class EditorialController : ControllerBase
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private Guid SessionId => Guid.Parse(User.FindFirstValue("session")!);
 
+    [HttpGet("publications", Name = "listEditorialPublications")]
+    public Task<NewsPage<ArticleSummaryResponse>> PublicationsAsync(CancellationToken cancellationToken, int page = 1, int pageSize = 20) =>
+        _reviews.PublicationsAsync(ActorId, SessionId, page, pageSize, cancellationToken);
+
+    [HttpGet("articles/{id:guid}/publication", Name = "getEditorialPublication")]
+    public Task<ArticleResponse> PublicationAsync(Guid id, CancellationToken cancellationToken) =>
+        _reviews.PublicationAsync(ActorId, SessionId, id, cancellationToken);
+
+    [HttpPost("articles/{id:guid}/working-version", Name = "createArticleWorkingVersion")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(16384)]
+    [ProducesResponseType<ArticleResponse>(200)]
+    [ProducesResponseType(409)]
+    public Task<ArticleResponse> WorkingVersionAsync(Guid id, ReviewArticleRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken) =>
+        _reviews.ActAsync(ActorId, SessionId, id, request.Version, "propose", request.Reason, cancellationToken);
+
+    [HttpPost("articles/{id:guid}/corrections", Name = "correctPublishedArticle")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4 * 1024 * 1024)]
+    [ProducesResponseType<ArticleResponse>(200)]
+    [ProducesResponseType(409)]
+    public Task<ArticleResponse> CorrectAsync(Guid id, CorrectArticleRequest request, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrfToken, CancellationToken cancellationToken) =>
+        _reviews.CorrectAsync(ActorId, SessionId, id, request.Version, request.Content, request.Reason, cancellationToken);
+
     [HttpGet("review-queue", Name = "listArticleReviewQueue")]
     public Task<NewsPage<ReviewSummaryResponse>> ReviewQueueAsync(CancellationToken cancellationToken, bool mine = false, int page = 1, int pageSize = 20) =>
         _reviews.QueueAsync(ActorId, SessionId, mine, page, pageSize, cancellationToken);

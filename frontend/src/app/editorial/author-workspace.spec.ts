@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountApi } from '../account/account-api';
 import { MediaApi } from '../media/media-api';
@@ -37,6 +37,8 @@ describe('Author draft persistence', () => {
     taxonomy: vi.fn(),
     act: vi.fn(),
     history: vi.fn(),
+    publication: vi.fn(),
+    correct: vi.fn(),
   };
   const account = { profile: vi.fn() };
   beforeEach(() => {
@@ -279,6 +281,84 @@ describe('Author draft persistence', () => {
     expect(component.allowed()).toBe(false);
     expect(api.list).not.toHaveBeenCalled();
     expect(api.taxonomy).not.toHaveBeenCalled();
+    component.ngOnDestroy();
+  });
+
+  it('creates a separate published proposal and allows draft autosave without deleting withdrawn material', async () => {
+    const fixture = TestBed.createComponent(AuthorWorkspace);
+    const component = fixture.componentInstance;
+    await component.initialize();
+    api.get.mockResolvedValue({ ...article, state: 'Published', publicationState: 'Published' });
+    await component.open(article.id);
+    expect(component.editable()).toBe(false);
+    api.act.mockResolvedValue({ ...article, version: 2, publicationState: 'Published' });
+    await component.workflow('working-version');
+    expect(api.act).toHaveBeenCalledWith(article.id, 1, 'working-version', '');
+    expect(component.editable()).toBe(true);
+    component.form().title = 'Private replacement';
+    component.changed();
+    api.save.mockResolvedValue({ ...article, version: 3, publicationState: 'Published' });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(api.save).toHaveBeenCalledWith(
+      article.id,
+      2,
+      expect.objectContaining({ title: 'Private replacement' }),
+    );
+    component.article.set({ ...article, publicationState: 'Withdrawn' });
+    fixture.detectChanges();
+    const deleteButton = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (button: unknown) => (button as HTMLButtonElement).textContent?.includes('Удалить'),
+    ) as HTMLButtonElement;
+    expect(deleteButton?.disabled ?? true).toBe(true);
+    component.ngOnDestroy();
+  });
+
+  it('requires an explicit reasoned correction save without autosave or author-only API requests', async () => {
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        snapshot: { data: { correction: true }, paramMap: { get: () => article.id } },
+      },
+    });
+    account.profile.mockResolvedValue({
+      displayName: 'Editor',
+      emailConfirmed: true,
+      roles: ['Editor'],
+    });
+    api.publication.mockResolvedValue({
+      ...article,
+      state: 'Published',
+      publicationState: 'Published',
+    });
+    const fixture = TestBed.createComponent(AuthorWorkspace);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(0);
+    const component = fixture.componentInstance;
+    expect(component.allowed()).toBe(true);
+    expect(api.list).not.toHaveBeenCalled();
+    expect(api.get).not.toHaveBeenCalled();
+    component.form().title = 'Editor correction';
+    component.changed();
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(api.correct).not.toHaveBeenCalled();
+    await component.save();
+    expect(component.error()).toContain('причину');
+    component.changeDescription = 'Verified correction';
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.correct.mockResolvedValue({
+      ...article,
+      version: 2,
+      state: 'Published',
+      publicationState: 'Published',
+    });
+    await component.save();
+    expect(api.correct).toHaveBeenCalledWith(
+      article.id,
+      1,
+      expect.objectContaining({ title: 'Editor correction' }),
+      'Verified correction',
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    expect(component.notice()).toContain('Исправления опубликованы');
     component.ngOnDestroy();
   });
 });

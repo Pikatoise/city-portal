@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Editor, JSONContent } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { AccountApi, AccountProfile } from '../account/account-api';
@@ -66,18 +66,25 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     this.host.nativeElement.addEventListener('error', this.imageError, true);
   }
   private readonly api = inject(NewsApi);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  readonly correctionMode = this.route.snapshot.data['correction'] === true;
   private readonly accountApi = inject(AccountApi);
   private readonly media = inject(MediaApi);
   protected readonly clock = inject(CityClock);
   readonly profile = signal<AccountProfile | null>(null);
   readonly allowed = computed(
-    () => !!this.profile()?.emailConfirmed && !!this.profile()?.roles.includes('Author'),
+    () =>
+      !!this.profile()?.emailConfirmed &&
+      (this.correctionMode
+        ? !!this.profile()?.roles.some((role) => role === 'Editor' || role === 'Administrator')
+        : !!this.profile()?.roles.includes('Author')),
   );
   readonly article = signal<ArticleResponse | null>(null);
-  readonly editable = computed(
-    () =>
-      ['Draft', 'Approved'].includes(this.article()?.state ?? '') &&
-      this.article()?.publicationState !== 'Published',
+  readonly editable = computed(() =>
+    this.correctionMode
+      ? this.article()?.publicationState === 'Published'
+      : ['Draft', 'Approved'].includes(this.article()?.state ?? ''),
   );
   readonly history = signal<ArticleHistoryResponse[]>([]);
   readonly historyPage = signal(1);
@@ -235,7 +242,8 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
       !this.failed &&
       !this.busy() &&
       this.dirty() &&
-      this.article()?.state === 'Draft'
+      this.article()?.state === 'Draft' &&
+      !this.correctionMode
     )
       this.timer = setTimeout(
         () => void this.save(),
@@ -262,8 +270,15 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
         ]);
         this.categories.set(categories);
         this.tags.set(tags);
-        await this.load();
-      } else this.error.set('Для работы со статьями нужна роль автора и подтверждённый Email.');
+        if (this.correctionMode)
+          this.accept(await this.api.publication(this.route.snapshot.paramMap.get('id')!));
+        else await this.load();
+      } else
+        this.error.set(
+          this.correctionMode
+            ? 'Для исправления публикаций нужны права редактора и подтверждённый Email.'
+            : 'Для работы со статьями нужна роль автора и подтверждённый Email.',
+        );
     } catch (error) {
       this.error.set(newsError(error));
     } finally {
@@ -331,24 +346,39 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     this.cancelTimer();
     this.dirty.set(false);
     this.article.set(null);
-    await this.load();
+    if (this.correctionMode) await this.router.navigateByUrl('/staff/publications');
+    else await this.load();
   }
   save(): Promise<void> {
     this.cancelTimer();
     if (this.savePromise) return this.savePromise;
     const article = this.article();
     if (!article || !this.editable() || this.conflict()) return Promise.resolve();
+    if (this.correctionMode && !this.changeDescription.trim()) {
+      this.error.set('Укажи причину редакторского исправления.');
+      return Promise.resolve();
+    }
+    if (
+      this.correctionMode &&
+      !window.confirm(
+        'Опубликовать исправления? Рабочая версия автора будет закрыта с сохранением текста.',
+      )
+    )
+      return Promise.resolve();
     this.saving.set(true);
     this.error.set('');
     this.failed = false;
     const generation = this.edits;
     const snapshot = structuredClone(this.form());
-    this.savePromise = this.api
-      .save(article.id, article.version, snapshot)
+    this.savePromise = (
+      this.correctionMode
+        ? this.api.correct(article.id, article.version, snapshot, this.changeDescription)
+        : this.api.save(article.id, article.version, snapshot)
+    )
       .then((saved) => {
         this.article.set(saved);
         this.editor?.setEditable(this.editable(), false);
-        if (this.edits !== generation && saved.state !== 'Draft') {
+        if (this.edits !== generation && (saved.state !== 'Draft' || this.correctionMode)) {
           this.copyBuffer.set(JSON.stringify(this.form(), null, 2));
           this.conflict.set(true);
         }
@@ -356,7 +386,13 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
           this.form.set(draft(saved.content));
           this.dirty.set(false);
         }
-        this.notice.set(this.edits === generation ? 'Черновик сохранён.' : '');
+        this.notice.set(
+          this.edits === generation
+            ? this.correctionMode
+              ? 'Исправления опубликованы.'
+              : 'Черновик сохранён.'
+            : '',
+        );
       })
       .catch((error: unknown) => {
         this.failed = true;
@@ -394,6 +430,16 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
       this.editor?.setEditable(this.editable(), false);
     }
   }
+  async openPublic(): Promise<void> {
+    const article = this.article();
+    if (!article || !this.canLeave()) return;
+    try {
+      const publication = await this.api.publicArticle(article.id);
+      await this.router.navigateByUrl(publication.canonicalUrl);
+    } catch (error) {
+      this.error.set(newsError(error));
+    }
+  }
   async selectTab(id: string): Promise<void> {
     this.tab.set(id);
     if (id === 'history') await this.loadHistory();
@@ -421,7 +467,9 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     const generation = this.edits;
     this.busy.set(true);
     try {
-      const current = await this.api.get(article.id);
+      const current = await (this.correctionMode
+        ? this.api.publication(article.id)
+        : this.api.get(article.id));
       if (generation !== this.edits) {
         this.copyBuffer.set(JSON.stringify(this.form(), null, 2));
         this.error.set(

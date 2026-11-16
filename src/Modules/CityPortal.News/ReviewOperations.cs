@@ -42,6 +42,74 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         return new NewsPage<ReviewSummaryResponse>(items, total, page, pageSize);
     }
 
+    public async Task<NewsPage<ArticleSummaryResponse>> PublicationsAsync(Guid actorId, Guid sessionId, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        await _authorization.RequireAsync(actorId, sessionId, ["Editor", "Administrator"], cancellationToken);
+        NewsDatabase.Page(page, pageSize);
+        var query = from article in _context.Articles.AsNoTracking()
+                    join revision in _context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id
+                    where article.PublicationState == "Published" && article.DeletedAtUtc == null
+                    select new { Article = article, Revision = revision };
+        int total = await query.CountAsync(cancellationToken);
+        ArticleSummaryResponse[] items = await query.OrderByDescending(item => item.Article.FirstPublishedAtUtc).ThenBy(item => item.Article.Id)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(item => new ArticleSummaryResponse(item.Article.Id, item.Article.Version, item.Revision.Title, "Published", item.Article.UpdatedAtUtc)).ToArrayAsync(cancellationToken);
+        return new NewsPage<ArticleSummaryResponse>(items, total, page, pageSize);
+    }
+
+    public async Task<ArticleResponse> PublicationAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
+    {
+        await _authorization.RequireAsync(actorId, sessionId, ["Editor", "Administrator"], cancellationToken);
+        var row = await (from article in _context.Articles.AsNoTracking()
+                         join revision in _context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id
+                         where article.Id == id && article.DeletedAtUtc == null && article.PublicationState == "Published"
+                         select new { Article = article, Revision = revision }).SingleOrDefaultAsync(cancellationToken)
+            ?? throw NewsDatabase.Missing();
+        return ArticleOperations.Response(row.Article, row.Revision);
+    }
+
+    public async Task<ArticleResponse> CorrectAsync(Guid actorId, Guid sessionId, Guid id, long version, ArticleContent content, string? reason, CancellationToken cancellationToken)
+    {
+        ValidatedArticleContent validated = ArticleDocuments.Validate(content, requireComplete: true);
+        string feedback = ArticleDocuments.Text(reason, 2000, "reason");
+        if (feedback.Length == 0)
+            throw NewsDatabase.Invalid("reason", "An editorial correction reason is required.");
+        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, ["Editor", "Administrator"], cancellationToken);
+        await using NewsDbContext context = await NewsDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        NewsArticle article = await LockAsync(context, id, version, scope.Actor, "correct", cancellationToken);
+        if (article.PublicationState != "Published" || !article.PublishedRevisionId.HasValue)
+            throw NewsDatabase.Conflict();
+        ArticleRevision published = await context.Revisions.SingleAsync(item => item.Id == article.PublishedRevisionId && item.ArticleId == id, cancellationToken);
+        await ArticleOperations.ValidateTaxonomyAsync(context, validated.Content, JsonSerializer.Deserialize<ArticleContent>(published.ContentJson)!, cancellationToken);
+        ArticleRevision working = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
+        article.Version++;
+        article.UpdatedAtUtc = _time.GetUtcNow();
+        bool replaceWorking = working.Id == published.Id || working.State is "Draft" or "InReview" or "Approved";
+        if (working.Id != published.Id && replaceWorking)
+        {
+            working.Retained = true;
+            working.State = "Superseded";
+            await RecordAsync(context, article, working, actorId, "supersede", feedback, scope.Connection, scope.Transaction, article.ReviewerId, cancellationToken);
+        }
+        var correction = new ArticleRevision { Id = Guid.NewGuid(), ArticleId = id, State = "Published", Retained = true, SubmittedAtUtc = article.UpdatedAtUtc, CreatedAtUtc = article.UpdatedAtUtc };
+        ArticleOperations.Apply(correction, validated);
+        context.Revisions.Add(correction);
+        article.PublishedRevisionId = correction.Id;
+        if (replaceWorking)
+        {
+            article.WorkingRevisionId = correction.Id;
+            article.LastSubmittedRevisionId = correction.Id;
+        }
+        await _media.ReplaceAsync(scope.Connection, scope.Transaction, correction.Id, article.AuthorId, article.ReviewerId, true, true,
+            validated.ImageIds, cancellationToken, inheritedRevisionId: published.Id, selectionOwnerId: actorId);
+        await RecordAsync(context, article, correction, actorId, "correct", feedback, scope.Connection, scope.Transaction, article.ReviewerId, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        await RefreshMediaAsync(context, article, scope.Connection, scope.Transaction, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        await FlushAfterCommitAsync();
+        return ArticleOperations.Response(article, correction);
+    }
+
     public async Task<ReviewResponse> GetAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
     {
         AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken);
@@ -156,7 +224,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
         await FlushAfterCommitAsync();
-        return ArticleOperations.Response(article, action == "withdraw" && actorId != article.AuthorId ? snapshot : working);
+        return ArticleOperations.Response(article, action == "withdraw" && !(actorId == article.AuthorId && scope.Actor.Roles.Contains("Author")) ? snapshot : working);
     }
 
     internal async Task<ArticleResponse> SaveApprovedAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, ArticleContent content, AuthorizedAccountScope scope, CancellationToken cancellationToken)
@@ -222,7 +290,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
     {
         var entry = new ArticleHistory { Id = Guid.NewGuid(), ArticleId = article.Id, RevisionId = revision.Id, ActorId = actorId, Action = action, Reason = reason, ReviewerId = action is "release" or "roles-released" ? previousReviewer : article.ReviewerId, Version = article.Version, CreatedAtUtc = _time.GetUtcNow() };
         context.History.Add(entry);
-        string? authorType = action switch { "return" => "article.returned", "reject" => "article.rejected", "approve" => "article.approved", "publish" => "article.published", "withdraw" => "article.withdrawn", _ => null };
+        string? authorType = action switch { "return" => "article.returned", "reject" => "article.rejected", "approve" => "article.approved", "publish" => "article.published", "withdraw" => "article.withdrawn", "correct" => "article.corrected", "supersede" => "article.superseded", _ => null };
         if (authorType is not null)
             await NotifyAsync(entry, authorType, [article.AuthorId], connection, transaction, cancellationToken);
         string? editorType = action switch { "submit" => "review.resubmitted", "recall" => "review.withdrawn", "delete" => "review.deleted", "takeover" or "release" or "roles-released" => "review.transferred", _ => null };

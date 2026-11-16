@@ -13,6 +13,20 @@ export const routes: Routes = [
         canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
       },
       {
+        path: 'staff/publications',
+        loadComponent: () => import('./editorial/publications').then((m) => m.Publications),
+      },
+      {
+        path: 'staff/articles/:id',
+        data: { correction: true },
+        loadComponent: () => import('./editorial/author-workspace').then((m) => m.AuthorWorkspace),
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
+        path: 'news/:id/:slug',
+        loadComponent: () => import('./news/public-article').then((m) => m.PublicArticle),
+      },
+      {
         path: 'staff/taxonomy',
         loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
       },

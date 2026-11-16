@@ -1,6 +1,7 @@
 <section class="review-workspace" aria-labelledby="review-title">
   <nav class="staff-nav">
-    <a routerLink="/account">Личный кабинет</a><a routerLink="/staff/taxonomy">Категории и теги</a>
+    <a routerLink="/staff/publications">Опубликованные статьи</a
+    ><a routerLink="/account">Личный кабинет</a><a routerLink="/staff/taxonomy">Категории и теги</a>
   </nav>
   <h1 id="review-title">Редакция</h1>
   @if (error()) {
@@ -129,7 +130,7 @@
           SEO-описание:
           {{ review.article.content.seoDescription || review.article.content.summary }}
         </p>
-        @if (!review.deleted && review.publicationState === 'NeverPublished') {
+        @if (!review.deleted) {
           @if (review.workingState === 'InReview' && review.reviewerId === profile()?.id) {
             <label
               >Обратная связь или причина<textarea

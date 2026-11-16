@@ -912,6 +912,203 @@
         }
       }
     },
+    "/api/editorial/publications": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "listEditorialPublications",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsPageOfArticleSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/publication": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "getEditorialPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/working-version": {
+      "post": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "createArticleWorkingVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/corrections": {
+      "post": {
+        "tags": [
+          "Editorial"
+        ],
+        "operationId": "correctPublishedArticle",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/editorial/review-queue": {
       "get": {
         "tags": [
@@ -1077,7 +1274,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "^(submit|recall|claim|release|takeover|return|reject|approve|publish)$",
+              "pattern": "^(submit|recall|claim|release|takeover|return|reject|approve|publish|propose|withdraw)$",
               "type": "string"
             }
           },
@@ -2153,6 +2350,54 @@
         }
       }
     },
+    "/api/news/articles/{id}": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "operationId": "getPublicArticle",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicArticleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/system/info": {
       "get": {
         "tags": [
@@ -2738,6 +2983,32 @@
             "type": "string"
           }
         }
+      },
+      "CorrectArticleRequest": {
+        "required": [
+          "content",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ArticleContent"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "description": "Publish an editorial correction and retain any superseded author proposal."
       },
       "CreateTemplateRequest": {
         "required": [
@@ -3481,6 +3752,53 @@
           }
         }
       },
+      "PublicArticleResponse": {
+        "required": [
+          "id",
+          "slug",
+          "canonicalUrl",
+          "requestedSlugIsAlias",
+          "content",
+          "previewHtml",
+          "authorDisplayName",
+          "firstPublishedAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "canonicalUrl": {
+            "type": "string"
+          },
+          "requestedSlugIsAlias": {
+            "type": "boolean"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ArticleContent"
+          },
+          "previewHtml": {
+            "type": "string"
+          },
+          "authorDisplayName": {
+            "type": "string"
+          },
+          "firstPublishedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Only the current publication, with no private revision identifiers or workflow state."
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -4066,6 +4384,9 @@
     },
     {
       "name": "Media"
+    },
+    {
+      "name": "News"
     },
     {
       "name": "System"

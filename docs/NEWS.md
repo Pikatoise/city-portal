@@ -1,10 +1,10 @@
-# News Drafting, Review, and First Publication
+# News Drafting, Review, and Published Changes
 
 ## Delivered Boundary
 
 Issue #10 implements the production author workspace at `/account/articles` and editorial category/tag management at `/staff/taxonomy`. Authors create, reopen, save, preview, and delete incomplete drafts; choose own Ready uploads or approved shared templates; and edit structured body, sources, contextual image text, taxonomy, and SEO fields. The five sections follow the accepted Text/Images/Parameters/Preview/History layout. Review actions now use production API operations rather than simulated state.
 
-Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Published corrections, withdrawal/republication, public article delivery, and SSR/search remain #12-#13. Final owner acceptance remains at the complete Stage 2 result.
+Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Public discovery/search/featured/related delivery remains #13. Final owner acceptance remains at the complete Stage 2 result.
 
 ## Persistence and Permissions
 
@@ -90,18 +90,18 @@ The UI mode change uses Tiptap's non-emitting `setEditable` form: changing permi
 
 The isolated live Worker delivered article.returned, review.resubmitted, article.approved, and article.published account notices and Email. Each observed account-notice ID matched a Sent delivery in the administration API; SMTP delivery was verified against Mailpit. These checks reuse the existing notification foundation and do not claim another SMTP outage/replay run for this slice.
 
-## Delivery Checkpoint: 2026-11-16
+## Historical Delivery Checkpoint: 2026-11-16 (#11)
 
 Review and first publication are captured in pushed commit 0708b94 on prototype/stage-2-news-review, following the pushed drafting/CSS checkpoint b38ed07. The owner requested this progress checkpoint and push. Current completion evidence is recorded above; #11 remains In Progress for integration/final review. Published changes and withdrawal (#12), public delivery (#13), and final Stage 2 acceptance (#14) remain outstanding.
 
 
-## Issue #12: Initial Server Slice (2026-11-16)
+## Historical Issue #12 Initial Server Slice (2026-11-16)
 
-Implementation is in progress; this checkpoint delivers the initial server slice. The versioned review-action route now accepts `propose` (owning Author only) and `withdraw` (Editor/Administrator, required reason). Proposals clone the current publication into a separate private draft. Review and approved explicit Save can operate on replacements; replacement publication preserves the first-publication timestamp. Article-row locking and expected versions serialize these transitions.
+At this historical checkpoint, implementation was in progress and delivered only the initial server slice. The versioned review-action route now accepts `propose` (owning Author only) and `withdraw` (Editor/Administrator, required reason). Proposals clone the current publication into a separate private draft. Review and approved explicit Save can operate on replacements; replacement publication preserves the first-publication timestamp. Article-row locking and expected versions serialize these transitions.
 
 Withdrawal retains the current published pointer for history, switches visibility to Withdrawn, and clones existing working content into an author-only draft with review/approval reset. Public Media references are disabled in the same transaction; other current publications may still grant access. The withdrawal event queues the existing generic author notification atomically. A non-owner editor receives the preceding published snapshot in the action response, never the private proposal. Withdrawal history references the published snapshot so the reason remains visible without disclosing unsent content.
 
-This is an initial API slice, not completed issue #12. Direct editorial corrections/supersession, URL aliases and sanitized withdrawn delivery, production UI integration, generated-contract verification, and the full concurrency/rollback/browser matrix remain outstanding. Public SSR/discovery remains #13. No owner acceptance is claimed.
+At that initial checkpoint, issue #12 was not complete. Direct editorial corrections/supersession, URL aliases and sanitized withdrawn delivery, production UI integration, generated-contract verification, and the full concurrency/rollback/browser matrix were outstanding. This initial checkpoint did not claim owner acceptance; the subsequent implementation and evidence follow below.
 
 
 Initial-slice verification: all 14 News integration tests passed in Release (TRX: 14 passed, zero failed/skipped); solution formatting and `git diff --check` passed. This is scoped verification, not a full backend/frontend regression or live browser acceptance.
@@ -111,3 +111,70 @@ Initial-slice verification: all 14 News integration tests passed in Release (TRX
 | Separate proposals, single active proposal, permissions, stale writes, replacement publication and stable first-publication time | `Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync` |
 | Reason/role enforcement, withdrawal Media denial, reset approval, author-only correction and reviewed republication | `Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync` |
 | Another editor cannot read unsent proposal text through withdrawal response/history; owner retains it | `Published_WithdrawalByAnotherEditorDoesNotExposePrivateProposalAsync` |
+
+
+## Issue #12: Published Changes and Withdrawal
+
+The API and UI implement the contracts below. Final verification evidence is recorded in the delivery section below; Stage 2 owner acceptance remains open.
+
+### Revision and Correction Contracts
+
+The author workspace remains `/account/articles`. Effective editors use `/staff/publications` for published materials and `/staff/articles/{id}` for explicit direct corrections. Public readers use `/news/{id}/{slug}`. The correction workspace reuses the structured editor, requires a reason, disables autosave, and preserves local edits after a stale-version conflict. These routes use the generated API client and the existing confirmed-role/CSRF boundaries.
+
+`POST /api/editorial/articles/{id}/working-version` creates an own-author draft from the current public revision with the expected article version. The initial `/propose` route remains compatible. The current published revision stays unchanged through private saves, submission, review, and approval; only publication replaces it. Replacement publication preserves first-publication time.
+
+Effective editors use `/api/editorial/publications` and `/api/editorial/articles/{id}/publication` to read only current published content. `POST /api/editorial/articles/{id}/corrections` accepts expected version, complete content, and a required reason. It validates taxonomy and Media, creates a new retained publication, preserves original authorship, supersedes unfinished Draft/InReview/Approved proposals with retained text and reason, and queues the corrected/superseded notices in one authorized transaction. Closed snapshots cannot be published. FinalRejected is terminal and is not rewritten into Superseded by a direct correction.
+
+The owning author retains private superseded text in history. Staff history access still follows assignment/current roles and excludes unsent content. Correction does not grant the correcting editor access to private proposals. A subsequent permitted proposal starts from the current publication. Withdrawal preserves existing working text in a new private author draft, resets review/approval, disables public Media grants atomically, and requires fresh review/approval before republication. Editor/Administrator alone cannot prepare withdrawn corrections.
+
+### Public URL and Visibility Contracts
+
+`GET /api/news/articles/{id}` optionally accepts `slug` and returns only the current publication, canonical URL, and an alias indicator. Actual retained Published revision titles form the alias ledger; draft and merely approved titles never form public URLs. Slugs normalize the public title and use the stable article ID at `/news/{id}/{slug}`. Unknown slugs are unavailable; real previous slugs redirect directly to the current canonical URL through SSR. This uses existing retained data and requires no schema migration.
+
+Public update time comes from the publication/correction history of the current public snapshot. Draft saves, review, role changes, and account display-name changes do not alter it. Public credit uses Identity's current display name through an explicit owning-module operation; the response includes no Email or private workflow/revision fields.
+
+The SSR article route checks current visibility before redirecting. Current and historical URLs of withdrawn material return a no-store 404 shell without title, summary, body, author, reason, or article-specific metadata. Never-published/unknown material receives a generic 404. Public API responses, SSR pages, and alias redirects are non-cacheable; Media continues checking current references and template blocks on every read. Basic article delivery belongs to this visibility boundary; feed/search/featured/related discovery remains #13.
+
+
+### Issue #12 Requirement Evidence
+
+| Requirement | Evidence |
+| --- | --- |
+| Proposals remain separate through review; only replacement publication changes public content and preserves first-publication time | `Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync` |
+| Draft/InReview/Approved supersession retains text/reason, preserves authorship/history, notifies the author, and prevents stale publication | `Published_DirectCorrectionSupersedesWorkingTextAndPreservesCreditAsync` |
+| Complete validation, expected versions, CSRF, current roles, and denial of direct rewriting while withdrawn | `Published_CorrectionValidationPermissionsAndWithdrawnState_DoNotMutateAsync` |
+| Public current revision, real aliases, unknown/draft slug denial, current display name, stable public time, private SEO isolation, and sanitized withdrawal | `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync` |
+| Correction versus publication/withdrawal has one version winner and consistent public/Media visibility | `Published_CorrectionVersusPublicationOrWithdrawal_HasOneVersionWinnerAsync` |
+| Revoked editorial permission cannot bypass serialized correction authorization | `Published_CorrectionVersusEditorialRoleRevocation_RechecksCurrentPermissionAsync` |
+| Notification persistence failure rolls back public text, history, revision pointers, URLs, and Media grants | `Published_NotificationFailureRollsBackPublicTextHistoryAndMediaAsync` |
+| Withdrawal preserves another current publication's image grant; template blocking overrides publication access | `Published_SharedImageReferencesAndTemplateBlocks_EnforceCurrentVisibilityAsync` |
+| Ownership without a current Author role does not reveal a private proposal on withdrawal | `Published_FormerAuthorWithEditorRoleCannotReadPrivateProposalOnWithdrawalAsync` |
+| Editor Media selection uses the actor's uploads and preserves original article ownership | `Published_EditorMediaSelectionUsesActorUploadsAndRetainsOriginalOwnershipAsync` |
+| Direct correction does not reopen a finally rejected author proposal | `Published_EditorialCorrectionAfterFinalRejectionPreservesTerminalAuthorStateAsync` |
+| Withdrawal resets approval, closes anonymous image access, and requires author correction/review before republication | `Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync` |
+| Author proposals remain editable without granting deletion of withdrawn material | `creates a separate published proposal and allows draft autosave without deleting withdrawn material` |
+| Direct correction requires an explicit reasoned save and avoids autosave/author-only operations | `requires an explicit reasoned correction save without autosave or author-only API requests` |
+| Staff withdrawal validates its reason and retains input on a stale version | `requires a reason and retains withdrawal input on a stale version` |
+| Public metadata is removed on withdrawal; real aliases redirect without content; unknown content and blocked images render safely | `renders only the publication and clears its metadata when it becomes withdrawn`; `returns a revalidated SSR alias redirect without rendering article content`; `distinguishes unknown material from withdrawal and displays blocked body-image placeholders` |
+| SSR city time uses the configured absolute API origin | `loads the configured city time zone from the absolute server API root` |
+
+Independent final read-only Spec and Standards/test-quality review found no blocking findings. Earlier review findings were corrected: deletion is hidden for ever-published articles, correction-save wording is accurate, failed body images display placeholders, withdrawal removes old metadata, and CityClock uses the configured server API root. The reviewer did not execute tests or browser acceptance; those results are recorded separately.
+
+
+### Issue #12 Verification: 2026-11-16
+
+The final sequential Release solution build (`dotnet build CityPortal.slnx -c Release --no-restore --no-incremental`) passed with zero warnings/errors. The full backend run (`dotnet test CityPortal.slnx -c Release --no-build --logger "trx;LogFileName=issue12-full.trx"`) passed 151 of 151 tests, zero failed/skipped; the TRX contained 151 results, all Passed. The targeted News run passed 28 tests separately; these totals are not additive. `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync` verified explicit/repeat module migrations against real infrastructure. This slice requires no new schema migration.
+
+An earlier attempted full run failed because Docker Desktop was paused. The official Docker Desktop restart restored the daemon; existing PostgreSQL, RabbitMQ, Mailpit, and Media services resumed without recreating data volumes. The successful sequential run above is the completion evidence, not the infrastructure-failure attempt.
+
+Final solution formatting (`dotnet format CityPortal.slnx --verify-no-changes --no-restore`) passed after the full backend run.
+
+Final frontend regression (`npm test -- --watch=false`) passed 79 tests in 13 files. The final production Angular/SSR build, full Prettier check, and `npm run api:check` passed after the last SSR fix.
+
+Live production SSR behind isolated HTTPS exercised own-author proposal saving while public text stayed unchanged, a direct editorial correction superseding that proposal, withdrawal, author-only correction, submission, approval, and republication through the UI. Current SSR returned 200 with `Cache-Control: no-store`; two real historical URLs returned 307 directly to the current canonical URL; an unknown slug returned 404. Configured-city date formatting matched `Asia/Yekaterinburg` from the isolated runtime system-info response; no database setting was changed for this check.
+
+After final withdrawal, anonymous requests to the current URL and both real aliases returned 404 with no-store. Each shell omitted article title, body, author, private reason, `og:title`, and canonical link. Desktop 1440px and mobile 390px checks had no horizontal overflow; published, withdrawn, and republished screenshots were inspected. Live UI acceptance used an existing Author/Administrator account; backend integration tests separately proved distinct-role isolation and permission races. Local screenshots/logs remain ignored artifacts, not application content.
+
+Live SSR exposed a server-DOM incompatibility: Domino did not support `head.append`. The implementation now uses `appendChild` and clears article data/metadata if a partial DOM operation fails. The final frontend regression covers both missing `append` and partial-DOM failure cleanup. An initial incorrect acceptance login and the existing favicon 404 were unrelated setup/noise; deliberate withdrawn 404 responses are expected.
+
+Issue #12 is implemented and verified locally. Independent Spec and Standards/test-quality review found no blocking findings; final Stage 2 owner acceptance remains deferred to #14. Discovery, search, related/featured content, and homepage integration remain #13. This delivery does not claim a fresh SMTP outage/replay or backup/restore run, production deployment, or Stage 2 closure.

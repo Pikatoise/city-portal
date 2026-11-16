@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Review and first publication are implemented and pushed in 0708b94; published changes and public delivery remain outstanding. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
+Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Review and first publication are implemented and pushed in 0708b94. Issue #12 implements published changes, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Public discovery remains #13; final verification and owner acceptance remain #14. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -134,12 +134,13 @@ The following route design is an engineering contract for implementation, not a 
 | Route group | Contract |
 | --- | --- |
 | GET `/news/articles` | Current-publication summaries with query/category/tag/date filters, pagination, deterministic ordering, and optional featured filter. |
-| GET `/news/articles/{id}` | Current published content or a sanitized withdrawn result; never return private working fields. |
+| GET `/news/articles/{id}` | Current published content, canonical URL, and optional `slug` resolution, or a sanitized withdrawn result; never return private working fields. Only actual previously published slugs resolve as aliases. The SSR route redirects known aliases after checking visibility. |
 | GET `/news/articles/{id}/related` | At most five results under the approved tag/category rules. |
 | GET `/news/categories`, `/news/tags` | Public taxonomy used in current public content; do not expose private-article counts. |
 | GET/POST `/editorial/articles` | Authorized personal/work lists or create an author-owned draft. Lists never expose another author's unsent work. |
 | GET/PATCH/DELETE `/editorial/articles/{id}` | Authorized private detail, versioned author save, or retained deletion before first publication. Save handles Approved -> InReview atomically. |
-| POST `/editorial/articles/{id}/working-version` | Create from the current published revision; reject a competing unfinished version. |
+| POST `/editorial/articles/{id}/working-version` | Create from the current published revision; reject a competing unfinished version. The initial `/propose` action remains a compatibility alias. |
+| GET `/editorial/publications`, `/editorial/articles/{id}/publication` | Effective-editor paginated publication summaries and the current published snapshot for direct correction. These routes never return unsent author content or grant private history access. |
 | POST `/editorial/articles/{id}/submit`, `/recall` | Submission with required-field/change-description validation, or author recall; preserve reviewer routing. |
 | GET `/editorial/review-queue` | Eligible submitted summaries; full history remains subject to assignment permissions. |
 | POST `/editorial/articles/{id}/claim`, `/release`, `/takeover` | Atomic, versioned reviewer assignment transitions with history. |
@@ -161,7 +162,7 @@ The following route design is an engineering contract for implementation, not a 
 | GET `/account/notifications`; POST `/account/notifications/{id}/read`; DELETE `/account/notifications/{id}` | Own paginated notification list and own read/delete actions. |
 | GET/PUT `/account/notification-preferences` | Own independent per-type/channel settings; authentication service messages are excluded. |
 
-Authoring DTOs include article ID/version, working/public revision IDs and states, content/taxonomy/media placement/source/SEO fields, and permission-appropriate actions. Review DTOs expose only submitted snapshots. Notification DTOs omit protected text when the recipient cannot currently access it. Published DTOs expose public fields only. Processing/status DTOs contain no credentials, object-store URLs, raw source file, or unredacted error payloads.
+Authoring DTOs include article ID/version, working/public revision IDs and states, content/taxonomy/media placement/source/SEO fields, and permission-appropriate actions. Review DTOs expose only submitted snapshots. Notification DTOs omit protected text when the recipient cannot currently access it. Published DTOs expose public fields only. Current author display names come from an explicit Identity operation. Public update times derive from publication/correction history for the current public snapshot; draft saves and role/name changes do not change them. Actual published revision titles form the retained alias ledger, so no separate alias migration is required. Processing/status DTOs contain no credentials, object-store URLs, raw source file, or unredacted error payloads.
 
 Return 201 for new resources, 200 for reads/updated DTOs, 202 for durable accepted processing/notification work, and 204 for actions without a response body. Errors follow Stage 1: 400 validation/CSRF, 401 no current session, 403 known operation without permission, 404 inaccessible private detail/unknown public content, 409 stale version/state/assignment/uniqueness, 413 oversized request, 415 unsupported upload type, and 429 with Retry-After for limits. Do not let differing private-detail errors enumerate hidden articles.
 
@@ -227,7 +228,7 @@ The category/search bar also includes an All News button that opens the complete
 
 The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. Following homepage review, production selection and ordering of its two category blocks remain open; Transport and Culture are prototype examples. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
 
-The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#12 are in progress; #13-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
+The following workflow issues are tracked in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#11 remain in progress for final stage integration/review; #12 is implemented and verified; #13-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -283,33 +284,47 @@ Stage 1 acceptance remains closed. Concrete prototype review and Stage 2 complet
 | Template workflow notifications | Implemented: independent account/Email preferences, atomic Outbox handoff, current-reference author fanout, expiry/replay, read/delete UI, and durable deduplication. Issue #9 stays In Progress for News integration/final review. |
 | News drafts/taxonomy and validation | Implemented and verified API/UI in #10; see [NEWS.md](../NEWS.md). |
 | Review and first publication | Implemented, verified, and pushed in 0708b94 under #11; final stage review remains pending. |
-| Published revisions, public SSR/search | #12 initial server slice in progress; direct corrections, URLs/UI and public discovery remain outstanding. |
+| Published revisions and withdrawal | API/UI and basic article SSR implemented in #12; final evidence is in NEWS.md. |
+| Public discovery, search, related/featured news, and homepage | Outstanding; #13 remains Todo. |
 | Final stage acceptance and capacity verification | Outstanding; #14 remains Todo. |
 
 Latest verification: Release backend regression 134 passed, 0 failed, 0 skipped; frontend regression 70 passed. News checks cover drafts, private submitted snapshots, resubmission, assignment/role/version races, atomic notification rollback, review Media audiences, approval/explicit Save/publication, and publication versus deletion. Real HTTPS desktop/mobile workflows passed through first publication. Notification/storage evidence remains in MEDIA.md; the current requirement-to-test matrix and exact verification boundaries are in NEWS.md. Earlier independent reviews covered drafting; review/first-publication received an inline code and test-quality review. These are distinct runs, not additive totals.
 
-Next: implement published changes and withdrawal in #12, preserving current public content while an author proposal awaits approval. Direct corrections must supersede existing working content with retained text/reason; withdrawal must immediately close article and Media public access and route author-only corrections back through approval. Public SSR/discovery remains #13. The current contract and delivered review boundary are in NEWS.md. Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed. Final owner review remains deferred until the complete stage result. Stage 2 is open.
+Next: deliver public discovery in #13, then cross-workflow verification and final owner review in #14. Issue #12 preserves public content while proposals await publication, retains superseded text/reasons, and closes article/Media access on withdrawal. Basic article SSR and alias visibility are implemented; discovery remains outstanding. The current contract and delivered review boundary are in NEWS.md. Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed. Final owner review remains deferred until the complete stage result. Stage 2 is open.
 
 ### Implementation Notes
 
-On 2026-11-14 the owner delegated continuation of editor design and subsequent agreed stage work, reserving review for the final stage result. Do not require another block-by-block design interview. This does not close Stage 2 or authorize new business behavior. The fixture author/editor workspace includes review queues, decisions and history in memory. Production author drafting now exists separately at `/account/articles`, using the same five-section design, real persistence and Media. Review and first publication are implemented; published changes and public delivery are next. Design and implementation evidence are recorded in UI_STYLE.md and NEWS.md.
+On 2026-11-14 the owner delegated continuation of editor design and subsequent agreed stage work, reserving review for the final stage result. Do not require another block-by-block design interview. This does not close Stage 2 or authorize new business behavior. The fixture author/editor workspace includes review queues, decisions and history in memory. Production author drafting now exists separately at `/account/articles`, using the same five-section design, real persistence and Media. Review, publication, published changes, withdrawal/republication, and basic article SSR are implemented; discovery remains next. Design and implementation evidence are recorded in UI_STYLE.md and NEWS.md.
 
 The owner requested a unified UI style across the application and prototypes. Shared tokens, consistent account/staff/editor controls, and verification are recorded in [UI_STYLE.md](../UI_STYLE.md). The public layout remains the accepted baseline; final editor workflow acceptance and the remaining editorial/public News workflows remain outstanding.
 
 - Specification: product interview complete; engineering defaults and implementation contracts recorded.
-- GitHub tracking: #7-#12 are in progress; #13-#14 remain Todo in Project 3. Media, template notifications, and production drafting/taxonomy are implemented. Published changes, public delivery, and final acceptance remain outstanding.
+- GitHub tracking: #7-#11 remain in progress for integration/final review; #12 is complete; #13-#14 remain Todo in Project 3. Media, template notifications, drafting/taxonomy, review/publication, and published-change workflows are implemented. Public discovery and final stage acceptance remain outstanding.
 - Prototypes: isolated browser-only Angular configuration and Tiptap 3.34.0 candidate with a versioned JSON/media-reference document. Run/review instructions, saved progress, verification, and limitations are in [PROTOTYPE.md](../../frontend/src/app/news-prototype/PROTOTYPE.md). Only the selected header A remains; alternative headers and the variant switcher were removed at the owner's request. The current five-section author/editor workspace follows the delegated continuation described above. The owner accepted the news presentation for now: one-to-five-story editorial carousel in the large card, three latest general stories alongside, remaining news below, flat white 40%-opacity arrow background. The owner superseded the inline-filter proposal with five-item homepage blocks and a separate detailed list. The owner accepted the homepage visual prototype on 2026-11-14. A separate article-reader prototype now opens from news cards, with metadata, cover/body, sources/tags, and related fixtures. The owner accepted the article-page visual prototype after refinement of typography, media sizing, breadcrumbs, spacing, and the combined author/date footer. Continue agreed implementation; owner review is reserved for the final stage result. Production homepage category selection and order remain open. Homepage and article-page visual review are complete; editor/schema final acceptance remains pending.
 - Verification: early prototype checks remain in PROTOTYPE.md. Current Media and production drafting/server/browser evidence is recorded in MEDIA.md and NEWS.md. Review/publication/public SSR acceptance and final stage acceptance remain pending.
-- Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Review/publication references and News notifications are implemented in #11; withdrawal and public delivery integration remain #12-#13.
+- Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Review/publication references and News notifications are implemented in #11; withdrawal and basic public article integration are implemented in #12; discovery remains #13.
 - Owner acceptance: not requested; the stage remains open.
 
-### Push Checkpoint: 2026-11-16
+### Historical Push Checkpoint: 2026-11-16 (#11)
 
 The owner requested recording progress and pushing the current branch. Review and first publication are delivered in 0708b94, with the verification evidence above. Issues #7-#11 remain In Progress pending integration and final owner review; #12-#14 remain Todo. No Stage 2 acceptance or public news delivery is claimed. The next implementation task is #12.
 
 
-### Issue #12 Start: 2026-11-16
+### Historical Issue #12 Start: 2026-11-16
 
 The initial server checkpoint adds versioned own-author proposals, replacement review/publication preserving first-publication time, and reasoned editorial withdrawal. Withdrawal resets the working content to a private author draft and disables publication Media references atomically. Action responses and retained history do not expose unsent author content to the withdrawing editor. Details and remaining scope are in NEWS.md. Direct corrections/supersession, visibility-checked URLs, UI integration, full failure/race verification and final acceptance remain open; issue #12 is not complete.
 
 Initial #12 verification: 14 News integration tests passed in Release, zero failed/skipped; solution formatting and whitespace checks passed. No frontend/live browser or complete issue acceptance is claimed. Project 3 status is In Progress.
+
+
+### Issue #12 Delivery: 2026-11-16
+
+Published proposals, direct editorial corrections/supersession, retained history/reasons, withdrawal/republication, and basic public article SSR/current and historical URL visibility are implemented and verified locally. Required author/editor UI actions use real API operations and generated contracts. No schema migration was necessary: actual Published snapshots retain aliases and publication/correction history supplies public update times.
+
+Final verification: Release solution build passed with zero warnings/errors; backend 151 passed, zero failed/skipped, with TRX result validation. Targeted News 28 passed in a separate run. Final frontend 79 passed in 13 files; production Angular/SSR build, full Prettier, generated-client consistency, solution formatting, and explicit/repeat module migration checks passed. Exact requirement-to-test evidence and boundaries are in [NEWS.md](../NEWS.md).
+
+Live isolated HTTPS desktop/mobile workflows covered author proposal isolation, direct correction and retained supersession, withdrawal, reviewed republication, canonical links, and configured-city time. Current public SSR returned no-store 200; two real aliases redirected directly with 307; unknown slugs returned 404. After withdrawal, current and both historical URLs returned no-store 404 shells without article content, credit, private reason, or article-specific metadata. Desktop 1440px/mobile 390px had no horizontal overflow. Live acceptance used an Author/Administrator account; separate-role isolation and concurrency were verified by backend tests.
+
+Independent Spec and Standards/test-quality review found no blocking findings. Live SSR found and resolved a server-DOM `append` incompatibility; final regression also verifies cleanup after partial DOM failure. Docker Desktop was resumed through a data-preserving official restart after a paused-daemon infrastructure failure; the successful full rerun is the recorded completion evidence.
+
+Issue #12 is complete. This does not close Stage 2 or record owner acceptance. Continue with #13 public discovery, then #14 cross-workflow acceptance/backup/restore and owner review. No push or production deployment is implied by this local delivery.

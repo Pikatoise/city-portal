@@ -6,6 +6,7 @@ export const articleState = (state: string): string =>
     Approved: 'Одобрено',
     FinalRejected: 'Окончательно отклонено',
     Published: 'Опубликовано',
+    Withdrawn: 'Снято с публикации',
     Superseded: 'Закрыто',
   })[state] ?? state;
 
@@ -22,6 +23,11 @@ export const reviewAction = (action: string): string =>
     reject: 'Окончательно отклонено',
     approve: 'Одобрено',
     publish: 'Опубликовано',
+    propose: 'Создано предложение изменений',
+    'working-version': 'Создано предложение изменений',
+    withdraw: 'Снято с публикации',
+    correct: 'Редакторское исправление',
+    supersede: 'Рабочая версия закрыта',
     delete: 'Статья удалена',
     'roles-released': 'Назначение снято после изменения ролей',
   })[action] ?? action;

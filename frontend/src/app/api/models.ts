@@ -18,6 +18,7 @@ export type { ChangeRolesRequest } from './models/change-roles-request';
 export type { ConfirmationDeliveryResponse } from './models/confirmation-delivery-response';
 export type { ConfirmEmailRequest } from './models/confirm-email-request';
 export type { ConfirmEmailResponse } from './models/confirm-email-response';
+export type { CorrectArticleRequest } from './models/correct-article-request';
 export type { CreateTemplateRequest } from './models/create-template-request';
 export type { CsrfResponse } from './models/csrf-response';
 export type { EmailDeliveryPage } from './models/email-delivery-page';
@@ -40,6 +41,7 @@ export type { NewsPageOfReviewSummaryResponse } from './models/news-page-of-revi
 export type { NewsPageOfTaxonomyResponse } from './models/news-page-of-taxonomy-response';
 export type { NotificationPreferenceResponse } from './models/notification-preference-response';
 export type { ProblemDetails } from './models/problem-details';
+export type { PublicArticleResponse } from './models/public-article-response';
 export type { RegisterRequest } from './models/register-request';
 export type { RemovalRequestResponse } from './models/removal-request-response';
 export type { ReplayEmailRequest } from './models/replay-email-request';

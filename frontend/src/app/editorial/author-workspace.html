@@ -1,8 +1,10 @@
 <section aria-labelledby="author-title" class="author-workspace">
   <nav class="workspace-nav" aria-label="Рабочее пространство">
-    <button type="button" (click)="back()" [disabled]="busy() || saving()">Мои статьи</button
-    ><a routerLink="/account/media">Медиатека</a><a routerLink="/account">Личный кабинет</a
-    ><span>{{ profile()?.displayName }}</span>
+    <button type="button" (click)="back()" [disabled]="busy() || saving()">
+      {{ correctionMode ? 'Опубликованные статьи' : 'Мои статьи' }}</button><a
+      routerLink="/account/media"
+      >Медиатека</a
+    ><a routerLink="/account">Личный кабинет</a><span>{{ profile()?.displayName }}</span>
   </nav>
   @if (error()) {
     <p role="alert" class="errors">{{ error() }}</p>
@@ -66,6 +68,11 @@
           }}</span>
         </div>
         <div class="actions">
+          @if (article()!.publicationState === 'Published') {
+            <button type="button" (click)="openPublic()" [disabled]="busy() || saving()">
+              Открыть статью
+            </button>
+          }
           <button type="button" (click)="tab.set('preview')">Предпросмотр</button
           ><button
             type="button"
@@ -73,9 +80,9 @@
             (click)="save()"
             [disabled]="busy() || saving() || conflict() || !editable()"
           >
-            Сохранить
+            {{ correctionMode ? 'Опубликовать исправления' : 'Сохранить' }}
           </button>
-          @if (article()!.state === 'Draft') {
+          @if (!correctionMode && article()!.state === 'Draft') {
             <button
               type="button"
               (click)="workflow('submit')"
@@ -84,18 +91,56 @@
               Отправить на проверку
             </button>
           }
-          @if (article()!.state === 'InReview') {
+          @if (!correctionMode && article()!.state === 'InReview') {
             <button type="button" (click)="workflow('recall')" [disabled]="busy()">
               Отозвать для исправлений
             </button>
           }
-          @if (article()!.state === 'Approved') {
+          @if (!correctionMode && article()!.state === 'Approved') {
             <button type="button" (click)="workflow('publish')" [disabled]="busy() || dirty()">
               Опубликовать
             </button>
           }
         </div>
       </div>
+      @if (
+        !correctionMode &&
+        (article()!.state === 'Published' || article()!.state === 'Superseded') &&
+        article()!.publicationState === 'Published'
+      ) {
+        <p>
+          Опубликованная версия доступна читателям. Предложение изменений пройдёт проверку отдельно.
+        </p>
+        <button type="button" (click)="workflow('working-version')" [disabled]="busy() || saving()">
+          Предложить изменения
+        </button>
+      }
+      @if (!correctionMode && article()!.publicationState === 'Withdrawn') {
+        <p role="status">
+          Материал снят с публикации. Подготовь исправления и отправь их на проверку.
+        </p>
+      }
+      @if (
+        !correctionMode &&
+        article()!.publicationState === 'Published' &&
+        article()!.state !== 'Published'
+      ) {
+        <p>Это предложение изменений. До публикации читатели видят прежнюю версию.</p>
+      }
+      @if (correctionMode) {
+        <p>
+          Изменения сразу заменят опубликованную версию. Рабочая версия автора будет закрыта; текст
+          и история сохранятся.
+        </p>
+        <label
+          >Причина исправления<textarea
+            [(ngModel)]="changeDescription"
+            rows="3"
+            maxlength="2000"
+            [disabled]="saving()"
+          ></textarea>
+        </label>
+      }
       @if (conflict()) {
         <section class="conflict" aria-label="Конфликт сохранения">
           <h2>Статья изменилась в другой вкладке</h2>
@@ -130,7 +175,7 @@
       </nav>
       <div class="work-grid">
         <div class="document-column">
-          @if (article()!.state === 'Approved') {
+          @if (!correctionMode && article()!.state === 'Approved') {
             <p>
               Автосохранение отключено. «Сохранить» отправит изменённую версию на повторную
               проверку.
@@ -490,18 +535,24 @@
             Черновик можешь сохранять без заголовка, категории и текста. Для готовой статьи
             понадобятся все три поля и краткое описание.
           </p>
-          <p>Автосохранение срабатывает через пять секунд после последней правки.</p>
+          @if (!correctionMode) {
+            <p>Автосохранение срабатывает через пять секунд после последней правки.</p>
+          } @else {
+            <p>Исправления публикуются только после явного сохранения. Автосохранение отключено.</p>
+          }
           <p class="muted">
             Изображения из черновика доступны только по правам доступа к материалу.
           </p>
-          <button
-            type="button"
-            class="danger"
-            (click)="remove()"
-            [disabled]="busy() || saving() || article()!.publicationState === 'Published'"
-          >
-            Удалить статью
-          </button>
+          @if (!correctionMode && article()!.publicationState === 'NeverPublished') {
+            <button
+              type="button"
+              class="danger"
+              (click)="remove()"
+              [disabled]="busy() || saving() || article()!.publicationState === 'Published'"
+            >
+              Удалить статью
+            </button>
+          }
         </aside>
       </div>
     }
