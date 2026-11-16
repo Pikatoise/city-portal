@@ -227,7 +227,7 @@ The category/search bar also includes an All News button that opens the complete
 
 The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. Following homepage review, production selection and ordering of its two category blocks remain open; Transport and Culture are prototype examples. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
 
-The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#11 are in progress; #12-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
+The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#12 are in progress; #13-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -283,7 +283,7 @@ Stage 1 acceptance remains closed. Concrete prototype review and Stage 2 complet
 | Template workflow notifications | Implemented: independent account/Email preferences, atomic Outbox handoff, current-reference author fanout, expiry/replay, read/delete UI, and durable deduplication. Issue #9 stays In Progress for News integration/final review. |
 | News drafts/taxonomy and validation | Implemented and verified API/UI in #10; see [NEWS.md](../NEWS.md). |
 | Review and first publication | Implemented, verified, and pushed in 0708b94 under #11; final stage review remains pending. |
-| Published revisions, public SSR/search | Outstanding; #12-#13 remain Todo. |
+| Published revisions, public SSR/search | #12 initial server slice in progress; direct corrections, URLs/UI and public discovery remain outstanding. |
 | Final stage acceptance and capacity verification | Outstanding; #14 remains Todo. |
 
 Latest verification: Release backend regression 134 passed, 0 failed, 0 skipped; frontend regression 70 passed. News checks cover drafts, private submitted snapshots, resubmission, assignment/role/version races, atomic notification rollback, review Media audiences, approval/explicit Save/publication, and publication versus deletion. Real HTTPS desktop/mobile workflows passed through first publication. Notification/storage evidence remains in MEDIA.md; the current requirement-to-test matrix and exact verification boundaries are in NEWS.md. Earlier independent reviews covered drafting; review/first-publication received an inline code and test-quality review. These are distinct runs, not additive totals.
@@ -297,7 +297,7 @@ On 2026-11-14 the owner delegated continuation of editor design and subsequent a
 The owner requested a unified UI style across the application and prototypes. Shared tokens, consistent account/staff/editor controls, and verification are recorded in [UI_STYLE.md](../UI_STYLE.md). The public layout remains the accepted baseline; final editor workflow acceptance and the remaining editorial/public News workflows remain outstanding.
 
 - Specification: product interview complete; engineering defaults and implementation contracts recorded.
-- GitHub tracking: #7-#11 are in progress; #12-#14 remain Todo in Project 3. Media, template notifications, and production drafting/taxonomy are implemented. Published changes, public delivery, and final acceptance remain outstanding.
+- GitHub tracking: #7-#12 are in progress; #13-#14 remain Todo in Project 3. Media, template notifications, and production drafting/taxonomy are implemented. Published changes, public delivery, and final acceptance remain outstanding.
 - Prototypes: isolated browser-only Angular configuration and Tiptap 3.34.0 candidate with a versioned JSON/media-reference document. Run/review instructions, saved progress, verification, and limitations are in [PROTOTYPE.md](../../frontend/src/app/news-prototype/PROTOTYPE.md). Only the selected header A remains; alternative headers and the variant switcher were removed at the owner's request. The current five-section author/editor workspace follows the delegated continuation described above. The owner accepted the news presentation for now: one-to-five-story editorial carousel in the large card, three latest general stories alongside, remaining news below, flat white 40%-opacity arrow background. The owner superseded the inline-filter proposal with five-item homepage blocks and a separate detailed list. The owner accepted the homepage visual prototype on 2026-11-14. A separate article-reader prototype now opens from news cards, with metadata, cover/body, sources/tags, and related fixtures. The owner accepted the article-page visual prototype after refinement of typography, media sizing, breadcrumbs, spacing, and the combined author/date footer. Continue agreed implementation; owner review is reserved for the final stage result. Production homepage category selection and order remain open. Homepage and article-page visual review are complete; editor/schema final acceptance remains pending.
 - Verification: early prototype checks remain in PROTOTYPE.md. Current Media and production drafting/server/browser evidence is recorded in MEDIA.md and NEWS.md. Review/publication/public SSR acceptance and final stage acceptance remain pending.
 - Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Review/publication references and News notifications are implemented in #11; withdrawal and public delivery integration remain #12-#13.
@@ -306,3 +306,10 @@ The owner requested a unified UI style across the application and prototypes. Sh
 ### Push Checkpoint: 2026-11-16
 
 The owner requested recording progress and pushing the current branch. Review and first publication are delivered in 0708b94, with the verification evidence above. Issues #7-#11 remain In Progress pending integration and final owner review; #12-#14 remain Todo. No Stage 2 acceptance or public news delivery is claimed. The next implementation task is #12.
+
+
+### Issue #12 Start: 2026-11-16
+
+The initial server checkpoint adds versioned own-author proposals, replacement review/publication preserving first-publication time, and reasoned editorial withdrawal. Withdrawal resets the working content to a private author draft and disables publication Media references atomically. Action responses and retained history do not expose unsent author content to the withdrawing editor. Details and remaining scope are in NEWS.md. Direct corrections/supersession, visibility-checked URLs, UI integration, full failure/race verification and final acceptance remain open; issue #12 is not complete.
+
+Initial #12 verification: 14 News integration tests passed in Release, zero failed/skipped; solution formatting and whitespace checks passed. No frontend/live browser or complete issue acceptance is claimed. Project 3 status is In Progress.

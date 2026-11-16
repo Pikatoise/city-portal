@@ -93,3 +93,21 @@ The isolated live Worker delivered article.returned, review.resubmitted, article
 ## Delivery Checkpoint: 2026-11-16
 
 Review and first publication are captured in pushed commit 0708b94 on prototype/stage-2-news-review, following the pushed drafting/CSS checkpoint b38ed07. The owner requested this progress checkpoint and push. Current completion evidence is recorded above; #11 remains In Progress for integration/final review. Published changes and withdrawal (#12), public delivery (#13), and final Stage 2 acceptance (#14) remain outstanding.
+
+
+## Issue #12: Initial Server Slice (2026-11-16)
+
+Implementation is in progress; this checkpoint delivers the initial server slice. The versioned review-action route now accepts `propose` (owning Author only) and `withdraw` (Editor/Administrator, required reason). Proposals clone the current publication into a separate private draft. Review and approved explicit Save can operate on replacements; replacement publication preserves the first-publication timestamp. Article-row locking and expected versions serialize these transitions.
+
+Withdrawal retains the current published pointer for history, switches visibility to Withdrawn, and clones existing working content into an author-only draft with review/approval reset. Public Media references are disabled in the same transaction; other current publications may still grant access. The withdrawal event queues the existing generic author notification atomically. A non-owner editor receives the preceding published snapshot in the action response, never the private proposal. Withdrawal history references the published snapshot so the reason remains visible without disclosing unsent content.
+
+This is an initial API slice, not completed issue #12. Direct editorial corrections/supersession, URL aliases and sanitized withdrawn delivery, production UI integration, generated-contract verification, and the full concurrency/rollback/browser matrix remain outstanding. Public SSR/discovery remains #13. No owner acceptance is claimed.
+
+
+Initial-slice verification: all 14 News integration tests passed in Release (TRX: 14 passed, zero failed/skipped); solution formatting and `git diff --check` passed. This is scoped verification, not a full backend/frontend regression or live browser acceptance.
+
+| Requirement | Evidence |
+| --- | --- |
+| Separate proposals, single active proposal, permissions, stale writes, replacement publication and stable first-publication time | `Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync` |
+| Reason/role enforcement, withdrawal Media denial, reset approval, author-only correction and reviewed republication | `Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync` |
+| Another editor cannot read unsent proposal text through withdrawal response/history; owner retains it | `Published_WithdrawalByAnotherEditorDoesNotExposePrivateProposalAsync` |

@@ -39,7 +39,7 @@ public sealed class EditorialController : ControllerBase
     public Task<NewsPage<ArticleHistoryResponse>> HistoryAsync(Guid id, CancellationToken cancellationToken, int page = 1, int pageSize = 20) =>
         _reviews.HistoryAsync(ActorId, SessionId, id, page, pageSize, cancellationToken);
 
-    [HttpPost("articles/{id:guid}/{operation:regex(^(submit|recall|claim|release|takeover|return|reject|approve|publish)$)}", Name = "actOnArticleReview")]
+    [HttpPost("articles/{id:guid}/{operation:regex(^(submit|recall|claim|release|takeover|return|reject|approve|publish|propose|withdraw)$)}", Name = "actOnArticleReview")]
     [Consumes("application/json")]
     [RequestSizeLimit(16384)]
     [ProducesResponseType<ArticleResponse>(200)]

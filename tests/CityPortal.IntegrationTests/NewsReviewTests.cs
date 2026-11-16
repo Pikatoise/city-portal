@@ -10,6 +10,114 @@ namespace CityPortal.IntegrationTests;
 public sealed partial class NewsTests
 {
     [Fact]
+    public async Task Published_WithdrawalByAnotherEditorDoesNotExposePrivateProposalAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        (_, HttpClient other) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        using (other)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Private proposal");
+            ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(category.Id, "Public title"));
+            article = await ActAsync(owner, article, "submit");
+            article = await ActAsync(editor, article, "claim");
+            article = await ActAsync(editor, article, "approve");
+            article = await ActAsync(owner, article, "publish");
+            article = await ActAsync(owner, article, "propose");
+            article = await SaveAsync(owner, article, Complete(category.Id, "Private unsubmitted title"));
+            ArticleResponse result = await ActAsync(other, article, "withdraw", "Verified error");
+            Assert.Equal("Public title", result.Content.Title);
+            ArticleResponse retained = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+            Assert.Equal("Private unsubmitted title", retained.Content.Title);
+            Assert.Equal("Draft", retained.State);
+            Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/editorial/reviews/{article.Id}")).StatusCode);
+            NewsPage<ArticleHistoryResponse> history = (await editor.GetFromJsonAsync<NewsPage<ArticleHistoryResponse>>($"/api/editorial/articles/{article.Id}/history"))!;
+            Assert.DoesNotContain(history.Items, item => item.Revision.Content.Title == "Private unsubmitted title");
+            Assert.Contains(history.Items, item => item.Action == "withdraw" && item.Reason == "Verified error");
+        }
+    }
+
+    [Fact]
+    public async Task Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Revisions");
+            ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(category.Id, "Original"));
+            article = await ActAsync(owner, article, "submit");
+            article = await ActAsync(editor, article, "claim");
+            article = await ActAsync(editor, article, "approve");
+            article = await ActAsync(owner, article, "publish");
+            Guid original = article.RevisionId;
+            DateTime first = await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id);
+            ArticleResponse proposal = await ActAsync(owner, article, "propose");
+            Assert.NotEqual(original, proposal.RevisionId);
+            Assert.Equal("Draft", proposal.State);
+            Assert.Equal(HttpStatusCode.Conflict, (await ActResponseAsync(owner, proposal, "propose")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await ActResponseAsync(editor, proposal, "propose")).StatusCode);
+            proposal = await SaveAsync(owner, proposal, Complete(category.Id, "Replacement"));
+            proposal = await ActAsync(owner, proposal, "submit", "Updated facts.");
+            proposal = await ActAsync(editor, proposal, "approve");
+            Assert.Equal(original, await ScalarAsync<Guid>(database, "SELECT \"PublishedRevisionId\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id));
+            proposal = await ActAsync(owner, proposal, "publish");
+            Assert.Equal(proposal.RevisionId, await ScalarAsync<Guid>(database, "SELECT \"PublishedRevisionId\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id));
+            Assert.Equal(first, await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id));
+            Assert.Equal(HttpStatusCode.Conflict, (await ActResponseAsync(owner, article, "propose")).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        using (HttpClient anonymous = Client(factory))
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Withdrawal");
+            ImageResponse image = await UploadAsync(owner);
+            await using (AsyncServiceScope scope = factory.Services.CreateAsyncScope())
+                await scope.ServiceProvider.GetRequiredService<MediaMaintenance>().ProcessPendingAsync(CancellationToken.None);
+            ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(category.Id, "Published cover") with { Cover = new ArticleImage(image.Id, "River") });
+            article = await ActAsync(owner, article, "submit");
+            article = await ActAsync(editor, article, "claim");
+            article = await ActAsync(editor, article, "approve");
+            article = await ActAsync(owner, article, "publish");
+            Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/api/media/images/{image.Id}/480")).StatusCode);
+            article = await ActAsync(owner, article, "propose");
+            article = await ActAsync(owner, article, "submit", "Correction proposal");
+            article = await ActAsync(editor, article, "approve");
+            Assert.Equal(HttpStatusCode.BadRequest, (await ActResponseAsync(editor, article, "withdraw")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await ActResponseAsync(owner, article, "withdraw", "Incorrect")).StatusCode);
+            ArticleResponse withdrawn = await ActAsync(editor, article, "withdraw", "Incorrect facts");
+            Assert.Equal("Withdrawn", withdrawn.PublicationState);
+            withdrawn = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+            Assert.Equal("Draft", withdrawn.State);
+            Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/media/images/{image.Id}/480")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await ActResponseAsync(owner, withdrawn, "publish")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await ActResponseAsync(editor, article, "publish")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await editor.PatchAsJsonAsync($"/api/editorial/articles/{article.Id}", new { withdrawn.Version, content = Complete(category.Id, "Editor bypass") })).StatusCode);
+            withdrawn = await ActAsync(owner, withdrawn, "submit", "Verified corrections");
+            withdrawn = await ActAsync(editor, withdrawn, "approve");
+            withdrawn = await ActAsync(owner, withdrawn, "publish");
+            Assert.Equal("Published", withdrawn.PublicationState);
+            Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/api/media/images/{image.Id}/480")).StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task Review_RoleRemovalVersusApproval_SerializesAuthorizationAndAssignmentAsync()
     {
         (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
