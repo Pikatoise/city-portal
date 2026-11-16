@@ -8,6 +8,15 @@ export const routes: Routes = [
     canActivateChild: [requireInstallation],
     children: [
       {
+        path: 'account/articles',
+        loadComponent: () => import('./editorial/author-workspace').then((m) => m.AuthorWorkspace),
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
+        path: 'staff/taxonomy',
+        loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
+      },
+      {
         path: 'account/notifications',
         loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
       },

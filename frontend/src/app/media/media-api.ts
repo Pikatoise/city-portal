@@ -96,7 +96,7 @@ export function mediaError(error: unknown): string {
   const code = accountProblem(error).code;
   if (code === 'image_name')
     return 'Переименуй файл: название должно содержать от 1 до 200 символов.';
-  if (code === 'template_name') return 'Укажи название шаблона, не более 200 символов.';
+  if (code === 'template_name') return 'Укажи название шаблона, не более 100 символов.';
   if (code === 'image_dimensions') return 'Изображение должно содержать не более 40 мегапикселей.';
   if (code === 'reason_required') return 'Укажи причину, не более 2000 символов.';
   return errorMessage(error);

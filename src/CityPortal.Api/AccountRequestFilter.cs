@@ -28,6 +28,11 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         }
         else if (path.StartsWith("/api/media/", StringComparison.Ordinal))
             await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "media-mutation", 30, TimeSpan.FromMinutes(1), http.RequestAborted);
+        else if (path.StartsWith("/api/editorial/", StringComparison.Ordinal))
+        {
+            bool draftSave = HttpMethods.IsPatch(http.Request.Method) && path.StartsWith("/api/editorial/articles/", StringComparison.Ordinal);
+            await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, draftSave ? "draft-save" : "editorial-mutation", draftSave ? 120 : 30, TimeSpan.FromMinutes(1), http.RequestAborted);
+        }
         if (path == "/api/installation/complete")
             await accounts.EnforceIpLimitAsync(ip, "installation", 10, TimeSpan.FromMinutes(10), http.RequestAborted);
         if (path == "/api/auth/register")

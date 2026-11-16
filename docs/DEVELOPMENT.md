@@ -186,6 +186,12 @@ The migration command applies module-owned migrations explicitly. Normal API and
 Worker startup never applies migrations. Run the migration command once before
 starting the application and again when a change introduces migrations.
 
+News drafting adds an owned `news` schema/migration and a readiness check. Apply
+the explicit migration command when upgrading an existing Stage 1/Media database
+before starting the updated API/Worker. Confirmed authors use `/account/articles`;
+editors/administrators manage categories and tags at `/staff/taxonomy`. The current
+drafting boundary and remaining editorial/public workflows are in [NEWS.md](NEWS.md).
+
 The site is at `https://localhost:8443`. Caddy routes `/api/` to the API and `/`
 to the Angular Node server, keeping browser requests on one HTTPS origin. Local
 development runs the API in `Development` to expose OpenAPI and Scalar. This

@@ -411,6 +411,57 @@ button:disabled {
   }
 }
 /* Tiptap and sanitized preview nodes are created outside Angular's template compiler. */
+:where(app-author-workspace, app-taxonomy)
+  :where(input:not([type='checkbox']), textarea, select, button) {
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  min-height: 42px;
+}
+:where(app-author-workspace, app-taxonomy) :where(input:not([type='checkbox']), textarea, select) {
+  background: var(--color-page);
+}
+:where(app-author-workspace, app-taxonomy) button {
+  background: transparent;
+  cursor: pointer;
+}
+app-author-workspace .primary-button {
+  margin-top: 0;
+}
+app-author-workspace .primary-button:not(:disabled) {
+  background: var(--color-action);
+  color: var(--color-surface);
+}
+app-author-workspace .primary-button:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+app-author-workspace :where(.tiptap, .body-copy) {
+  font: 18px/1.8 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+app-author-workspace .tiptap {
+  min-height: 280px;
+  outline: none;
+}
+app-author-workspace :where(.tiptap, .body-copy) img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-media);
+}
+app-author-workspace :where(.tiptap, .body-copy, .reader-preview) figure {
+  margin: 24px 0;
+}
+app-author-workspace :where(.tiptap, .body-copy) figcaption {
+  font: 13px/1.6 var(--font-ui);
+  color: var(--color-muted);
+}
+app-author-workspace .image-placeholder {
+  display: block;
+  padding: 32px;
+  background: var(--color-surface-muted);
+}
 app-editorial-workspace :where(.tiptap, .body-copy) {
   font: 18px/1.8 var(--font-ui);
   overflow-wrap: anywhere;

@@ -48,6 +48,8 @@ Illustration colors are content, not additional interface palette roles. They ma
 
 ## Interaction and Accessibility
 
+The production author workspace at `/account/articles` now reuses the accepted five-section layout with actual persistence and Media. Shared native-control styles also cover `/staff/taxonomy`; the fixture review workspace remains isolated. Real 1440px/390px checks covered editor/preview, Media selection, retained local conflict copy, and no horizontal page overflow. Visible keyboard focus, labelled native controls, and Russian editor labels are retained; final owner acceptance remains at stage completion.
+
 The account notification page follows the shared typography, buttons, muted metadata, and divider-based rows. Native fieldsets keep account and Email switches independently labelled, with visible unsaved/success/error feedback. Notification actions and settings fit desktop 1440px and mobile 390px without horizontal page overflow; the real HTTPS verification also covered read/delete and persistence after reload. The page is browser-rendered under `/account/notifications` and uses the existing account navigation.
 
 Preserve the accepted sticky category row, 650ms interruptible category scrolling, 380ms carousel settling, and 180ms content entrance. These explicit owner-reviewed motions remain as configured; do not silently change them during theme work. The carousel retains arrow alternatives to dragging. Decorative image-hover animation and the loading spinner retain reduced-motion handling.

@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media and configurable template notifications are implemented and locally verified. Production News remains outstanding. Engineering defaults below complete the implementation specification; final stage acceptance remains with the owner.
+Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Editorial review/publication and public delivery remain outstanding. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -227,7 +227,7 @@ The category/search bar also includes an All News button that opens the complete
 
 The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. Following homepage review, production selection and ordering of its two category blocks remain open; Transport and Culture are prototype examples. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
 
-The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#9 are in progress; #10-#14 remain Todo. The specification and prototype review are captured on branch `prototype/stage-2-news-review`.
+The following issues are open in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#10 are in progress; #11-#14 remain Todo. The current branch is `prototype/stage-2-news-review`; Media/notification commit `d4b1542` has been pushed, while the subsequent drafting/taxonomy work is captured locally.
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -272,31 +272,32 @@ Stage 1 acceptance remains closed. Concrete prototype review and Stage 2 complet
 
 ## Implementation Status
 
-### Progress Checkpoint: 2026-11-15
+### Progress Checkpoint: 2026-11-16
 
 | Deliverable | Recorded status |
 | --- | --- |
 | Product specification and shared UI style | Recorded; homepage/article visuals owner-accepted. |
-| Author/editor workspace | Interactive prototype; production persistence and review operations remain outstanding. |
+| Author/editor workspace | Production author drafts now use real persistence and Media; review/publication operations remain fixture-only. |
 | Media uploads, processing, private storage, and recovery | Implemented, reviewed, and verified locally; issue #8 remains In Progress pending final stage review. |
 | Shared-template moderation and library | API/UI, decisions/history, independent flags, and mandatory archival implemented locally. |
 | Template workflow notifications | Implemented: independent account/Email preferences, atomic Outbox handoff, current-reference author fanout, expiry/replay, read/delete UI, and durable deduplication. Issue #9 stays In Progress for News integration/final review. |
-| News drafts, taxonomy, review, published revisions, public SSR/search | Production implementation outstanding; #10-#13 remain Todo. |
+| News drafts/taxonomy and validation | Implemented and verified API/UI in #10; see [NEWS.md](../NEWS.md). |
+| Review, published revisions, public SSR/search | Outstanding; #11-#13 remain Todo. |
 | Final stage acceptance and capacity verification | Outstanding; #14 remains Todo. |
 
-Latest verification: Release backend regression 112 passed, 0 failed, 0 skipped; frontend regression 56 passed. New notification tests cover rollback, duplicate dispatch, channel settings, ownership/CSRF, pagination, SMTP retry/replay, seven-day expiry, and thirty-day account retention. Template validation now enforces NFC-normalized scalar counts and 100-character names. Earlier Linux processing, container, and recovery checks remain recorded in [MEDIA.md](../MEDIA.md). Formatting, production Angular build, generated-client consistency, explicit/repeat migrations, independent reviews, and a real HTTPS desktop/mobile notification workflow passed. These are distinct runs, not additive totals.
+Latest verification: Release backend regression 127 passed, 0 failed, 0 skipped; frontend regression 63 passed. News checks cover incomplete saves/reopening, version races, role/privacy boundaries, archived taxonomy, transactional Media, retained deletion, document bounds/rendering, autosave/conflict/retry/reload behavior, and rendered Russian labels. Notification/storage evidence remains in [MEDIA.md](../MEDIA.md); News evidence is in [NEWS.md](../NEWS.md). Formatting, builds, generated contracts, explicit/repeat migrations, independent reviews, and real HTTPS desktop/mobile workflows passed. These are distinct runs, not additive totals.
 
-Next: implement author drafts/taxonomy in #10 using the Media reference contract and connect the article editor to real services. News must mark retained-only image references with `isCurrent: false`, preserving storage/privacy while excluding them from affected-author notification fanout. Integrate the catalogued News notification events with their owning workflows. Final owner review remains deferred until the complete stage result. The Media/notification implementation is captured in a local commit on `prototype/stage-2-news-review`; it has not been pushed. Stage 2 is open.
+Next: implement review and first publication in #11, including immutable submitted snapshots, reviewer assignment, feedback/decisions, publication, history audiences, and workflow notifications. Preserve the existing private draft boundary and mark retained-only image references with `isCurrent: false`; published/review audiences must be maintained transactionally. The current document contract and drafting boundary are in NEWS.md. Media/notification commit `d4b1542` is pushed; subsequent drafting work is local. Final owner review remains deferred until the complete stage result. Stage 2 is open.
 
 ### Implementation Notes
 
-On 2026-11-14 the owner delegated continuation of editor design and subsequent agreed stage work, reserving review for the final stage result. Do not require another block-by-block design interview. This does not close Stage 2 or authorize new business behavior. The browser-only author/editor workspace now includes article lists, the shared review queue, five document sections, image placement, repeatable sources, contextual decisions, and readable history. Design references and verification limits are recorded in [UI_STYLE.md](../UI_STYLE.md#authoring-and-editorial-workspace). The former three-step editor and its duplicate root-component state/styles were removed. The prototype content/queue actions still live in memory; production Media status is recorded below and News remains outstanding.
+On 2026-11-14 the owner delegated continuation of editor design and subsequent agreed stage work, reserving review for the final stage result. Do not require another block-by-block design interview. This does not close Stage 2 or authorize new business behavior. The fixture author/editor workspace includes review queues, decisions and history in memory. Production author drafting now exists separately at `/account/articles`, using the same five-section design, real persistence and Media. Review/publication integration is next. Design and implementation evidence are recorded in UI_STYLE.md and NEWS.md.
 
-The owner requested a unified UI style across the application and prototypes. Shared tokens, consistent account/staff/editor controls, and the review findings/verification are recorded in [UI_STYLE.md](../UI_STYLE.md). The public layout remains the accepted baseline; final editor workflow acceptance and production News remain outstanding.
+The owner requested a unified UI style across the application and prototypes. Shared tokens, consistent account/staff/editor controls, and verification are recorded in [UI_STYLE.md](../UI_STYLE.md). The public layout remains the accepted baseline; final editor workflow acceptance and the remaining editorial/public News workflows remain outstanding.
 
 - Specification: product interview complete; engineering defaults and implementation contracts recorded.
-- GitHub tracking: #7-#9 are in progress; #10-#14 remain Todo in Project 3. Media upload/storage, template moderation, and configurable notifications have local production code. News integration and final acceptance remain outstanding.
+- GitHub tracking: #7-#10 are in progress; #11-#14 remain Todo in Project 3. Media, template notifications, and production drafting/taxonomy are implemented. Editorial/public workflows and final acceptance remain outstanding.
 - Prototypes: isolated browser-only Angular configuration and Tiptap 3.34.0 candidate with a versioned JSON/media-reference document. Run/review instructions, saved progress, verification, and limitations are in [PROTOTYPE.md](../../frontend/src/app/news-prototype/PROTOTYPE.md). Only the selected header A remains; alternative headers and the variant switcher were removed at the owner's request. The current five-section author/editor workspace follows the delegated continuation described above. The owner accepted the news presentation for now: one-to-five-story editorial carousel in the large card, three latest general stories alongside, remaining news below, flat white 40%-opacity arrow background. The owner superseded the inline-filter proposal with five-item homepage blocks and a separate detailed list. The owner accepted the homepage visual prototype on 2026-11-14. A separate article-reader prototype now opens from news cards, with metadata, cover/body, sources/tags, and related fixtures. The owner accepted the article-page visual prototype after refinement of typography, media sizing, breadcrumbs, spacing, and the combined author/date footer. Continue agreed implementation; owner review is reserved for the final stage result. Production homepage category selection and order remain open. Homepage and article-page visual review are complete; editor/schema final acceptance remains pending.
-- Verification: prototype and production SSR builds, formatting, and an ephemeral real-editor JSON/media/safe-render smoke check passed on 2026-11-13. Subsequent Media desktop/mobile browser and server checks are recorded in MEDIA.md; production News validation and final stage acceptance remain pending.
-- Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notification delivery are implemented locally. Real database/object-store, access/concurrency/recovery, browser, and container checks are recorded in [MEDIA.md](../MEDIA.md). Production News remains outstanding; its events must use the notification transaction boundary.
+- Verification: early prototype checks remain in PROTOTYPE.md. Current Media and production drafting/server/browser evidence is recorded in MEDIA.md and NEWS.md. Review/publication/public SSR acceptance and final stage acceptance remain pending.
+- Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Publication/withdrawal/reviewer integration and News event emission remain part of #11-#13.
 - Owner acceptance: not requested; the stage remains open.

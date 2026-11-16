@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CityPortal.Identity;
 using CityPortal.Media;
+using CityPortal.News;
 using CityPortal.Notifications;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Logs;
@@ -32,7 +33,7 @@ public partial class Program
         if (timeZoneId != "UTC" && TimeZoneInfo.TryConvertWindowsIdToIanaId(timeZoneId, out string? ianaId))
             timeZoneId = ianaId;
         builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId));
-        builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration);
+        builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
@@ -93,10 +94,11 @@ public partial class Program
             await app.Services.MigrateIdentityAsync(CancellationToken.None);
             await app.Services.MigrateNotificationsAsync(CancellationToken.None);
             await app.Services.MigrateMediaAsync(CancellationToken.None);
+            await app.Services.MigrateNewsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();
-            app.Logger.LogInformation("Applied Identity, Notifications, and Media database migrations.");
+            app.Logger.LogInformation("Applied Identity, Notifications, Media, and News database migrations.");
             return;
         }
 
@@ -109,6 +111,7 @@ public partial class Program
                 || context.Request.Path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/media", StringComparison.OrdinalIgnoreCase)
+                || context.Request.Path.StartsWithSegments("/api/editorial", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/installation", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Headers.CacheControl = "no-store";
