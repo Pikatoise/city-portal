@@ -256,12 +256,6 @@ dialog::backdrop {
   object-fit: cover;
   border-radius: var(--radius-media);
 }
-.upload-label {
-  margin: 0;
-}
-.upload-label input {
-  max-width: 240px;
-}
 @media (max-width: 800px) {
   .work-grid {
     grid-template-columns: 1fr;

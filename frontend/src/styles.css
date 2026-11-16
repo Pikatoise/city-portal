@@ -497,3 +497,9 @@ app-editorial-workspace :where(.tiptap, .body-copy) .park-art {
   background: #b9c9a4;
   border-radius: var(--radius-media);
 }
+.author-workspace .upload-label {
+  margin: 0;
+}
+.author-workspace .upload-label input {
+  max-width: 240px;
+}
