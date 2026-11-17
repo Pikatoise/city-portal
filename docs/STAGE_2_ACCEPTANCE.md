@@ -160,7 +160,9 @@ compared with 178/92 MiB before measurement. These are process snapshots,
 not peak or leak measurements. Representative final EXPLAIN ANALYZE times
 were feed 0.390 ms, search 18.395 ms, image visibility 0.031 ms and tag page
 3.221 ms. The helper saves plans with buffers and full environment/latency/memory
-JSON in ignored `.local/issue14/capacity_<uuid>/` artifacts.
+JSON in ignored `.local/issue14/capacity_<uuid>/` artifacts during measurement.
+Completed local artifacts and disposable fixtures were removed during the
+owner-requested cleanup; this report retains the measured results and limitations.
 
 The fresh HTTPS browser run passed with separate Author-only and
 Administrator/Moderator accounts; the reviewer had no assigned Editor role.
@@ -183,7 +185,8 @@ run recorded zero browser page errors. Earlier automation attempts used an
 overlength fixture password and wrong review URL; those local helper errors
 were corrected. HTTPS proxy trust was explicitly configured for the loopback
 proxy; authentication and CSRF enforcement were preserved. The final run is
-the execution evidence. Fixtures, secrets, screenshots and logs remain ignored.
+the execution evidence. Completed fixtures, screenshots and logs were subsequently
+removed; active stand credentials remain in ignored `.local/stand/accounts.json`.
 
 Capacity reproduction after building Release API and production Angular SSR:
 
@@ -211,22 +214,20 @@ database/vhost/bucket, and prints persistent credentials for five separate
 confirmed roles. Initial creation, repeated startup with unchanged credentials,
 exact-role HTTPS logins and browser PostgreSQL/schema access through pgAdmin
 were verified. Setup and operational details are in DEVELOPMENT.md. Earlier
-capacity and browser fixtures remain separate; these additional local launch
+capacity and browser results are recorded above; these additional local launch
 checks do not imply owner acceptance or a new full backend test run.
 
-The owner subsequently reported failed logins and missing recovery messages
-at the earlier `8446` URL while inspecting the retained `cityportal` database.
-The printed credentials belong to `8443` and `cityportal_stand`. Before the fix,
-the same Editor credentials returned HTTP 200 on 8443 and 401 on 8446; recovery
-returned 202 on both, but only the current installation delivered the message.
-The local proxy now temporarily redirects 8446 to 8443 with the path preserved.
-The launcher hands over the known old proxy's port and prints the exact pgAdmin
-database/table path. Retained installation data and passwords are preserved.
-After handover, browser logins from the old URL succeeded for all five printed
-accounts, with confirmed Email and the expected role verified from `/api/account`.
-A fresh Moderator recovery request from that URL returned 202 and produced a
-new Mailpit message. The launcher completed another startup and printed unchanged
-credentials. Caddy validation and local/public Compose configuration checks passed.
+The owner subsequently found that the old acceptance URL and retained
+`cityportal` database did not contain the printed stand accounts. Browser login
+for all five accounts and recovery Email delivery were verified against the
+current stand. The old proxy, alternate port and temporary redirect have now
+been removed. The sole local portal URL is `https://localhost:8443`; printed
+credentials belong to `cityportal_stand`. The launcher prints the pgAdmin table
+path. Active credentials and installation data are preserved. Completed local
+logs, screenshots, copied runtimes, build outputs, seven disposable databases,
+five broker vhosts, four temporary object buckets and five old proxy containers
+were removed during the owner-requested cleanup. The required local .NET 10
+SDK, frontend dependencies and the normal retained installation remain available.
 
 1. Follow an author draft through return, private correction, resubmission,
    approval and publication. Inspect the separate current public revision.

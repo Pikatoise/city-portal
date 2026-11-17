@@ -12,15 +12,12 @@ the current images on later launches. The command prints the portal, pgAdmin
 and Mailpit URLs, plus Email/password pairs for five separate confirmed demo
 accounts: RegularUser, Editor, Author, Moderator and Administrator.
 
-The previous acceptance URL `https://localhost:8446` redirects to the current
-portal at `https://localhost:8443`, preserving the page path. The launcher stops
-the known earlier acceptance proxy after checking its configuration mount;
-its database, objects and host processes remain preserved. The current proxy
-owns both loopback ports. Public deployment replaces both bindings.
+The portal uses only `https://localhost:8443`. Earlier acceptance proxies and
+their alternate ports have been retired.
 
 The stand uses `compose.stand.yaml`, a dedicated `cityportal_stand` database,
 RabbitMQ vhost and private Media bucket. It preserves the normal `cityportal`
-installation and the earlier isolated acceptance databases. On a new stand,
+installation. Completed disposable acceptance databases were removed. On a new stand,
 the helper completes installation with the demo administrator, registers the
 other accounts, confirms their Email through real Worker/Mailpit delivery and
 assigns their roles through the administration API. Every account retains

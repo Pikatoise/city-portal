@@ -401,3 +401,11 @@ assigned Editor role. Real Worker processing and SMTP delivery were checked;
 Owner review of workflows, transaction/data flow and a failure scenario is still
 required. Issue #14 and Stage 2 remain open. No Stage 3 specification, push or
 production deployment is included.
+
+The owner-requested workspace cleanup removed completed diagnostic artifacts,
+copied runtimes, build outputs and disposable infrastructure fixtures. The old
+acceptance proxies and alternate portal port were retired; the local review
+stand uses only https://localhost:8443 and cityportal_stand. Active credentials,
+normal installation data, the required local SDK and frontend dependencies are
+preserved. Verification results remain in STAGE_2_ACCEPTANCE.md; future temporary
+files and task-owned fixtures must be removed when their task finishes.
