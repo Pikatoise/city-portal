@@ -12,6 +12,12 @@ the current images on later launches. The command prints the portal, pgAdmin
 and Mailpit URLs, plus Email/password pairs for five separate confirmed demo
 accounts: RegularUser, Editor, Author, Moderator and Administrator.
 
+The previous acceptance URL `https://localhost:8446` redirects to the current
+portal at `https://localhost:8443`, preserving the page path. The launcher stops
+the known earlier acceptance proxy after checking its configuration mount;
+its database, objects and host processes remain preserved. The current proxy
+owns both loopback ports. Public deployment replaces both bindings.
+
 The stand uses `compose.stand.yaml`, a dedicated `cityportal_stand` database,
 RabbitMQ vhost and private Media bucket. It preserves the normal `cityportal`
 installation and the earlier isolated acceptance databases. On a new stand,
@@ -32,7 +38,10 @@ without PGADMIN_PASSWORD uses POSTGRES_PASSWORD as the local fallback. Initial
 pgAdmin credentials initialize its persistent volume; changing environment
 values later does not reset that stored password. The preloaded server uses
 host `postgres`, port 5432 and user `cityportal`; enter POSTGRES_PASSWORD when
-connecting. Select `cityportal_stand` or any retained acceptance database.
+connecting. For the printed stand accounts, select **Databases > cityportal_stand
+> Schemas > identity > Tables > AspNetUsers**. The `cityportal` database is a
+separate retained installation and contains different accounts. An Email from
+the stand cannot log in to that installation or receive its recovery message.
 
 The public Compose override excludes pgAdmin unless the `local-tools` profile
 is explicitly requested. Its published port remains loopback-only. Container

@@ -3,6 +3,12 @@
 	auto_https disable_redirects
 }
 
+# Retire the earlier Stage 2 review URL in favor of the current local portal.
+https://localhost:8446 {
+	tls internal
+	redir https://localhost:8443{uri} temporary
+}
+
 https://localhost:8443 {
 	tls internal
 

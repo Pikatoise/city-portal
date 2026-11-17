@@ -120,6 +120,15 @@ def main():
         command(COMPOSE + ["exec", "-T", "postgres", "createdb", "-U", "cityportal", "cityportal_stand"], env)
     command(COMPOSE + ["stop", "api", "worker"], env)
     command(COMPOSE + ["run", "--rm", "--no-deps", "api", "--migrate"], env)
+    # The earlier acceptance proxy owns 8446. Preserve its data and processes,
+    # but hand its browser URL to the current proxy's temporary redirect.
+    legacy = command(["docker", "ps", "-q", "--filter", "name=^/cityportal-issue14-proxy$"], env, capture=True)
+    if legacy:
+        mounts = json.loads(command(["docker", "inspect", legacy, "--format", "{{json .Mounts}}"], env, capture=True))
+        expected = ROOT / ".local/issue14/Caddyfile"
+        if not any(Path(mount["Source"]).resolve() == expected.resolve() for mount in mounts):
+            raise RuntimeError("Unexpected legacy proxy configuration; refusing to stop it")
+        command(["docker", "stop", legacy], env)
     command(COMPOSE + ["up", "-d", "api", "worker", "frontend", "proxy"], env)
     ca = LOCAL / "root.crt"
     def copy_ca():
@@ -159,6 +168,9 @@ def main():
         if not actual["emailConfirmed"] or set(actual["roles"]) != expected:
             raise RuntimeError("Unexpected fixture roles for " + role)
     print("\nPortal: https://localhost:8443\npgAdmin: http://localhost:5050\nMailpit: http://localhost:8025", flush=True)
+    print("Previous portal URL https://localhost:8446 redirects to https://localhost:8443")
+    print("In pgAdmin select Databases > cityportal_stand > Schemas > identity > Tables > AspNetUsers.")
+    print("The cityportal database is a separate retained installation with different accounts.")
     print("\nRole           Email                                   Password")
     for role in ROLES:
         print(f"{role:14} {accounts[role]['email']:39} {accounts[role]['password']}")

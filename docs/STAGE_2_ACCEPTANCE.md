@@ -214,6 +214,20 @@ were verified. Setup and operational details are in DEVELOPMENT.md. Earlier
 capacity and browser fixtures remain separate; these additional local launch
 checks do not imply owner acceptance or a new full backend test run.
 
+The owner subsequently reported failed logins and missing recovery messages
+at the earlier `8446` URL while inspecting the retained `cityportal` database.
+The printed credentials belong to `8443` and `cityportal_stand`. Before the fix,
+the same Editor credentials returned HTTP 200 on 8443 and 401 on 8446; recovery
+returned 202 on both, but only the current installation delivered the message.
+The local proxy now temporarily redirects 8446 to 8443 with the path preserved.
+The launcher hands over the known old proxy's port and prints the exact pgAdmin
+database/table path. Retained installation data and passwords are preserved.
+After handover, browser logins from the old URL succeeded for all five printed
+accounts, with confirmed Email and the expected role verified from `/api/account`.
+A fresh Moderator recovery request from that URL returned 202 and produced a
+new Mailpit message. The launcher completed another startup and printed unchanged
+credentials. Caddy validation and local/public Compose configuration checks passed.
+
 1. Follow an author draft through return, private correction, resubmission,
    approval and publication. Inspect the separate current public revision.
 2. Open a proposed published change and verify public text stays unchanged.

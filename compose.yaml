@@ -144,6 +144,7 @@ services:
     image: caddy:2.11.9-alpine
     ports:
       - 127.0.0.1:8443:8443
+      - 127.0.0.1:8446:8446
     volumes:
       - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
