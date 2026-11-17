@@ -1,13 +1,7 @@
-> Stage 2 is complete and owner-accepted as of 2026-11-17. The final status
-> and accepted limitations are in [STAGE_2.md](stages/STAGE_2.md).
-> Pending-work statements in dated checkpoints below are historical.
-
-> Historical verification in this document describes the URL behavior at the time of each checkpoint. The current URL contract is in STAGE_2.md.
-
 # News Drafting, Review, and Published Changes
 
 Current Stage 2 technical acceptance, combined recovery, capacity measurements
-and completed owner review are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
+and completed owner review are recorded in [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17).
 `DiscoveryReadPerformance` adds the measured public-revision lookup index and
 search-vector storage policy. Apply the explicit upgrade with writers stopped
 as described in DEVELOPMENT.md. Owner acceptance was recorded on 2026-11-17.
@@ -16,7 +10,7 @@ as described in DEVELOPMENT.md. Owner acceptance was recorded on 2026-11-17.
 
 Issue #10 implements the production author workspace at `/account/articles` and editorial category/tag management at `/staff/taxonomy`. Authors create, reopen, save, preview, and delete incomplete drafts; choose own Ready uploads or approved shared templates; and edit structured body, sources, contextual image text, taxonomy, and SEO fields. The five sections follow the accepted Text/Images/Parameters/Preview/History layout. Review actions now use production API operations rather than simulated state.
 
-Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Issue #13 delivers production SSR discovery, Russian search, related/featured content, ordered homepage categories and curation UI. Final owner acceptance remains at the complete Stage 2 result.
+Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Issue #13 delivers production SSR discovery, Russian search, related/featured content, ordered homepage categories and curation UI. Stage 2 was owner-accepted on 2026-11-17.
 
 ## Persistence and Permissions
 
@@ -87,13 +81,11 @@ The existing author route provides submission, author recall, required resubmiss
 
 Submission creates a retained content snapshot instead of promoting a mutable draft in place. Return/recall creates a new author-only working draft, while the reviewer continues to read the preceding submitted snapshot. New submission requires a change description after any previous submission and reuses the previous eligible reviewer; otherwise it enters the shared queue. Submitted text cannot be edited. Final rejection prevents further editing/submission. Assigned reviewers alone decide; release/takeover updates all retained Media audiences and history access. Administrator retains effective editorial permissions independently of an Editor assignment.
 
-Approval is distinct from publication. Approved content has no autosave; explicit Save validates a complete replacement snapshot and immediately returns it to review. Publication records actor/time, first-publication timestamp, and the public revision pointer atomically with Media public references and notifications. This slice provides the publication transition, not a public news page. Ever-published articles cannot use unpublished deletion. Publication versus deletion has one winner.
+Approval is distinct from publication. Approved content has no autosave; explicit Save validates a complete replacement snapshot and immediately returns it to review. Publication records actor/time, first-publication timestamp, and the public revision pointer atomically with Media public references and notifications. Public news delivery follows the Stage 2 discovery contract. Ever-published articles cannot use unpublished deletion. Publication versus deletion has one winner.
 
 Identity invokes `IAccountRoleChangeObserver` within its existing role-change transaction and serialization lock. News clears affected reviewer assignments, updates their versions/history, and removes retained Media access before the role change commits. Keeping Administrator preserves effective editorial assignments. Notification persistence failure rolls back both role changes and assignment release. Generic delivery bodies contain no title, text, or reason; feedback remains in permission-gated News history. Existing notification preferences, transactional Outbox, retry/expiry, and receipt deduplication apply unchanged.
 
-### Review Verification: 2026-11-16
-
-Release backend regression: 134 passed, zero failed/skipped. Frontend regression: 70 passed. The complete backend run includes the new review queue and all seven review integration scenarios below. Real HTTPS browser checks exercised submission, claim, return, private unsent correction, required resubmission notes, approval, explicit approved Save returning to review, a second approval, and first publication; a final API read confirmed Published. Reviewed 390px/1440px layouts had no horizontal overflow. A navigation before Save completion triggered the intended unsaved-changes warning; the run resumed after the dialog. Initial local SSR API-origin setup was corrected before acceptance. Existing favicon 404 responses were unrelated to the workflow. Live browser acceptance used an Author/Administrator account; separate-account isolation and role races were proved by integration tests.
+## Drafting Requirement Evidence
 
 | Requirement | Evidence |
 | --- | --- |
@@ -109,40 +101,13 @@ Release backend regression: 134 passed, zero failed/skipped. Frontend regression
 | A validation error can be retried after correcting only the required change description | `retries resubmission after correcting the change description without editing saved content` |
 | Rendered snapshot and required feedback; conflict preserves feedback; release clears private detail; role gating | `renders the submitted snapshot and requires feedback for return and rejection`; `preserves feedback on a competing decision and clears private detail after release`; `does not fetch the review queue for an author without editorial permissions` |
 
-The UI mode change uses Tiptap's non-emitting `setEditable` form: changing permissions must not create another edit or trigger autosave. The pre-existing serialized autosave/retry regressions detected and verify this interaction. Final UI regression is 70 passed after adding change-description retry coverage. Final Release rebuild had zero warnings/errors; after the last audit clarification, all 11 News integration tests passed again. Final formatting, generated-client consistency, production Angular build, and explicit repeat migration passed. Public discovery and published-change acceptance remain outstanding; Stage 2 is open.
-
-The isolated live Worker delivered article.returned, review.resubmitted, article.approved, and article.published account notices and Email. Each observed account-notice ID matched a Sent delivery in the administration API; SMTP delivery was verified against Mailpit. These checks reuse the existing notification foundation and do not claim another SMTP outage/replay run for this slice.
-
-## Historical Delivery Checkpoint: 2026-11-16 (#11)
-
-Review and first publication are captured in pushed commit 0708b94 on prototype/stage-2-news-review, following the pushed drafting/CSS checkpoint b38ed07. The owner requested this progress checkpoint and push. Current completion evidence is recorded above; #11 remains In Progress for integration/final review. Published changes and withdrawal (#12), public delivery (#13), and final Stage 2 acceptance (#14) remain outstanding.
-
-
-## Historical Issue #12 Initial Server Slice (2026-11-16)
-
-At this historical checkpoint, implementation was in progress and delivered only the initial server slice. The versioned review-action route now accepts `propose` (owning Author only) and `withdraw` (Editor/Administrator, required reason). Proposals clone the current publication into a separate private draft. Review and approved explicit Save can operate on replacements; replacement publication preserves the first-publication timestamp. Article-row locking and expected versions serialize these transitions.
-
-Withdrawal retains the current published pointer for history, switches visibility to Withdrawn, and clones existing working content into an author-only draft with review/approval reset. Public Media references are disabled in the same transaction; other current publications may still grant access. The withdrawal event queues the existing generic author notification atomically. A non-owner editor receives the preceding published snapshot in the action response, never the private proposal. Withdrawal history references the published snapshot so the reason remains visible without disclosing unsent content.
-
-At that initial checkpoint, issue #12 was not complete. Direct editorial corrections/supersession, URL aliases and sanitized withdrawn delivery, production UI integration, generated-contract verification, and the full concurrency/rollback/browser matrix were outstanding. This initial checkpoint did not claim owner acceptance; the subsequent implementation and evidence follow below.
-
-
-Initial-slice verification: all 14 News integration tests passed in Release (TRX: 14 passed, zero failed/skipped); solution formatting and `git diff --check` passed. This is scoped verification, not a full backend/frontend regression or live browser acceptance.
-
-| Requirement | Evidence |
-| --- | --- |
-| Separate proposals, single active proposal, permissions, stale writes, replacement publication and stable first-publication time | `Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync` |
-| Reason/role enforcement, withdrawal Media denial, reset approval, author-only correction and reviewed republication | `Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync` |
-| Another editor cannot read unsent proposal text through withdrawal response/history; owner retains it | `Published_WithdrawalByAnotherEditorDoesNotExposePrivateProposalAsync` |
-
-
 ## Issue #12: Published Changes and Withdrawal
 
-The API and UI implement the contracts below. Final verification evidence is recorded in the delivery section below; Stage 2 owner acceptance remains open.
+The API and UI implement the contracts below. Verification and owner acceptance are recorded in STAGE_2.md.
 
 ### Revision and Correction Contracts
 
-The author workspace remains `/account/articles`. Effective editors use `/staff/publications` for published materials and `/staff/articles/{id}` for explicit direct corrections. Public readers use `/news/{id}/{slug}`. The correction workspace reuses the structured editor, requires a reason, disables autosave, and preserves local edits after a stale-version conflict. These routes use the generated API client and the existing confirmed-role/CSRF boundaries.
+The author workspace remains `/account/articles`. Effective editors use `/staff/publications` for published materials and `/staff/articles/{id}` for explicit direct corrections. Public readers use the address contract in STAGE_2.md. The correction workspace reuses the structured editor, requires a reason, disables autosave, and preserves local edits after a stale-version conflict. These routes use the generated API client and the existing confirmed-role/CSRF boundaries.
 
 `POST /api/editorial/articles/{id}/working-version` creates an own-author draft from the current public revision with the expected article version. The initial `/propose` route remains compatible. The current published revision stays unchanged through private saves, submission, review, and approval; only publication replaces it. Replacement publication preserves first-publication time.
 
@@ -152,14 +117,14 @@ The owning author retains private superseded text in history. Staff history acce
 
 ### Public URL and Visibility Contracts
 
-`GET /api/news/articles/{id}` optionally accepts `slug` and returns only the current publication, canonical URL, and an alias indicator. Actual retained Published revision titles form the alias ledger; draft and merely approved titles never form public URLs. Slugs normalize the public title and use the stable article ID at `/news/{id}/{slug}`. Unknown slugs are unavailable; real previous slugs redirect directly to the current canonical URL through SSR. This uses existing retained data and requires no schema migration.
-
-Public update time comes from the publication/correction history of the current public snapshot. Draft saves, review, role changes, and account display-name changes do not alter it. Public credit uses Identity's current display name through an explicit owning-module operation; the response includes no Email or private workflow/revision fields.
-
-The SSR article route checks current visibility before redirecting. Current and historical URLs of withdrawn material return a no-store 404 shell without title, summary, body, author, reason, or article-specific metadata. Never-published/unknown material receives a generic 404. Public API responses, SSR pages, and alias redirects are non-cacheable; Media continues checking current references and template blocks on every read. Basic article delivery belongs to this visibility boundary; feed/search/featured/related discovery remains #13.
-
+The current address, withdrawal and migration contracts are in
+[STAGE_2.md](stages/STAGE_2.md#content-and-state-contracts). Earlier ID/slug routes
+and 307 aliases were superseded; old addresses now return 404. Public responses
+remain non-cacheable and never expose private working content or withdrawal reasons.
 
 ### Issue #12 Requirement Evidence
+
+Alias-specific rows record historical checks; the current contract requires 404 for old addresses.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -183,26 +148,6 @@ The SSR article route checks current visibility before redirecting. Current and 
 
 Independent final read-only Spec and Standards/test-quality review found no blocking findings. Earlier review findings were corrected: deletion is hidden for ever-published articles, correction-save wording is accurate, failed body images display placeholders, withdrawal removes old metadata, and CityClock uses the configured server API root. The reviewer did not execute tests or browser acceptance; those results are recorded separately.
 
-
-### Issue #12 Verification: 2026-11-16
-
-The final sequential Release solution build (`dotnet build CityPortal.slnx -c Release --no-restore --no-incremental`) passed with zero warnings/errors. The full backend run (`dotnet test CityPortal.slnx -c Release --no-build --logger "trx;LogFileName=issue12-full.trx"`) passed 151 of 151 tests, zero failed/skipped; the TRX contained 151 results, all Passed. The targeted News run passed 28 tests separately; these totals are not additive. `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync` verified explicit/repeat module migrations against real infrastructure. This slice requires no new schema migration.
-
-An earlier attempted full run failed because Docker Desktop was paused. The official Docker Desktop restart restored the daemon; existing PostgreSQL, RabbitMQ, Mailpit, and Media services resumed without recreating data volumes. The successful sequential run above is the completion evidence, not the infrastructure-failure attempt.
-
-Final solution formatting (`dotnet format CityPortal.slnx --verify-no-changes --no-restore`) passed after the full backend run.
-
-Final frontend regression (`npm test -- --watch=false`) passed 79 tests in 13 files. The final production Angular/SSR build, full Prettier check, and `npm run api:check` passed after the last SSR fix.
-
-Live production SSR behind isolated HTTPS exercised own-author proposal saving while public text stayed unchanged, a direct editorial correction superseding that proposal, withdrawal, author-only correction, submission, approval, and republication through the UI. Current SSR returned 200 with `Cache-Control: no-store`; two real historical URLs returned 307 directly to the current canonical URL; an unknown slug returned 404. Configured-city date formatting matched `Asia/Yekaterinburg` from the isolated runtime system-info response; no database setting was changed for this check.
-
-After final withdrawal, anonymous requests to the current URL and both real aliases returned 404 with no-store. Each shell omitted article title, body, author, private reason, `og:title`, and canonical link. Desktop 1440px and mobile 390px checks had no horizontal overflow; published, withdrawn, and republished screenshots were inspected. Live UI acceptance used an existing Author/Administrator account; backend integration tests separately proved distinct-role isolation and permission races. Local screenshots/logs remain ignored artifacts, not application content.
-
-Live SSR exposed a server-DOM incompatibility: Domino did not support `head.append`. The implementation now uses `appendChild` and clears article data/metadata if a partial DOM operation fails. The final frontend regression covers both missing `append` and partial-DOM failure cleanup. An initial incorrect acceptance login and the existing favicon 404 were unrelated setup/noise; deliberate withdrawn 404 responses are expected.
-
-Issue #12 is implemented and verified locally. Independent Spec and Standards/test-quality review found no blocking findings; final Stage 2 owner acceptance remains deferred to #14. Discovery, search, related/featured content, and homepage integration remain #13. This delivery does not claim a fresh SMTP outage/replay or backup/restore run, production deployment, or Stage 2 closure.
-
-
 ## Issue 13: Public Discovery and Editorial Curation
 
 The production homepage at `/` and detailed list at `/news` use real current-publication data. Homepage blocks contain up to five featured selections, five latest stories (three compact cards and two wide rows), and two editor-selected ordered category blocks of up to five stories. Stories may repeat across blocks. Before initial category configuration, no category blocks are chosen automatically. Empty categories remain visible as selected blocks with a link to their list.
@@ -217,7 +162,7 @@ Query parameters are `query`, `categoryId`, `tagId`, `from`, `to`, `page`, `page
 
 Summaries contain public card fields and current author display names from one bounded Identity batch operation, with no Email, working revision fields, history, full body, object keys or unpublished SEO. Public generated-client requests omit credentials and disable browser/transfer caching. API and SSR responses use no-store, including validation failures. No shared public cache or direct object-storage URL is introduced.
 
-The list owns search/filter controls and preserves them in navigation links. The homepage category bar scrolls to blocks and its All News link opens the unfiltered list. Article category/tag links open filtered lists. Article SSR retains canonical/alias/withdrawal and revision-owned SEO behavior, adds current related cards, and follows the existing fluid typography/media style. Related-data failure does not hide the main article. Real image failures render placeholders, including reused carousel slide elements; author/date metadata stays on one line. Category scrolling remains interruptible at 650ms, carousel settling at 380ms and content entrance at 180ms.
+The list owns search/filter controls and preserves them in navigation links. The homepage category bar scrolls to blocks and its All News link opens the unfiltered list. Article category/tag links open filtered lists. Article SSR uses the current canonical address, withdrawal and revision-owned SEO rules, adds current related cards, and follows the existing fluid typography/media style. Related-data failure does not hide the main article. Real image failures render placeholders, including reused carousel slide elements; author/date metadata stays on one line. Category scrolling remains interruptible at 650ms, carousel settling at 380ms and content entrance at 180ms.
 
 ### Requirement-to-Test Evidence
 
@@ -234,18 +179,3 @@ The list owns search/filter controls and preserves them in navigation links. The
 | Scroll interruption and event/frame cleanup; carousel single/multiple controls; failed-image reuse and author credit | `interrupts category scrolling on wheel, touch and keys and cancels it on destruction`; `hides arrows for a single article and exposes one active slide`; `keeps image failures scoped to their media ID when slide elements are reused` |
 | Generated public-request credential/cache isolation | `omits credentials and disables transfer/browser caching for generated public requests` |
 | Editorial category conflict input retention and versioned feature toggles | `retains category order input when a stale homepage save fails`; `sends the article version when adding and removing editorial selections` |
-
-### Verification and Boundaries
-
-Final Release backend regression passed 163 tests, zero failed/skipped; the TRX was parsed and all 163 case outcomes verified, including the 12 discovery/curation cases. Frontend regression passed 90 tests in 14 files. Production Angular/SSR build and complete Prettier verification passed. Generated-client consistency and refresh against the final runtime OpenAPI passed. Solution formatting and Release build passed. No test counts from separate targeted runs are added together.
-
-An initial full backend run found an old expected migration count (13 before the new migration, now 14), and concurrent API factories racing the production process-wide upload slot. The two upload-using test classes now share an xUnit collection; dedicated production concurrency tests remain unchanged. Production throttling and upload-slot enforcement were not relaxed.
-
-Real isolated HTTPS verification exercised editor category order and featured changes through the UI, homepage/list/article SSR with no-store, Russian word-form search, category filtering, carousel navigation, related content, and 1440px/390px layouts without horizontal overflow. The test account was created solely in the local acceptance database and assigned Author/Administrator fixture roles; distinct-role restrictions and concurrent writes are verified separately by integration tests. Initial stale acceptance credentials and a filter-selector mismatch were corrected in local verification scripts, not by weakening application permissions or changing visibility.
-
-Independent Spec and Standards reviews identified scroll interruption, reused-slide image failures, missing featured author credit, and metadata wrapping. Each was fixed; focused re-review confirmed the fixes. Final HTTPS alias/withdrawal evidence is recorded below. Raw reports, credentials, screenshots and logs remain ignored local artifacts.
-
-Issue 14 still owns representative 10,000-article capacity measurements, fresh backup/restore, cross-workflow failure/recovery checks and final owner review. No new SMTP outage/replay, production deployment or Stage 2 closure is claimed here.
-
-
-The final HTTPS regression used the final API snapshot and production SSR build. Editorial correction created a new canonical URL; the real previous URL redirected directly with 307. After withdrawal, the article was absent from list, homepage and related responses, and both current and historical URLs returned no-store 404 shells without article title or private reason. Malformed public date input returned no-store 400. The final browser run recorded no page errors. Screenshots of the final 1440px homepage and 390px list were inspected; fixtures without covers display the explicit no-image state. These are local verification results, not owner acceptance.

@@ -116,7 +116,12 @@ Record significant editorial, moderation, and administrative actions with the re
 
 ### News
 
-Production drafting/taxonomy now use the owned News schema and migration, current-author API operations, transactional Media references, version-1 structured content, and an independent server validator/renderer. The browser author workspace provides durable incomplete drafts, serialized five-second autosave, manual Save, conflict-copy/reload handling, and real Media selection. Draft saves mutate one working revision; retained deletion preserves saved text privately. Implementation boundaries and evidence are in [NEWS.md](NEWS.md). Review and first publication now retain immutable submitted content, current reviewer audiences, independent approval/publication, and transactional workflow notifications. Identity joins News assignment release through IAccountRoleChangeObserver within the role-change transaction; keeping Administrator preserves editorial permissions. Published corrections, withdrawal/republication, public article SSR and discovery are implemented. Stage 2 technical verification is complete; owner acceptance remains open.
+News owns drafting, taxonomy, independent working/published revisions, immutable
+submitted snapshots and retained history. Identity joins assignment release through
+`IAccountRoleChangeObserver` in the role-change transaction; Administrator preserves
+effective editorial permissions. News, Media references and notifications commit
+atomically. Detailed delivered contracts are in [STAGE_2.md](stages/STAGE_2.md);
+structured-document and UI implementation details are in [NEWS.md](NEWS.md).
 
 Implement the full editorial process and published article corrections during delivery stage 2. Follow VALUE.md for review ownership, returns, final rejection, approval, publication permissions, direct editor corrections, withdrawal, and republication.
 
@@ -187,7 +192,7 @@ Stage 2 capacity checks justified a partial index on the current public
 The owned DiscoveryReadPerformance migration recomputes existing vectors while
 preserving article content and versions. Apply it with writers stopped and
 allow time/disk space for retained revisions. Measurement details and latency
-limitations are in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md); no shared public
+limitations are in [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17); no shared public
 cache or new search engine was added.
 
 Use efficient PostgreSQL queries, suitable indexes, pagination, and bounded reads. Start with PostgreSQL Full-Text Search over published content. Use ordinary query filters for category, district, price, and related attributes. Draft content must not enter public search.
@@ -249,4 +254,8 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts remain the delivered baseline. [Stage 2: News and Media](stages/STAGE_2.md) has completed its specification; homepage/article visuals are owner-accepted. Production Media, template notifications, and News drafting/taxonomy are implemented and locally verified. Production author and reviewer workspaces now deliver review and first publication. Issue #12 implements published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with visibility-checked addresses. Issue #13 implements public SSR discovery, Russian search, related/featured news, ordered editorial homepage categories, and the production homepage. Issue #14 completed technical verification, combined recovery and capacity measurement; the owner reviewed workflows, transaction/data flow and failure handling and explicitly accepted Stage 2 on 2026-11-17. Evidence and limitations are in STAGE_2_ACCEPTANCE.md. Issues #7-#14 in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) track the stage; all Stage 2 issues are complete. Stage 3 specification is next and requires agreement of its workflows with the owner.
+[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) was owner-accepted on
+2026-11-13; [Stage 2: News and Media](stages/STAGE_2.md) on 2026-11-17.
+Their specifications retain delivered contracts, verification and limitations.
+Stage 2 issues #7-#14 are complete. Stage 3 is next; agree its workflows with the
+owner before implementation.

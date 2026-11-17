@@ -422,8 +422,8 @@ Production author drafts, submissions, recall, approved Save, and publication ru
 
 Published corrections/withdrawal, public article SSR, discovery and editorial
 homepage curation are implemented. See [NEWS.md](NEWS.md) for their contracts
-and [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md) for technical verification
-and remaining owner review.
+and [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17) for technical verification
+and completed owner review.
 
 ## Stage 2 Upgrade and Recovery
 
@@ -447,7 +447,7 @@ the restored API/Worker for these resources and a separate broker vhost. Restore
 keys before protected-payload delivery. Apply explicit migrations, start the
 application, and verify public/private images, retained history, SMTP decryption
 and pending work. Keep the original environment until recovery is reviewed.
-The combined automated regression and its limits are in STAGE_2_ACCEPTANCE.md.
+The combined automated regression and its limits are in stages/STAGE_2.md.
 
 After a Release API build and production frontend build, reproduce the isolated
 capacity baseline with `python scripts/check-news-capacity.py`. This creates a

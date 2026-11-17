@@ -9,7 +9,7 @@ which remains available in Git history.
 
 Use calm editorial minimalism based on the owner-reviewed news homepage and article page. The content and images carry the hierarchy. Keep the established palette, fonts, orange logo dot, fluid public-page layout, and agreed navigation. Do not add fonts, decorative gradients, shadows, or boxed news cards. The existing lead-story image gradient is retained to make overlaid text readable.
 
-Apply this language to public pages, account/recovery/installation forms, staff screens, and the production article editor. Historical checkpoints below record the earlier visual consistency work. Product contracts remain in VALUE and the stage specifications.
+Apply this language to public pages, account/recovery/installation forms, staff screens, and the production article editor. Product contracts remain in VALUE and the stage specifications.
 
 ## Shared Foundation
 
@@ -53,7 +53,7 @@ Illustration colors are content, not additional interface palette roles. They ma
 
 ## Interaction and Accessibility
 
-The production author workspace at `/account/articles` now reuses the accepted five-section layout with actual persistence and Media. Shared native-control styles also cover `/staff/taxonomy`; the fixture review workspace remains isolated. Real 1440px/390px checks covered editor/preview, Media selection, retained local conflict copy, and no horizontal page overflow. Visible keyboard focus, labelled native controls, and Russian editor labels are retained; final owner acceptance remains at stage completion.
+The production author workspace at `/account/articles` now reuses the accepted five-section layout with actual persistence and Media. Shared native-control styles also cover `/staff/taxonomy`; review uses the production staff workspace. Real 1440px/390px checks covered editor/preview, Media selection, retained local conflict copy, and no horizontal page overflow. Visible keyboard focus, labelled native controls, and Russian editor labels are retained; Stage 2 is owner-accepted.
 
 The account notification page follows the shared typography, buttons, muted metadata, and divider-based rows. Native fieldsets keep account and Email switches independently labelled, with visible unsaved/success/error feedback. Notification actions and settings fit desktop 1440px and mobile 390px without horizontal page overflow; the real HTTPS verification also covered read/delete and persistence after reload. The page is browser-rendered under `/account/notifications` and uses the existing account navigation.
 
@@ -61,53 +61,27 @@ Preserve the accepted sticky category row, 650ms interruptible category scrollin
 
 Every control needs a label and visible focus. The editor has a group focus outline instead of an invisible caret-only focus state. Logo dots are hidden from assistive technology. Text and controls must fit narrow screens; shared variables do not replace checking long content, zoom, and actual API states.
 
-## Review Findings and Changes
+## Authoring Workspace
 
-| Owning file | Finding | Resolution |
-| --- | --- | --- |
-| `frontend/src/styles.css` | Similar colors and control rules diverged between account and staff screens. | Shared semantic palette, consistent field/action styling and title scale. |
-| `frontend/src/styles.css` | Generic footer/navigation rules leaked into nested components. | Scoped application chrome; article footer explicitly owns its divider and spacing. |
-| `frontend/src/app/news-prototype/news-prototype.css` | Writing and preview body fonts differed from the actual article reader. | Both use the existing system body font; editorial display font remains unchanged. |
-| `frontend/src/app/news-prototype/news-prototype.css` | White editor panels and inconsistent borders competed with the quiet public pages. | Page-colored panes, shared dividers, matching controls, visible editor focus. |
-| `frontend/src/app/news-prototype/news-prototype.html` | Fixture dates mixed raw ISO dates and localized presentation. | News card dates share the existing Russian date formatter. |
-| Public component styles | Repeated hardcoded semantic colors encouraged drift. | Color and core gutter variables come from the shared foundation. |
+The production workspace uses five sections: text, images, parameters, reader preview
+and history. The writing canvas takes most desktop width; a smaller right column
+holds readiness/review actions and follows the document on mobile. The action bar
+stays visible on desktop. Images support contextual alternative text and captions;
+parameters hold taxonomy, attribution, sources and optional SEO. Preview offers
+desktop/mobile widths without publication. Native decision/image dialogs retain
+focus containment, Escape and focus return.
 
-Review reference: [Web Interface Guidelines](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md). Owner decisions override generic suggestions, including natural headline wrapping and the explicitly requested page/scroll motion. The prototype's navigation buttons, memory-only editor state, and schema/media limitations remain prototype constraints; this style pass does not certify full guideline compliance or production accessibility.
+The completed prototype was removed after acceptance. Stage verification and its
+limits are recorded in [STAGE_2.md](stages/STAGE_2.md).
 
-## Authoring and Editorial Workspace
-
-The owner delegated further editor design and implementation, with acceptance reserved for the final stage result instead of individual blocks. The current browser-only workspace is an implementation reference, not production authorization or persistence.
-
-Design research used primary product documentation:
-
-| Reference | Useful pattern | CityPortal adaptation |
-| --- | --- | --- |
-| [Ghost post settings](https://ghost.org/help/post-settings/) and [publishing](https://ghost.org/help/publishing-content/) | Separate writing, metadata preparation, preview, and publishing controls. | Quiet text canvas; explicit save/submit/publish actions and separate optional SEO controls. |
-| [WordPress post settings](https://wordpress.org/documentation/article/page-post-settings-sidebar/) | Distinguish document-wide properties from content editing. | Images and parameters have their own navigation; authors need not keep every field beside the text. |
-| [Sanity content operations](https://www.sanity.io/docs/user-guides/content-operations-cheatsheet) | Make review and retained history discoverable. | A contextual review panel and a history section with readable submitted snapshots. Advanced change comparison remains excluded. |
-
-The selected composition uses the existing forest-green palette, system font, page-colored surfaces, restrained rules, and fluid gutters. The writing canvas receives most of the width. A smaller right column holds readiness or editorial decisions; it follows the document on mobile. The action bar stays visible on desktop. Five sections organize text, images, parameters, reader preview, and history. No new fonts, shadows, promotional text, or workflow permissions are introduced.
-
-Authors have a searchable article list, incomplete drafts, memory-only five-second autosave, explicit save, submission, recall, resubmission notes, and separate publication. Images support a cover, a gallery, inline placement, contextual alternative text, and optional captions. The library demonstrates own files and approved common templates; it does not upload or moderate real files. Parameters contain category, tags, repeatable sources, attribution flag, and optional SEO overrides. Preview offers desktop/mobile reading widths without publishing.
-
-Editors have a shared queue, claim/takeover, required feedback for return/rejection, approval, transfer/release, separate publication, and explicit published corrections/withdrawal. Review copies, private working content, and published correction buffers are separated in memory. The history control is absent for an unassigned editor. Native dialogs provide focus containment, Escape, and focus return for decisions and image selection. Demonstration persona controls live in a collapsed development section, outside the normal article actions.
-
-Browser checks covered submission locking, return/resubmission with required change notes, approval/publication, direct corrections, withdrawal, and private unsent title isolation. All five sections and the image dialog fit a 390px viewport without page overflow. Both production SSR compilation and prototype compilation passed. The production API was unavailable during these checks; fixture persistence, role controls, and queue operations do not prove API permissions, durable history, concurrency, Media processing, or notification delivery.
-
-## Earlier Theme Verification
-
-On 2026-11-14, production SSR compilation and prototype compilation passed. Browser review covered the public homepage/article/editor at desktop and mobile widths. The homepage showcase remained within 1920×1080 and 1366×768 viewports; no horizontal page overflow was observed at 390px on reviewed public/editor screens.
-
-Account login/registration/recovery/confirmation, profile, staff accounts/delivery screens, and the setup form were opened using the actual production browser bundle with synthetic API responses in an isolated browser session. Login, profile, accounts, delivery, and setup screens had no horizontal page overflow at 390px. This checks rendering, not actual account writes, permissions, Email delivery, backend integration, or SSR responses. Those workflows retain their existing acceptance requirements. No persistent browser tests or dependencies were added for this visual pass.
 ## Production Review and First Publication
 
 The production author workspace now uses real submission/recall, required resubmission notes, explicit approved Save returning to review, separate publication, and paginated retained snapshots. Its five existing sections remain. Submitted/rejected/published content is read-only; approved content disables autosave and explains explicit Save behavior. Unsaved changes and version conflicts preserve the local form.
 
-The production reviewer route `/staff/reviews` uses shared tokens and controls for shared/personal queues, claim/release/takeover, required feedback, final rejection, approval, separate publication, and retained history. Returned content shows the preceding submitted snapshot and explains that current corrections are author-only. Queue/history pagination is bounded. Full snapshots retain taxonomy, cover/gallery/body images, contextual text, sources, and SEO. Failed protected image reads use placeholders. This production implementation remains separate from the earlier fixture prototype.
-
+The production reviewer route `/staff/reviews` uses shared tokens and controls for shared/personal queues, claim/release/takeover, required feedback, final rejection, approval, separate publication, and retained history. Returned content shows the preceding submitted snapshot and explains that current corrections are author-only. Queue/history pagination is bounded. Full snapshots retain taxonomy, cover/gallery/body images, contextual text, sources, and SEO. Failed protected image reads use placeholders.
 
 ## Production Public News: Issue 13
 
 The production homepage and detailed list now use actual publication data and the shared visual language. Homepage gutters are 8vw (5vw on mobile), category/search controls use header gutters, and the fluid article reader retains its additional desktop article inset without a fixed width cap. Featured images use safe Media URLs; no-cover and unavailable-image states are explicit. The carousel retains 380ms settling and pointer/arrow alternatives, one active accessible slide and one-line current-author/date credit. Category scrolling is interruptible by wheel, touch or keyboard input and cleans up animation frames/listeners on destruction.
 
-The detailed list owns its labelled filters and numbered page navigation; the homepage category bar is hidden there. Editorial publication rows expose versioned featured toggles and ordered category configuration with conflict/error feedback preserving input. HTTPS checks covered 1440px and 390px layouts, actual search/filter/navigation and curation actions without horizontal overflow. NEWS.md records verification boundaries; final owner acceptance remains part of #14.
+The detailed list owns its labelled filters and numbered page navigation; the homepage category bar is hidden there. Editorial publication rows expose versioned featured toggles and ordered category configuration with conflict/error feedback preserving input. HTTPS checks covered 1440px and 390px layouts, actual search/filter/navigation and curation actions without horizontal overflow. STAGE_2.md records verification and acceptance.

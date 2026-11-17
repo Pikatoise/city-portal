@@ -1,11 +1,7 @@
-> Stage 2 is complete and owner-accepted as of 2026-11-17. The final status
-> and accepted limitations are in [STAGE_2.md](stages/STAGE_2.md).
-> Pending-work statements in dated checkpoints below are historical.
-
 # Media Implementation and Operations
 
 The fresh combined News/Media/notification/key recovery and final Stage 2
-technical evidence are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
+technical evidence are recorded in [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17).
 It exercises paginated object copying and all four processed public variants.
 Owner stage acceptance was recorded on 2026-11-17.
 
@@ -24,7 +20,7 @@ The pinned implementation uses SkiaSharp/Linux native assets 4.156.0 ([MIT licen
 5. Persistent Quartz reconciliation runs every ten seconds without concurrent execution. It joins the existing Worker scheduler registration; the legacy name `CityPortal.Email` is preserved for compatibility. Registering that named scheduler twice is prohibited.
 6. Cleanup locks never-attached images at least seven days old using the same lock as reference attachment. Recheck retention, commit Deleting, delete objects, then remove metadata. Storage failures retain Deleting for retry. Any previous article/template attachment excludes the image from this cleanup, including retained history.
 
-Streams and native buffers are disposed on success, failure, or cancellation. Decode concurrency is one per process; final-stage capacity checks still need native-memory measurements at the 40 MP ceiling.
+Streams and native buffers are disposed on success, failure, or cancellation. Decode concurrency is one per process; native-memory use at the 40 MP ceiling was not measured.
 
 ## Authorization and Integration
 
@@ -53,13 +49,13 @@ Migration initializes configured storage and applies owned migrations explicitly
 
 Stop API writes and the Worker for a consistent backup. Take a custom-format PostgreSQL dump and export all processed objects with authenticated S3 operations. Protect configuration, credentials, and Data Protection keys separately. Do not treat a live RustFS filesystem copy as a portable object export.
 
-Restore into an isolated database/bucket, configure matching keys/settings, apply explicit migrations, then start the Worker. Processing payloads reconcile partial writes and Deleting rows resume cleanup. Verify public/private reads, retained decisions, and pending work before using a restored deployment. Full-stage notification/key-recovery acceptance remains separate.
+Restore into an isolated database/bucket, configure matching keys/settings, apply explicit migrations, then start the Worker. Processing payloads reconcile partial writes and Deleting rows resume cleanup. Verify public/private reads, retained decisions, and pending work before using a restored deployment. Combined notification/key recovery is recorded in STAGE_2.md.
 
 `Restore_MetadataAndProcessedObjects_PreservesPrivateReadsAndPendingWorkAsync` performs actual `pg_dump`/`pg_restore` and S3 copy into isolated resources, checking byte-identical public output, private denial/authenticated access, and continuation of pending processing.
 
 ## Verification and Limits
 
-On 2026-11-15 local time, the full backend regression run passed 102 tests and the frontend run passed 51 tests. The focused Media run passed 23 tests and native Linux processing passed 14; final targeted template/privacy and upload guard checks passed 1 and 2 cases respectively. Production Angular build, generated-client consistency, explicit/repeat migrations, and API/Worker/frontend container builds passed. A real HTTPS browser run used an isolated database, S3 bucket, broker virtual host, and test account: upload, Worker completion, proposal, approval, shared library, removal request, archival, and history worked. Desktop 1440px and mobile 390px had no page overflow. This is not final owner acceptance of Stage 2.
+Final verification and accepted limits are recorded in [STAGE_2.md](stages/STAGE_2.md).
 
 | Requirement | Evidence |
 | --- | --- |
@@ -73,21 +69,17 @@ On 2026-11-15 local time, the full backend regression run passed 102 tests and t
 | Database/object recovery | `Restore_MetadataAndProcessedObjects_PreservesPrivateReadsAndPendingWorkAsync` |
 | Browser contracts | `sends the selected file with a fresh CSRF token as multipart data`, `sends the removal request version and never converts resolution into rejection`, `does not request private libraries for an unconfirmed author` |
 
-Production drafts now call the Media transaction contract and use real images in the author editor; see [NEWS.md](NEWS.md). Production review/publication now maintain retained reviewer and public Media audiences through #11. Withdrawal and public article blocked-image rendering remain #12-#13. The earlier prototype remains isolated. Template notifications are implemented below; final stage acceptance remains outstanding.
-
 ## Workflow Notifications: 2026-11-15
 
 Approval, rejection, archival (including mandatory removal resolution), block, and unblock queue notifications to the template submitter. Block/unblock also queue the corresponding image event once per distinct author with current image references, including private drafts. Historical-only references retain files and their audience without producing affected-author fanout. News must set `isCurrent: false` when a revision becomes retained history and maintain both current working and public references in its transaction. This is separate from public image visibility.
 
 Media decision/history writes and Notifications receipts, account notices, Email delivery records, and Wolverine Outbox work share one PostgreSQL transaction. A notification write failure rolls back the decision. The dispatch marker permits recovery of events from the earlier Media slice; durable receipts prevent recreation after retries, user deletion, and retention cleanup. Older handoffs retain their original timestamp and do not extend delivery eligibility. Backfill uses references available at dispatch; new decisions capture their audience in the decision transaction.
 
-Notifications owns independent account/Email switches for every approved Stage 2 event type, enabled by default. News event types are available for preferences; emitting News events remains part of the corresponding News workflows. Confirmation and recovery messages bypass these switches. Generic account/Email copy contains no article title/body, template name, or private decision reason; access to details remains governed by the owning API.
+Notifications owns independent account/Email switches for every approved Stage 2 event type, enabled by default. News workflows emit their corresponding event types. Confirmation and recovery messages bypass these switches. Generic account/Email copy contains no article title/body, template name, or private decision reason; access to details remains governed by the owning API.
 
 The account page `/account/notifications` provides bounded pagination, read/delete actions, and delivery settings. Every write requires CSRF. Reads and writes use the current account/session and cannot operate on another account's notices. Thirty-day expiry applies to reads immediately, whether read or unread; the existing daily persistent retention job removes expired rows. Deduplication receipts and owning Media history survive. Deleting a notice does not delete its independently queued Email.
 
 Workflow Email uses the existing encrypted payload, SMTP configuration, Outbox/Inbox, attempt numbering, retry intervals, and replay audit. Its deadline is seven days from the originating event. Delivery/replay recheck both deadline and the current Email switch; replay never changes expiry. The retention job also marks expired unsent/failed workflow deliveries Skipped and clears protected payloads. Broker/provider outages do not undo committed decisions.
-
-Latest verification: Release backend 112 passed, 0 failed, 0 skipped; frontend 56 passed. Production Angular build, solution formatting, generated client consistency, explicit/repeat migrations, and separate standards/spec reviews passed. Real HTTPS browser checks on isolated database/bucket/broker resources completed upload -> Worker Ready -> template submission/approval -> account notice and SMTP Sent, then read/delete and independently persisted channel switches. Desktop 1440px and mobile 390px had no horizontal overflow. The browser's only resource error was the existing missing favicon. This is local workflow verification, not final owner acceptance.
 
 | Requirement | Evidence |
 | --- | --- |

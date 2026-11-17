@@ -238,7 +238,9 @@ This is a summary of the recorded 2026-11-11 through 2026-11-13 verification, no
 
 The setup backend run passed 76 of 77 cases; the remaining MIME assertion was corrected to decode the message and its focused rerun passed. The later keyless revision passed all 14 selected installation/foundation cases. The final setup-only frontend run passed all 48 cases. These results come from separate runs; no single complete backend rerun after every revision or new remote CI result is claimed.
 
-Independent specification and coding-style reviews resolved findings in link handling, retained-delivery projection, session rechecks, and concurrent account writes. Setup backend review found no confirmed defect; a second setup reviewer reached its usage limit, and frontend inspection was completed inline and through browser acceptance.
+Specification/style reviews resolved link handling, retained-delivery projection,
+session and concurrency findings. Setup backend review found no confirmed defect;
+a second review stopped at its usage limit. Frontend review included browser checks.
 
 ### Owner Acceptance and Limitations
 

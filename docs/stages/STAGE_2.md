@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Stage 2 is complete and owner-accepted as of 2026-11-17. News and Media workflows, public SSR discovery, the author/editor interfaces and the replacement public address contract are delivered. Technical verification, recovery and capacity evidence are recorded in this specification and STAGE_2_ACCEPTANCE.md. The owner checked the current interface and functions, reviewed transaction/data flow and failure handling, and explicitly accepted the stage. Issues #7-#14 are complete. Dated checkpoints below preserve historical status; this paragraph and the final acceptance record define the current status.
+Stage 2 is complete and owner-accepted as of 2026-11-17. News and Media workflows, public SSR discovery, the author/editor interfaces and the replacement public address contract are delivered. Technical verification, recovery and capacity evidence are recorded below. The owner checked the current interface and functions, reviewed transaction/data flow and failure handling, and explicitly accepted the stage. Issues #7-#14 are complete.
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -99,11 +99,7 @@ Allow at most one unfinished working version per article, separate from the curr
 
 Public address contract: use `/news/{transliterated-title}-{dd-MM-yyyy}-{guid-suffix}`, where the suffix is the final six hexadecimal characters of the article GUID. Persist the first-publication date in the city's time zone so later time-zone changes do not change the address. A published title change replaces the public URL; previous URLs no longer resolve. Pending title changes cannot change public addresses. Reject publication when another article already owns the complete URL and ask for a different title. Enforce uniqueness under concurrent publication. Migrate the existing published article to the new address.
 
-The local review stand was migrated on 2026-11-17. Its one publication was first published at 13:04:50 UTC in the configured `UTC` zone, so its preserved local date is 2026-11-17. Its new address is `/news/testovyy-zagolovok-17-11-2026-609ade`. HTTPS browser verification opened the article from the news list, confirmed its canonical URL, and received 404 without redirect for the old ID-based route. The migration retained the publication and its content. Public SSR responses explicitly set their HTML content type and remain non-cacheable.
-
 The address migration runs immediately after the schema migration in the explicit migration command. If interrupted between those steps, readiness fails and public article/discovery requests and address-changing publication operations return 503 until the command is retried; backfill is transactional and does not recalculate stored dates. Focused integration tests cover transliteration, collision rollback, concurrent HTTP publication and correction, republishing after a time-zone change, and backfill recovery. HTTP writes also acquire the existing shared authorization lock, so those concurrency tests do not independently demonstrate contention on the address-specific lock; the unique database index remains the final uniqueness constraint.
-
-Verification on 2026-11-17: `dotnet test CityPortal.slnx` passed 184 tests; frontend `npm test -- --watch=false` passed 96 tests. The frontend production build, generated API client consistency check, `dotnet format --verify-no-changes`, and EF pending-model check passed. Earlier full-run failures identified an outdated migration count, a cloned-publication fixture missing addresses, and accumulated test database connections; the fixtures were corrected before the final passing run. Stage 2 owner acceptance remains outstanding.
 
 ## Public News and Discovery
 
@@ -135,7 +131,7 @@ At article withdrawal, deny new anonymous access to an image unless another curr
 
 ## API, Transactions, and Module Contracts
 
-The following route design is an engineering contract for implementation, not a claim that these endpoints already exist. Routes are relative to `/api`; abbreviated action paths in one row share the fully written resource prefix. Retain generated OpenAPI/TypeScript clients, Problem Details, cookie/CSRF protection, and explicit DTOs. Every mutation requires CSRF and an expected version when updating an existing resource.
+Routes below record the delivered API contract. Routes are relative to `/api`; abbreviated action paths in one row share the fully written resource prefix. Retain generated OpenAPI/TypeScript clients, Problem Details, cookie/CSRF protection, and explicit DTOs. Every mutation requires CSRF and an expected version when updating an existing resource.
 
 | Route group | Contract |
 | --- | --- |
@@ -230,13 +226,14 @@ The first implementation task prototypes the editor and homepage using the agree
 
 Demonstrate backup and restore of PostgreSQL, protected configuration/keys, and processed image objects into an isolated environment. Verify published and private image access, retained history, pending delivery, migration repeatability, and application restart. No production/public deployment is implied.
 
-## Remaining Decisions and Tracking
+## Decisions and Tracking
 
-The category/search bar also includes an All News button that opens the complete detailed list with search, filters, and pagination, without a preselected category or query. Latest and category buttons retain homepage block scrolling. Hide the category/search bar on the detailed list; retain the site header and the list's own search/filter controls.
+No Stage 2 product decisions remain open. New business choices require owner agreement.
+The category/search bar includes All News, which opens the unfiltered detailed list.
+Latest/category buttons scroll to homepage blocks; the detailed list hides this bar
+and retains its own filters and site header.
 
-The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. On 2026-11-16 the owner confirmed that editors choose the two production homepage categories and their order; Transport and Culture remain prototype examples. Administrator has the same effective editorial permission. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
-
-The following workflow issues are tracked in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#13 are implemented; final Stage 2 owner review remains outstanding. Issue #14 is In Progress: technical verification is complete and owner acceptance remains open. The current branch is `prototype/stage-2-news-review`; published revisions and discovery are captured in 4ec91bb and 28c050d.
+Issues #7-#14 are complete in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -248,16 +245,6 @@ The following workflow issues are tracked in [GitHub Project 3](https://github.c
 | [#12](https://github.com/Pikatoise/city-portal/issues/12) | Published revisions and withdrawal | #11. |
 | [#13](https://github.com/Pikatoise/city-portal/issues/13) | SSR discovery and featured homepage | #7, #12. |
 | [#14](https://github.com/Pikatoise/city-portal/issues/14) | Acceptance, backup/restore, owner review | #8-#13. |
-
-Stage 1 acceptance remains closed. Stage 2 completion review remains outstanding.
-
-Issue #14 evidence and the owner review script are in
-[STAGE_2_ACCEPTANCE.md](../STAGE_2_ACCEPTANCE.md). Local engineering measurement
-targets are API p95 <= 500 ms and SSR p95 <= 1,000 ms at eight readers on the
-specified baseline, not a production SLA. The measured migration adds a partial
-current-public-revision index and favors inline search-vector storage. Apply it
-with writers stopped: it recomputes existing generated vectors without changing
-article content or versions.
 
 ## Acceptance Criteria
 
@@ -287,158 +274,202 @@ article content or versions.
 - Explicit/repeat migrations, generated contracts, formatting/build checks, real infrastructure tests, and desktop/mobile browser scenarios pass. Database/media backup and restore are demonstrated.
 - The owner reviews the workflows, transaction/data flow, and a failure scenario before stage closure; limitations and actual verification evidence are recorded here.
 
-## Implementation Status
+## Acceptance evidence map
 
-### Historical Progress Checkpoint: 2026-11-16
+Named backend tests are in `tests/CityPortal.IntegrationTests/`. Module-specific
+frontend mappings are in [NEWS.md](../NEWS.md) and [MEDIA.md](../MEDIA.md).
+These are recorded runs, not a new execution. Historical alias checks preceded
+the replacement address contract above.
 
-| Deliverable | Recorded status |
+| Criteria | Concrete evidence |
 | --- | --- |
-| Product specification and shared UI style | Recorded; homepage/article visuals owner-accepted. |
-| Author/editor workspace | Production author/reviewer workspaces use real drafting, Media, review, first publication, and retained history. |
-| Media uploads, processing, private storage, and recovery | Implemented, reviewed, and verified locally; issue #8 remains In Progress pending final stage review. |
-| Shared-template moderation and library | API/UI, decisions/history, independent flags, and mandatory archival implemented locally. |
-| Template workflow notifications | Implemented: independent account/Email preferences, atomic Outbox handoff, current-reference author fanout, expiry/replay, read/delete UI, and durable deduplication. Issue #9 stays In Progress for News integration/final review. |
-| News drafts/taxonomy and validation | Implemented and verified API/UI in #10; see [NEWS.md](../NEWS.md). |
-| Review and first publication | Implemented, verified, and pushed in 0708b94 under #11; final stage review remains pending. |
-| Published revisions and withdrawal | API/UI and basic article SSR implemented in #12; final evidence is in NEWS.md. |
-| Public discovery, search, related/featured news, and homepage | Implemented and locally verified in #13; final owner acceptance remains #14. |
-| Final stage acceptance and capacity verification | Outstanding; #14 remains Todo. |
+| Draft, submit, return, resubmit, approve, publish; rejection and history | `Review_ReturnAndResubmit_PreserveSnapshotAndPrivateUnsentChangesAsync`; `Review_RecallFinalRejectionAndRetainedDeletion_EnforceTransitionsAsync`; fresh split-role browser workflow. |
+| Durable incomplete saves, conflicts and single review claim | `Drafts_IncompleteSaveReopenAndCompetingVersions_PreserveOneCommittedRevisionAsync`; `Review_AssignmentRacesTakeoverReleaseAndRoleLoss_EnforceCurrentAccessAsync`. |
+| Never-published deletion, Author removal and review release | `Drafts_PrivateOwnersAndRoleRemoval_DenyOtherAuthorsAndStaffAsync`; `Review_RecallFinalRejectionAndRetainedDeletion_EnforceTransitionsAsync`; assignment-race test above. |
+| Private unsent changes, recall routing, approved Save and disabled autosave | `Review_ReturnAndResubmit_PreserveSnapshotAndPrivateUnsentChangesAsync`; `Review_ApprovedSaveInvalidatesApprovalAndPublicationIsSeparateAsync`; author-workspace frontend regressions in `NEWS.md`. |
+| Current permissions, versions and state transitions | `Review_RoleRemovalVersusApproval_SerializesAuthorizationAndAssignmentAsync`; `Published_CorrectionVersusEditorialRoleRevocation_RechecksCurrentPermissionAsync`; `Published_CorrectionValidationPermissionsAndWithdrawnState_DoNotMutateAsync`. |
+| Effective Administrator editorial permissions and draft privacy | `Drafts_PrivateOwnersAndRoleRemoval_DenyOtherAuthorsAndStaffAsync`; `Published_DirectCorrectionSupersedesWorkingTextAndPreservesCreditAsync`; split-role browser reviewer has Administrator without Editor. |
+| Single working version and transactional reviewer-role loss | `Review_AssignmentRacesTakeoverReleaseAndRoleLoss_EnforceCurrentAccessAsync`; `Review_RoleRemovalVersusApproval_SerializesAuthorizationAndAssignmentAsync`; published-revision concurrency scenarios. |
+| Public revision isolation, direct corrections, retained supersession and notices | `Published_ProposalKeepsPublicRevisionAndReplacementKeepsFirstPublicationAsync`; `Published_DirectCorrectionSupersedesWorkingTextAndPreservesCreditAsync` for Draft/InReview/Approved. |
+| Retained deletion and current history audience after transfer/release | `Review_RecallFinalRejectionAndRetainedDeletion_EnforceTransitionsAsync`; `Review_AssignmentRacesTakeoverReleaseAndRoleLoss_EnforceCurrentAccessAsync`. |
+| Withdrawal across discovery, URLs and media; author-only correction/republication | `Published_WithdrawalResetsReviewClosesPublicMediaAndRequiresApprovalAsync`; `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync`; `Published_FormerAuthorWithEditorRoleCannotReadPrivateProposalOnWithdrawalAsync`; live alias/withdrawal checks. |
+| Upload validation, ownership and cleanup safety | `Upload_PrivateFilesAndRevokedAuthor_EnforcesAccessAsync`; `Cleanup_ConcurrentAttachment_WaitsAndPreservesTheWinningReferenceAsync`; `Processing_StorageOutage_PreservesPayloadAndRetriesAfterRestartAsync`. |
+| Orientation, stripped metadata, allowed reuse and submitted/public media audiences | `Process_ExifOrientation_RotatesAndStripsSourceMetadataAsync`; `Process_ValidFormats_EmitsBoundedWebpWithoutMetadataAsync`; `References_PublicationWithdrawalAndBlock_EnforceCurrentVisibilityAsync`; `Review_MediaAudienceChangesAndPublicationDeletionRace_AreAtomicAsync`. |
+| Immutable approved templates, archive/block independence, unblock and placeholders | `Templates_ReviewArchiveBlockAndRemoval_PreserveIndependentStatesAsync`; `Published_SharedImageReferencesAndTemplateBlocks_EnforceCurrentVisibilityAsync`; public-article failed-image frontend regressions. |
+| Removal-request archive, restoration, seven-day cleanup and attachment race | `Templates_ReviewArchiveBlockAndRemoval_PreserveIndependentStatesAsync`; `Cleanup_RetainedReferencesAndUnusedUploads_KeepOnlyProtectedObjectsAsync`; `Cleanup_ConcurrentAttachment_WaitsAndPreservesTheWinningReferenceAsync`. |
+| Taxonomy uniqueness and inherited archived associations | `Taxonomy_UniqueArchivedNamesAndExistingAssociations_EnforcePermissionsAndVersionsAsync`. |
+| Text/tag/image boundaries, format/MIME/animation and distinct-image counting | `NewsDocumentTests`, `MediaBoundaryTests`, `MediaProcessorTests`; exact case mapping in `NEWS.md` and `MEDIA.md`. |
+| Source attribution, contextual alternative text and one flat category | `NewsDocumentTests`; production drafting submission and preview regressions. |
+| SSR, metadata, aliases and publication-safe search/filtering | `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync`; `NewsDiscoveryTests`; fresh HTTP/HTTPS and browser verification. |
+| Current author credit, revision-owned SEO and featured limits/order | `Discovery_RussianSearchFiltersAndReplacement_UseOnlyCurrentPublicationAsync`; `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync`; `Curation_ConcurrentFeaturedLimitAndWithdrawalPreserveVisibilityAsync`. |
+| Homepage blocks, filters, deterministic paging, Russian ranking and related results | `NewsDiscoveryTests`, `NewsCurationTests`; discovery frontend regressions; capacity fixture and browser layouts. |
+| Atomic decisions/notifications, outages, restart and duplicate delivery | `Review_NotificationFailure_RollsBackDecisionAndRoleReleaseAsync`; `Published_NotificationFailureRollsBackPublicTextHistoryAndMediaAsync`; `TemplateNotifications_QueueFailure_RollsBackDecisionAndHistoryAsync`; `CommittedOutbox_WhenBrokerAndWorkerRecover_DeliversOnceAndSurvivesRestartAsync`. |
+| Independent channel switches and user-owned notification read/delete | `Notifications_OwnershipCsrfAndPreferences_KeepChannelsIndependentAsync`; `WorkflowMail_DisabledAfterQueue_SkipsSmtpAndPreservesAccountNoticeAsync`. |
+| Affected-editor/current-author fanout, privacy and 30-day notification expiry | `TemplateNotifications_DecisionsAndAffectedCurrentAuthors_QueueOnceWithoutPrivateContentAsync`; `Notifications_RollbackDuplicateAndRetention_PreserveDurabilityBoundariesAsync`; `WorkflowMail_SevenDayExpiryAndThirtyDayRetention_RejectReplayAndRemoveReadAndUnreadNoticesAsync`. |
+| Migrations, generated contracts, builds/formatting, real infrastructure and backup/restore | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`; `DiscoveryMigration_ExistingPublishedSearchData_PreservesContentAndUsesMainStorageAsync`; `Recovery_DatabaseObjectsAndKeys_PreserveNewsPrivacyHistoryAndPendingDeliveryAsync`; final command record below. |
+| Owner reviews workflows, data flow and a failure scenario | Owner reviewed and accepted on 2026-11-17; see final acceptance below. |
 
-Review/first-publication verification: Release backend regression 134 passed, 0 failed, 0 skipped; frontend regression 70 passed. News checks cover drafts, private submitted snapshots, resubmission, assignment/role/version races, atomic notification rollback, review Media audiences, approval/explicit Save/publication, and publication versus deletion. Real HTTPS desktop/mobile workflows passed through first publication. Notification/storage evidence remains in MEDIA.md; the current requirement-to-test matrix and exact verification boundaries are in NEWS.md. Earlier independent reviews covered drafting; review/first-publication received an inline code and test-quality review. These are distinct runs, not additive totals.
+## Combined recovery
 
-Next: cross-workflow verification, capacity evidence, backup/restore and final owner review in #14. Issue #12 preserves public content while proposals await publication, retains superseded text/reasons, and closes article/Media access on withdrawal. Article SSR and public discovery were implemented at this historical checkpoint; the final integration/recovery review remains outstanding. The current contract and delivered review boundary are in NEWS.md. Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed. Final owner review remains deferred until the complete stage result. Stage 2 is open.
+`Recovery_DatabaseObjectsAndKeys_PreserveNewsPrivacyHistoryAndPendingDeliveryAsync`
+uses the production operations to publish an article, retain an independent
+private proposal and private image, and leave an image in Processing and a
+publication notification pending. It persists encrypted SMTP configuration,
+exports PostgreSQL with `pg_dump --format custom`, restores it with `pg_restore`
+into a new database, copies objects into a separate private bucket and copies
+the Data Protection key files into a separate directory. The source API stops.
 
-### Implementation Notes
+The restored application repeats explicit module/messaging migrations. It proves
+public content and all four public processed variants survive byte-for-byte,
+private proposal/media/history remain restricted, retained publication history
+is readable by the author, pending image processing completes and an independent
+worker host decrypts and sends the pending publication Email through real SMTP.
+The persisted SMTP fixture password also round-trips through restored keys.
+Two-object listing pages force the object-copy loop to traverse multiple pages.
 
-On 2026-11-14 the owner delegated continuation of editor design and subsequent agreed stage work, reserving review for the final stage result. Do not require another block-by-block design interview. This does not close Stage 2 or authorize new business behavior. The fixture author/editor workspace includes review queues, decisions and history in memory. Production author drafting now exists separately at `/account/articles`, using the same five-section design, real persistence and Media. Review, publication, published changes, withdrawal/republication, article SSR and public discovery are implemented; final cross-workflow verification remains next. Design and implementation evidence are recorded in UI_STYLE.md and NEWS.md.
+PostgreSQL and S3 resources are isolated databases/buckets on the local test
+services. This is logical recovery verification, not a second-machine disaster
+recovery or a production RPO/RTO measurement. SMTP acknowledgment followed by a
+database failure can still produce a duplicate external Email.
 
-The owner requested a unified UI style across the application and prototypes. Shared tokens, consistent account/staff/editor controls, and verification are recorded in [UI_STYLE.md](../UI_STYLE.md). The public layout remains the accepted baseline; final editor workflow acceptance and the remaining editorial/public News workflows remain outstanding.
+## Measured query changes
 
-- Specification: product interview complete; engineering defaults and implementation contracts recorded.
-- GitHub tracking: #7-#11 remain in progress for integration/final review; #12 and #13 are complete; #14 remains Todo in Project 3. Media, template notifications, drafting/taxonomy, review/publication, and published-change workflows are implemented. Public discovery is delivered in #13; final stage acceptance remains outstanding.
-- Prototypes: isolated browser-only Angular configuration and Tiptap 3.34.0 candidate with a versioned JSON/media-reference document. Run/review instructions, saved progress, verification, and limitations are in the historical prototype files retained in Git history (the completed prototype was removed after acceptance). Only the selected header A remains; alternative headers and the variant switcher were removed at the owner's request. The current five-section author/editor workspace follows the delegated continuation described above. The owner accepted the news presentation for now: one-to-five-story editorial carousel in the large card, three latest general stories alongside, remaining news below, flat white 40%-opacity arrow background. The owner superseded the inline-filter proposal with five-item homepage blocks and a separate detailed list. The owner accepted the homepage visual prototype on 2026-11-14. A separate article-reader prototype now opens from news cards, with metadata, cover/body, sources/tags, and related fixtures. The owner accepted the article-page visual prototype after refinement of typography, media sizing, breadcrumbs, spacing, and the combined author/date footer. Continue agreed implementation; owner review is reserved for the final stage result. Editors and administrators choose the two production homepage categories and their order (owner decision, 2026-11-16). Homepage and article-page visual review are complete; editor/schema final acceptance remains pending.
-- Verification: early prototype checks remain in PROTOTYPE.md. Current Media and production drafting/server/browser evidence is recorded in MEDIA.md and NEWS.md. Review/publication/public SSR acceptance and final stage acceptance remain pending.
-- Production Media: owned migrations, private processed uploads, S3 storage, Worker reconciliation/cleanup, template moderation/history/removal requests, browser libraries, and configurable notifications are implemented. Drafting now uses the reference transaction contract. Review/publication references and News notifications are implemented in #11; withdrawal and basic public article integration are implemented in #12; discovery remains #13.
-- Owner acceptance: not requested; the stage remains open.
+The initial capacity check exposed slow broad search and taxonomy reads. The
+`DiscoveryReadPerformance` News migration adds a partial index on the current
+public `PublishedRevisionId` and selects `MAIN` storage for the generated
+search vector. Recomputing existing generated values applies the physical
+storage choice to existing revisions without changing text or article versions.
+The upgrade regression verifies preserved content/search, the physical policy,
+the index and repeat application.
 
-### Historical Push Checkpoint: 2026-11-16 (#11)
+The upgrade regression checks a large vector under the preceding EXTENDED policy
+and verifies its PostgreSQL row version changes during migration. Removing the
+recomputation UPDATE failed the assertion; restoring it passed the focused test.
+Specification and standards reviews resolved their findings. Failed helper commands
+retain stdout/stderr before checking their exit code.
 
-The owner requested recording progress and pushing the current branch. Review and first publication are delivered in 0708b94, with the verification evidence above. Issues #7-#11 remain In Progress pending integration and final owner review; #12-#14 remain Todo. No Stage 2 acceptance or public news delivery is claimed. The next implementation task is #12.
+An isolated comparison measured the representative tag-page query at 62.428 ms
+before the index and 4.078 ms after it. A representative broad ranked search
+measured 471.552 ms before the storage change and 20.571 ms after it. These are
+single-query diagnostics, separate from HTTP percentiles.
 
+`SET STORAGE` controls future row storage and does not itself rewrite existing
+values; the migration therefore recomputes generated vectors. See the
+[PostgreSQL 18 ALTER TABLE reference](https://www.postgresql.org/docs/18/sql-altertable.html).
+Apply this migration with application writers stopped: it updates all existing
+revisions and takes normal PostgreSQL DDL/write locks. Allow time and disk space
+for that work and take the consistent backup first. A migration failure rolls
+back; a later explicit run may retry it. No public cache was introduced.
 
-### Historical Issue #12 Start: 2026-11-16
+## Final command and capacity results
 
-The initial server checkpoint adds versioned own-author proposals, replacement review/publication preserving first-publication time, and reasoned editorial withdrawal. Withdrawal resets the working content to a private author draft and disables publication Media references atomically. Action responses and retained history do not expose unsent author content to the withdrawing editor. Details and remaining scope are in NEWS.md. Direct corrections/supersession, visibility-checked URLs, UI integration, full failure/race verification and final acceptance remain open; issue #12 is not complete.
+The issue #14 Release build passed without warnings/errors; its full backend run
+passed 165 tests with zero failures/skips and matching TRX outcomes. It included
+real PostgreSQL, RabbitMQ, RustFS and SMTP, combined recovery, migration upgrades,
+outages, duplicates, rollback and permission races. Focused recovery/upgrade runs
+were separate checks, not additional test totals. Production SSR, 90 frontend tests
+in 14 files, formatting, generated-client/runtime OpenAPI consistency and explicit
+repeat migrations passed. CA/hostname-verified HTTPS metadata returned 200;
+browser certificate exceptions were scoped to isolated automation contexts.
+The later final run is recorded below.
 
-Initial #12 verification: 14 News integration tests passed in Release, zero failed/skipped; solution formatting and whitespace checks passed. No frontend/live browser or complete issue acceptance is claimed. Project 3 status is In Progress.
+The final capacity run reused the same isolated, migrated 10,000-article fixture
+after warm-up. Each route received 24 warm-up requests at eight readers, then
+80 measured requests at eight readers. All 800 measured requests and 240 warm-up
+requests completed without HTTP errors. Public API and SSR responses carried
+`Cache-Control: no-store`.
 
+| Route | Warm p50 ms | Warm p95 ms | Maximum measured ms |
+| --- | ---: | ---: | ---: |
+| Feed | 29.05 | 53.94 | 56.96 |
+| Page 500 | 59.82 | 71.35 | 81.69 |
+| Broad Russian search | 61.20 | 78.49 | 86.68 |
+| Combined category/tag | 17.18 | 19.66 | 29.59 |
+| Homepage API | 75.94 | 81.94 | 99.62 |
+| Public tags, first 100 | 26.79 | 36.50 | 46.74 |
+| Related articles | 28.73 | 35.01 | 47.07 |
+| Homepage SSR | 256.37 | 302.44 | 2305.11 |
+| List SSR | 637.09 | 875.91 | 2957.98 |
+| Article SSR | 571.43 | 743.10 | 785.71 |
 
-### Issue #12 Delivery: 2026-11-16
+The local targets of API p95 <= 500 ms and SSR p95 <= 1,000 ms passed in this
+final run. Latency tails remain: warm-up reached 2,791 ms and measured SSR
+requests reached 2,958 ms. An earlier fresh post-migration run also exceeded
+the tag p95 target (1,195 ms); its repeat on the same fixture measured 36.50 ms.
+These are recorded limitations, not a production latency guarantee or proof of
+steady performance over a long run. The pre-change broad-search p95 was 1,906 ms
+and list/article SSR p95 was 4,624/4,241 ms.
 
-Historical issue #12 verification covered published proposals, direct editorial corrections/supersession, retained history/reasons, withdrawal/republication, and the then-current article URL contract. Required author/editor UI actions use real API operations and generated contracts. At that checkpoint no schema migration was necessary; the later public address replacement adds one.
+Environment: Windows 11 build 28000, 12 logical CPUs; Docker Desktop 29.9.3 with
+12 CPUs and 7,974,043,648 bytes of VM memory; PostgreSQL 18.6 Alpine x86-64;
+.NET SDK 10.0.403; Node 26.8.1. Host API/SSR processes used Release/production
+builds and loopback HTTP for measurements. HTTPS and browser behavior were
+verified separately. Informational SQL logging remained enabled.
 
-Final verification: Release solution build passed with zero warnings/errors; backend 151 passed, zero failed/skipped, with TRX result validation. Targeted News 28 passed in a separate run. Final frontend 79 passed in 13 files; production Angular/SSR build, full Prettier, generated-client consistency, solution formatting, and explicit/repeat module migration checks passed. Exact requirement-to-test evidence and boundaries are in [NEWS.md](../NEWS.md).
+After measurement, API/SSR working sets were approximately 231/281 MiB,
+compared with 178/92 MiB before measurement. These are process snapshots,
+not peak or leak measurements. Representative final EXPLAIN ANALYZE times
+were feed 0.390 ms, search 18.395 ms, image visibility 0.031 ms and tag page
+3.221 ms. The helper saves plans with buffers and full environment/latency/memory
+JSON in ignored `.local/issue14/capacity_<uuid>/` artifacts during measurement.
+Completed local artifacts and disposable fixtures were removed during the
+owner-requested cleanup; this report retains the measured results and limitations.
 
-Historical issue #12 HTTPS desktop/mobile workflows covered author proposal isolation, direct correction and retained supersession, withdrawal, reviewed republication, canonical links, and configured-city time. Current public SSR returned no-store 200; two real aliases redirected directly with 307; unknown slugs returned 404. After withdrawal, current and both historical URLs returned no-store 404 shells without article content, credit, private reason, or article-specific metadata. Desktop 1440px/mobile 390px had no horizontal overflow. Live acceptance used an Author/Administrator account; separate-role isolation and concurrency were verified by backend tests.
+Split-role HTTPS browser checks covered return/private correction/resubmission,
+publication, private proposals, direct correction/supersession, template placeholders,
+withdrawal and reviewed republication. A real Worker processed images and sent
+publication notices through SMTP. The reviewer held Administrator without Editor.
+Withdrawal removed public content, private reasons, article metadata and image grants;
+republication retained first-publication time. Earlier 307 alias checks were superseded
+by the replacement address verification, which confirmed 404 for old addresses.
+Homepage/list/article layouts at 1440px and 390px had no horizontal overflow or
+browser page errors. Completed fixtures, screenshots and logs were removed.
 
-Independent Spec and Standards/test-quality review found no blocking findings. Live SSR found and resolved a server-DOM `append` incompatibility; final regression also verifies cleanup after partial DOM failure. Docker Desktop was resumed through a data-preserving official restart after a paused-daemon infrastructure failure; the successful full rerun is the recorded completion evidence.
+Capacity reproduction after building Release API and production Angular SSR:
 
-Issue #12 is complete. This does not close Stage 2 or record owner acceptance. Continue with #13 public discovery, then #14 cross-workflow acceptance/backup/restore and owner review. No push or production deployment is implied by this local delivery.
+```powershell
+python scripts/check-news-capacity.py
+```
 
+The helper requires the local Compose infrastructure and ignored `.env`. Each
+fresh run creates a unique isolated database and broker vhost. It leaves those
+fixtures for inspection and stops its API/SSR processes on exit. `--serve`
+keeps them available for local review; interrupt it to stop. `--reuse` accepts
+only a previously created `.local/issue14/capacity_<uuid>` directory.
 
-### Issue #13 Delivery: 2026-11-16
+The baseline contains 10,000 public articles with roughly 3,800 body characters,
+100,000 image-reference rows, 100 categories and 1,000 tags. Reference rows
+exercise metadata/query volume; processed-object transfer throughput is outside
+this measurement and is covered functionally by recovery/live Media checks.
+No maximum-length-content or multi-hour soak claim is made.
 
-Public SSR discovery and the production homepage are implemented. The detailed `/news` list combines Russian word-form title/summary/body search with category, single-tag and inclusive city-local publication-date filters, deterministic ordering and numbered 20-item pages. Public taxonomy and related news use only current published revisions. The homepage renders up to five editorial selections, the three-plus-two latest split, and two ordered category blocks; staff configure categories and featured articles through `/staff/publications` using versioned generated-client operations. News owns the curation audit and generated search/filter migration.
+## Final Verification and Maintenance
 
-Final backend regression passed 163 tests, zero failed/skipped, with parsed TRX validation. Final frontend regression passed 90 tests in 14 files. Release build, solution formatting, production Angular/SSR build, full Prettier and generated-client/runtime OpenAPI consistency passed. Explicit migration on the existing local acceptance database backfilled discovery values; repeat migration reported no pending work. Search, tag, category and publication-order indexes were verified in PostgreSQL. The requirement-to-test matrix and exact boundaries are in NEWS.md.
+The final 2026-11-17 pre-merge Release run passed 184 backend tests, zero failed
+or skipped; TRX totals and individual outcomes agreed. Frontend passed 96 tests
+in 15 files. Solution formatting, frontend formatting, generated-client consistency,
+production SSR build and local Markdown links passed. These final totals supersede
+intermediate counts; recovery/capacity measurements above describe their own runs.
 
-Historical issue #13 HTTPS checks covered editor category order/featured UI, homepage/list/article SSR with no-store, Russian inflection search, category filtering, related cards, carousel, 1440px/390px layouts and no horizontal overflow. Final alias/withdrawal regression is recorded in NEWS.md. No shared public cache or direct object-storage bypass was added. Current author credit and revision-owned SEO/URL rules remain enforced.
+Owner-review fixes added safe marks on hardBreak nodes, specific field validation
+feedback and idempotent initial taxonomy for the local stand. Browser save/submission
+and repeat stand startup passed. Replacement-address checks covered transliteration,
+collision rollback, concurrent publication/correction, retained local dates and
+interrupted backfill recovery; EF pending-model verification passed.
 
-Spec and Standards reviews found and resolved interruptible-scroll cleanup, reused-slide image failure state, missing featured credit and one-line metadata. Backend regression also corrected the explicit migration-count expectation and serialized test classes sharing the production process-wide upload slot; production throttling was preserved. The owner authorized GPT to finish implementation directly after DeepSeek hit its free quota; the old Orca assignment was confirmed stopped before GPT edits.
+The completed UI prototype and execution plans were removed. The review stand,
+credentials, stored content, required SDK and dependencies remain. Local setup and
+recovery commands belong in [DEVELOPMENT.md](../DEVELOPMENT.md); module operations
+and document details belong in [MEDIA.md](../MEDIA.md) and [NEWS.md](../NEWS.md).
+Git history retains intermediate delivery, review and cleanup records.
 
-Issue #13 is delivered locally. Stage 2 stays open. Continue with #14 for cross-workflow acceptance, representative capacity measurements, fresh backup/restore, failure/recovery evidence and final owner review. No Stage 3 specification, new push or production deployment is implied.
+A cleanup incident removed the ignored local SDK/credential directory. Original
+credentials and SDK 10.0.403 were restored; certificate-verified login and exact roles
+passed for all five stand accounts without password/content changes. Persistent
+Compose data and service secrets were unaffected. Remove only exact resolved
+temporary directories; never clean an ignored parent through Git pathspecs.
 
-### Owner Functional Review: 2026-11-17
-
-The owner confirmed that the public address replacement works and reported
-checking the current interface and functions, including article creation,
-review and publication. Functional UI review is accepted on that basis. The
-completed `docs/plans/issue-link.md` task plan was removed; the current address
-contract and verification evidence remain in this specification.
-
-The remaining closure step is the learning review of transaction/data flow
-and a failure scenario, followed by the owner's final stage acceptance.
-Issue #14 and Stage 2 remain open until that review is recorded.
-
-### Issue #14 Technical Verification: 2026-11-17
-
-Owner follow-up: local stand startup must include browser-based pgAdmin and
-print credentials for separate RegularUser, Editor, Author, Moderator and
-Administrator demo accounts on every launch. The local helper and isolated
-review resources are documented in DEVELOPMENT.md. This is development/review
-tooling and does not change production registration or permissions.
-
-Follow-up verification: full API/Worker/frontend container build and local
-Compose startup passed with pgAdmin healthy. First setup, four real registration/
-Email-confirmation workflows and API role assignment prepared five separate
-confirmed accounts. A repeated `--no-build` launch retained the same credential
-file hash and printed all credentials again. Independent HTTPS login/profile
-checks verified each account's exact roles. Browser verification logged into
-pgAdmin, connected the preloaded PostgreSQL server and opened the stand database
-schemas. API/Worker readiness and base/stand/public Compose configuration passed;
-public configuration excludes pgAdmin by default. No additional .NET test run
-was needed for this infrastructure/helper-only change.
-
-Release build passed with zero warnings/errors. The complete backend suite
-passed 165 tests, zero failed/skipped, with parsed TRX outcomes. Frontend passed
-90 tests; production SSR build, formatting, generated-client and runtime OpenAPI
-consistency passed. Real infrastructure regressions cover authorization, races,
-rollback, broker/SMTP/storage outages, duplicate delivery and restarts.
-
-The new combined regression restores an actual PostgreSQL dump, processed
-objects into an isolated bucket and Data Protection keys into a new directory.
-It verifies public/private News and Media, retained history, encrypted SMTP
-configuration, pending image processing and pending Email from an independent
-worker host. Paginated object copying is exercised. The migration regression
-verifies preserved existing text/search/version, physical policy and repeatability.
-
-The 10,000-article/100,000-reference/100-category/1,000-tag baseline justified the
-DiscoveryReadPerformance migration. Final warm eight-reader measurements passed
-local p95 targets with zero HTTP errors: API 19.66-81.94 ms, SSR 302.44-875.91 ms.
-Individual SSR requests still reached 2.96 seconds; a fresh post-migration tag
-run exceeded its p95 target before the repeated warm run passed. Environment,
-plans, memory and limitations are in STAGE_2_ACCEPTANCE.md.
-
-Fresh isolated HTTPS browser checks with separate Author-only and Administrator
-accounts covered return/private correction/resubmission/publication, proposal
-isolation, direct correction/retained supersession, template block placeholders,
-withdrawn current/old URLs and reviewed republication. The reviewer had no
-assigned Editor role. Real Worker processing and SMTP delivery were checked;
-1440px/390px layouts had no overflow and recorded no browser page errors.
-
-Owner review of workflows, transaction/data flow and a failure scenario is still
-required. Issue #14 and Stage 2 remain open. The owner authorized publishing the
-current review branch; this does not close acceptance. No Stage 3 specification
-or production deployment is included.
-
-The owner-requested workspace cleanup removed completed diagnostic artifacts,
-copied runtimes, build outputs and disposable infrastructure fixtures. The old
-acceptance proxies and alternate portal port were retired; the local review
-stand uses only https://localhost:8443 and cityportal_stand. Active credentials,
-normal installation data, the required local SDK and frontend dependencies are
-preserved. Verification results remain in STAGE_2_ACCEPTANCE.md; future temporary
-files and task-owned fixtures must be removed when their task finishes.
-
-Owner review follow-up: empty local stand taxonomy now receives four starter
-categories and four tags, while existing dictionaries are preserved. Article
-validation accepts supported formatting on hardBreak nodes emitted when a text
-selection includes line breaks. Submission errors name the missing fields and
-the UI explains corrective actions and limits in Russian. Browser save/submit,
-17 document tests, 42 News integration tests, 95 frontend tests, builds and format
-checks passed. Details are in STAGE_2_ACCEPTANCE.md. Owner acceptance remains open.
-
-
-### Final Owner Acceptance: 2026-11-17
+## Final Owner Acceptance: 2026-11-17
 
 The owner explicitly accepted Stage 2 after confirming the current interface,
 article creation/review/publication and replacement public addresses. The
