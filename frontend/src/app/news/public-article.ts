@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../api/api';
@@ -34,7 +34,6 @@ export class PublicArticle implements OnInit {
   readonly related = signal<PublicArticleSummaryResponse[]>([]);
   readonly taxonomy = signal<PublicTaxonomyResponse[]>([]);
   readonly relatedFailed = signal(false);
-  private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly api = inject(Api);
   private readonly response = inject(RESPONSE_INIT, { optional: true });
@@ -63,7 +62,7 @@ export class PublicArticle implements OnInit {
     );
     const subscription = this.route.paramMap.subscribe((params) => {
       const complete = this.pending.add();
-      void this.load(params.get('id') ?? '', params.get('slug') ?? '').finally(complete);
+      void this.load(params.get('address') ?? '').finally(complete);
     });
     this.destroy.onDestroy(() => {
       subscription.unsubscribe();
@@ -76,20 +75,19 @@ export class PublicArticle implements OnInit {
     for (const selector of this.metadataSelectors) this.meta.removeTag(selector);
     this.document.querySelector('link[rel="canonical"]')?.remove();
   }
-  async load(id: string, slug: string): Promise<void> {
+  async load(address: string): Promise<void> {
     const generation = ++this.generation;
     this.article.set(null);
     this.related.set([]);
     this.relatedFailed.set(false);
     this.state.set('loading');
     this.clearMetadata();
-    if (this.response) this.response.headers = { 'Cache-Control': 'no-store' };
+    if (this.response) this.response.headers = { 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' };
     try {
       const article = await firstValueFrom(
         this.http.get<PublicArticleResponse>(
-          `${this.api.rootUrl}/api/news/articles/${encodeURIComponent(id)}`,
+          `${this.api.rootUrl}/api/news/articles/by-address/${encodeURIComponent(address)}`,
           {
-            params: { slug },
             transferCache: false,
             credentials: 'omit',
             cache: 'no-store',
@@ -97,13 +95,6 @@ export class PublicArticle implements OnInit {
         ),
       );
       if (generation !== this.generation) return;
-      if (article.requestedSlugIsAlias) {
-        if (this.response) {
-          this.response.status = 307;
-          this.response.headers = { 'Cache-Control': 'no-store', Location: article.canonicalUrl };
-        } else await this.router.navigateByUrl(article.canonicalUrl, { replaceUrl: true });
-        return;
-      }
       this.article.set(article);
       this.state.set('published');
       if (this.response) this.response.status = 200;

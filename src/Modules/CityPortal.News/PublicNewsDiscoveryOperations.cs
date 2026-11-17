@@ -59,15 +59,14 @@ public sealed class PublicNewsDiscoveryOperations
             : query.OrderByDescending(item => item.Revision.SearchVector.Rank(EF.Functions.PlainToTsQuery("russian", search)))
                 .ThenByDescending(item => item.Article.FirstPublishedAtUtc).ThenBy(item => item.Article.Id);
         var rows = await ordered.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-            .Select(item => new { item.Article.Id, item.Article.AuthorId, item.Revision.Title, item.Revision.Summary, item.Revision.CategoryId, item.Revision.Tags, item.Revision.CoverMediaId, item.Revision.CoverAlt, item.Article.FirstPublishedAtUtc })
+            .Select(item => new { item.Article.Id, item.Article.AuthorId, item.Article.PublicAddress, item.Revision.Title, item.Revision.Summary, item.Revision.CategoryId, item.Revision.Tags, item.Revision.CoverMediaId, item.Revision.CoverAlt, item.Article.FirstPublishedAtUtc })
             .ToArrayAsync(cancellationToken);
         Dictionary<Guid, string> names = await _accounts.GetPublicDisplayNamesAsync(rows.Select(item => item.AuthorId).Distinct().ToArray(), cancellationToken);
         PublicArticleSummaryResponse[] items = rows.Select(item =>
         {
             Guid[] tags = item.Tags is null ? [] : item.Tags.RootElement.EnumerateArray().Select(tag => tag.GetGuid()).ToArray();
             ArticleImage? cover = item.CoverMediaId is Guid mediaId ? new ArticleImage(mediaId, item.CoverAlt ?? "") : null;
-            string slug = ArticleUrls.Slug(item.Title);
-            return new PublicArticleSummaryResponse(item.Id, item.Title, item.Summary, ArticleUrls.Canonical(item.Id, slug), item.CategoryId, tags, cover, item.FirstPublishedAtUtc!.Value, names.GetValueOrDefault(item.AuthorId, ""));
+            return new PublicArticleSummaryResponse(item.Id, item.Title, item.Summary, item.PublicAddress!, item.CategoryId, tags, cover, item.FirstPublishedAtUtc!.Value, names.GetValueOrDefault(item.AuthorId, ""));
         }).ToArray();
         return new NewsPage<PublicArticleSummaryResponse>(items, total, request.Page, request.PageSize);
     }

@@ -25,6 +25,8 @@ internal sealed class NewsDbContext : DbContext
         model.Entity<CurationChange>().HasIndex(item => item.CreatedAtUtc);
         model.Entity<NewsArticle>().Property(item => item.Version).IsConcurrencyToken();
         model.Entity<NewsArticle>().Property(item => item.PublicationState).HasMaxLength(32);
+        model.Entity<NewsArticle>().Property(item => item.PublicAddress).HasMaxLength(144);
+        model.Entity<NewsArticle>().HasIndex(item => item.PublicAddress).IsUnique();
         model.Entity<NewsArticle>().HasIndex(item => new { item.AuthorId, item.UpdatedAtUtc });
         model.Entity<NewsArticle>().HasIndex(item => item.ReviewerId);
         // Taxonomy existence checks start at a matching revision, then recheck its current public article.

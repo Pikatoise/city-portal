@@ -12,6 +12,8 @@ internal sealed class NewsArticle
     public Guid? LastSubmittedRevisionId { get; set; }
     public Guid? ReviewerId { get; set; }
     public DateTimeOffset? FirstPublishedAtUtc { get; set; }
+    public DateOnly? FirstPublishedLocalDate { get; set; }
+    public string? PublicAddress { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
     public DateTimeOffset? DeletedAtUtc { get; set; }

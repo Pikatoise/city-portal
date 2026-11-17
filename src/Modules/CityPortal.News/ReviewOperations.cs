@@ -15,9 +15,11 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
     private readonly MediaReferences _media;
     private readonly WorkflowNotificationQueue _notifications;
     private readonly TimeProvider _time;
+    private readonly SiteInstallation _installation;
+    private readonly TimeZoneInfo _timeZone;
     private static readonly string[] _roles = ["Author", "Editor", "Administrator"];
 
-    internal ReviewOperations(NewsDbContext context, AccountAuthorization authorization, AccountOperations accounts, MediaReferences media, WorkflowNotificationQueue notifications, TimeProvider time)
+    internal ReviewOperations(NewsDbContext context, AccountAuthorization authorization, AccountOperations accounts, MediaReferences media, WorkflowNotificationQueue notifications, TimeProvider time, SiteInstallation installation, TimeZoneInfo timeZone)
     {
         _context = context;
         _authorization = authorization;
@@ -25,6 +27,8 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         _media = media;
         _notifications = notifications;
         _time = time;
+        _installation = installation;
+        _timeZone = timeZone;
     }
 
     public async Task<NewsPage<ReviewSummaryResponse>> QueueAsync(Guid actorId, Guid sessionId, bool mine, int page, int pageSize, CancellationToken cancellationToken)
@@ -53,7 +57,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         int total = await query.CountAsync(cancellationToken);
         ArticleSummaryResponse[] items = await query.OrderByDescending(item => item.Article.FirstPublishedAtUtc).ThenBy(item => item.Article.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(item => new ArticleSummaryResponse(item.Article.Id, item.Article.Version, item.Revision.Title, "Published", item.Article.UpdatedAtUtc, item.Article.Featured)).ToArrayAsync(cancellationToken);
+            .Select(item => new ArticleSummaryResponse(item.Article.Id, item.Article.Version, item.Revision.Title, "Published", item.Article.UpdatedAtUtc, item.Article.Featured, item.Article.PublicAddress)).ToArrayAsync(cancellationToken);
         return new NewsPage<ArticleSummaryResponse>(items, total, page, pageSize);
     }
 
@@ -81,6 +85,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
             throw NewsDatabase.Conflict();
         ArticleRevision published = await context.Revisions.SingleAsync(item => item.Id == article.PublishedRevisionId && item.ArticleId == id, cancellationToken);
         await ArticleOperations.ValidateTaxonomyAsync(context, validated.Content, JsonSerializer.Deserialize<ArticleContent>(published.ContentJson)!, cancellationToken);
+        await SetAddressAsync(context, article, validated.Content.Title, cancellationToken);
         ArticleRevision working = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
         article.Version++;
         article.UpdatedAtUtc = _time.GetUtcNow();
@@ -210,6 +215,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
                 article.PublicationState = "Published";
                 article.PublishedRevisionId = revision.Id;
                 article.FirstPublishedAtUtc ??= _time.GetUtcNow();
+                await SetAddressAsync(context, article, revision.Title, cancellationToken);
                 revision.State = "Published";
                 break;
         }
@@ -226,6 +232,21 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         await scope.CommitAsync(cancellationToken);
         await FlushAfterCommitAsync();
         return ArticleOperations.Response(article, action == "withdraw" && !(actorId == article.AuthorId && scope.Actor.Roles.Contains("Author")) ? snapshot : working);
+    }
+
+    private async Task SetAddressAsync(NewsDbContext context, NewsArticle article, string title, CancellationToken cancellationToken)
+    {
+        if (article.FirstPublishedLocalDate is null)
+        {
+            InstallationInfo site = await _installation.GetAsync(cancellationToken);
+            TimeZoneInfo zone = site.TimeZone is null ? _timeZone : TimeZoneInfo.FindSystemTimeZoneById(site.TimeZone);
+            article.FirstPublishedLocalDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(article.FirstPublishedAtUtc!.Value, zone).DateTime);
+        }
+        string address = ArticleUrls.Address(title, article.FirstPublishedLocalDate.Value, article.Id);
+        await context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({address}, 0))", cancellationToken);
+        if (await context.Articles.AnyAsync(item => item.Id != article.Id && item.PublicAddress == address, cancellationToken))
+            throw NewsDatabase.Invalid("title", "This public address is already in use. Change the title.");
+        article.PublicAddress = address;
     }
 
     internal async Task<ArticleResponse> SaveApprovedAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, ArticleContent content, AuthorizedAccountScope scope, CancellationToken cancellationToken)

@@ -239,8 +239,15 @@ namespace CityPortal.News.Migrations
                     b.Property<DateTimeOffset?>("FirstPublishedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("FirstPublishedLocalDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid?>("LastSubmittedRevisionId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("PublicAddress")
+                        .HasMaxLength(144)
+                        .HasColumnType("character varying(144)");
 
                     b.Property<string>("PublicationState")
                         .IsRequired()
@@ -264,6 +271,9 @@ namespace CityPortal.News.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PublicAddress")
+                        .IsUnique();
 
                     b.HasIndex("PublishedRevisionId")
                         .HasFilter("\"PublicationState\" = 'Published' AND \"DeletedAtUtc\" IS NULL");

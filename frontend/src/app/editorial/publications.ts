@@ -84,10 +84,9 @@ export class Publications implements OnInit {
       this.busy.set(false);
     }
   }
-  async openPublic(id: string): Promise<void> {
+  async openPublic(row: ArticleSummaryResponse): Promise<void> {
     try {
-      const article = await this.api.publicArticle(id);
-      await this.router.navigateByUrl(article.canonicalUrl);
+      if (row.publicAddress) await this.router.navigateByUrl(row.publicAddress);
     } catch (error) {
       this.error.set(newsError(error));
     }

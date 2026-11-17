@@ -1,3 +1,5 @@
+> Historical verification in this document describes the URL behavior at the time of each checkpoint. The current URL contract is in STAGE_2.md.
+
 # News Drafting, Review, and Published Changes
 
 Current Stage 2 technical acceptance, combined recovery, capacity measurements

@@ -28,8 +28,12 @@ export const routes: Routes = [
         canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
       },
       {
-        path: 'news/:id/:slug',
+        path: 'news/:address',
         loadComponent: () => import('./news/public-article').then((m) => m.PublicArticle),
+      },
+      {
+        path: 'news/**',
+        loadComponent: () => import('./news/missing-article').then((m) => m.MissingArticle),
       },
       {
         path: 'staff/taxonomy',

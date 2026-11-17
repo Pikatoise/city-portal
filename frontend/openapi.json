@@ -2673,7 +2673,7 @@
         }
       }
     },
-    "/api/news/articles/{id}": {
+    "/api/news/articles/by-address/{address}": {
       "get": {
         "tags": [
           "News"
@@ -2681,17 +2681,9 @@
         "operationId": "getPublicArticle",
         "parameters": [
           {
-            "name": "id",
+            "name": "address",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "slug",
-            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -3137,6 +3129,12 @@
           "publicationState": {
             "type": "string",
             "default": "NeverPublished"
+          },
+          "publicAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "description": "A private author-owned working article and its expected version."
@@ -3192,6 +3190,12 @@
           "featured": {
             "type": "boolean",
             "default": false
+          },
+          "publicAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "description": "A summary from the current author's workspace."
@@ -4219,9 +4223,7 @@
       "PublicArticleResponse": {
         "required": [
           "id",
-          "slug",
           "canonicalUrl",
-          "requestedSlugIsAlias",
           "content",
           "previewHtml",
           "authorDisplayName",
@@ -4234,14 +4236,8 @@
             "type": "string",
             "format": "uuid"
           },
-          "slug": {
-            "type": "string"
-          },
           "canonicalUrl": {
             "type": "string"
-          },
-          "requestedSlugIsAlias": {
-            "type": "boolean"
           },
           "content": {
             "$ref": "#/components/schemas/ArticleContent"

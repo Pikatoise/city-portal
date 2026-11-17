@@ -15,24 +15,15 @@ public sealed class PublicArticleOperations
         _accounts = accounts;
     }
 
-    public async Task<PublicArticleResponse> GetAsync(Guid id, string? slug, CancellationToken cancellationToken)
+    public async Task<PublicArticleResponse> GetAsync(string address, CancellationToken cancellationToken)
     {
         // Read visibility and the public snapshot together; working revisions never enter this query.
         var row = await (from article in _context.Articles.AsNoTracking()
                          join revision in _context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id
-                         where article.Id == id && article.DeletedAtUtc == null && article.FirstPublishedAtUtc != null
+                         where article.PublicAddress == "/news/" + address && article.DeletedAtUtc == null && article.FirstPublishedAtUtc != null
                          select new { Article = article, Revision = revision }).SingleOrDefaultAsync(cancellationToken)
             ?? throw NewsDatabase.Missing();
-        string currentSlug = ArticleUrls.Slug(row.Revision.Title);
-        if (slug is not null && slug != currentSlug)
-        {
-            // Published snapshots are immutable and retained, so their actual titles are the alias ledger.
-            // Unsubmitted and merely approved titles cannot create public aliases.
-            string[] titles = await _context.Revisions.AsNoTracking().Where(item => item.ArticleId == id && item.State == "Published")
-                .Select(item => item.Title).Distinct().ToArrayAsync(cancellationToken);
-            if (!titles.Any(title => ArticleUrls.Slug(title) == slug))
-                throw NewsDatabase.Missing();
-        }
+        Guid id = row.Article.Id;
         if (row.Article.PublicationState == "Withdrawn")
             throw new AccountOperationException(404, "article_withdrawn", "The article has been withdrawn.");
         if (row.Article.PublicationState != "Published")
@@ -41,7 +32,7 @@ public sealed class PublicArticleOperations
             .Where(item => item.ArticleId == id && item.RevisionId == row.Revision.Id && (item.Action == "publish" || item.Action == "correct"))
             .Select(item => (DateTimeOffset?)item.CreatedAtUtc).MaxAsync(cancellationToken);
         string name = await _accounts.GetPublicDisplayNameAsync(row.Article.AuthorId, cancellationToken) ?? "";
-        return new PublicArticleResponse(id, currentSlug, ArticleUrls.Canonical(id, currentSlug), slug is not null && slug != currentSlug,
+        return new PublicArticleResponse(id, row.Article.PublicAddress!,
             JsonSerializer.Deserialize<ArticleContent>(row.Revision.ContentJson)!, row.Revision.PreviewHtml, name, row.Article.FirstPublishedAtUtc!.Value,
             publishedAt ?? row.Article.FirstPublishedAtUtc.Value);
     }

@@ -13,7 +13,5 @@ export interface PublicArticleResponse {
   firstPublishedAtUtc: string;
   id: string;
   previewHtml: string;
-  requestedSlugIsAlias: boolean;
-  slug: string;
   updatedAtUtc: string;
 }

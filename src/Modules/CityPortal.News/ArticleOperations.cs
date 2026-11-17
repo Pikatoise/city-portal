@@ -141,5 +141,5 @@ public sealed class ArticleOperations
     }
 
     internal static ArticleResponse Response(NewsArticle article, ArticleRevision revision) => new(article.Id, revision.Id, article.Version, revision.State,
-        JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson) ?? throw new InvalidOperationException("The stored revision is invalid."), revision.PreviewHtml, article.UpdatedAtUtc, article.LastSubmittedRevisionId.HasValue, article.PublicationState);
+        JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson) ?? throw new InvalidOperationException("The stored revision is invalid."), revision.PreviewHtml, article.UpdatedAtUtc, article.LastSubmittedRevisionId.HasValue, article.PublicationState, article.PublicationState == "Published" ? article.PublicAddress : null);
 }

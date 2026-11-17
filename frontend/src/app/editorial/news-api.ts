@@ -15,7 +15,6 @@ import { actOnArticleReview } from '../api/fn/editorial/act-on-article-review';
 import { listArticleReviewQueue } from '../api/fn/editorial/list-article-review-queue';
 import { getArticleReview } from '../api/fn/editorial/get-article-review';
 import { getArticleHistory } from '../api/fn/editorial/get-article-history';
-import { getPublicArticle } from '../api/fn/news/get-public-article';
 import { ArticleContent } from '../api/models/article-content';
 import { correctPublishedArticle } from '../api/fn/editorial/correct-published-article';
 import { createArticleWorkingVersion } from '../api/fn/editorial/create-article-working-version';
@@ -52,9 +51,6 @@ export class NewsApi {
   }
   get(id: string) {
     return this.request(getOwnArticle(this.http, '', { id }));
-  }
-  publicArticle(id: string) {
-    return this.request(getPublicArticle(this.http, '', { id }));
   }
   create() {
     return this.write((token) => createArticleDraft(this.http, '', { 'X-CSRF-TOKEN': token }));
@@ -267,6 +263,8 @@ function articleValidationReason(value: unknown): string {
     'Describe changes before resubmitting.':
       'Заполните описание изменений перед повторной отправкой.',
     'An editorial correction reason is required.': 'Укажите причину редакторского исправления.',
+    'This public address is already in use. Change the title.':
+      'Такой адрес уже занят. Измените заголовок.',
     'A withdrawal reason is required.': 'Укажите причину снятия с публикации.',
     'Feedback or a rejection reason is required.': 'Укажите замечания или причину отклонения.',
     'Select two distinct active categories in display order.':

@@ -435,8 +435,7 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     const article = this.article();
     if (!article || !this.canLeave()) return;
     try {
-      const publication = await this.api.publicArticle(article.id);
-      await this.router.navigateByUrl(publication.canonicalUrl);
+      if (article.publicAddress) await this.router.navigateByUrl(article.publicAddress);
     } catch (error) {
       this.error.set(newsError(error));
     }

@@ -15,9 +15,7 @@ import { PublicNewsApi } from './public-news-api';
 
 const publication: PublicArticleResponse = {
   id: 'article-id',
-  slug: 'published-title',
-  canonicalUrl: '/news/article-id/published-title',
-  requestedSlugIsAlias: false,
+  canonicalUrl: '/news/published-title-15-11-2026-abcdef',
   authorDisplayName: 'Current author',
   firstPublishedAtUtc: '2026-11-15T10:00:00Z',
   updatedAtUtc: '2026-11-16T10:00:00Z',
@@ -57,7 +55,7 @@ describe('Public article visibility', () => {
     const fixture = TestBed.createComponent(PublicArticle);
     fixture.detectChanges();
     const component = fixture.componentInstance;
-    let loading = component.load(publication.id, publication.slug);
+    let loading = component.load('published-title-15-11-2026-abcdef');
     TestBed.inject(HttpTestingController)
       .expectOne((request) => request.url.includes('/api/news/articles/'))
       .flush(publication);
@@ -69,14 +67,14 @@ describe('Public article visibility', () => {
     expect(document.querySelector('link[rel=canonical]')?.getAttribute('href')).toBe(
       publication.canonicalUrl,
     );
-    loading = component.load(publication.id, publication.slug);
+    loading = component.load('published-title-15-11-2026-abcdef');
     TestBed.inject(HttpTestingController)
       .expectOne((request) => request.url.includes('/api/news/articles/'))
       .flush({ code: 'article_withdrawn' }, { status: 404, statusText: 'Not Found' });
     await loading;
     fixture.detectChanges();
     expect(response.status).toBe(404);
-    expect(response.headers).toEqual({ 'Cache-Control': 'no-store' });
+    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' });
     expect(fixture.nativeElement.textContent).toContain('Материал снят с публикации');
     expect(fixture.nativeElement.textContent).not.toContain('Published title');
     expect(fixture.nativeElement.textContent).not.toContain('Current author');
@@ -85,28 +83,12 @@ describe('Public article visibility', () => {
     expect(document.querySelector('link[rel=canonical]')).toBeNull();
   });
 
-  it('returns a revalidated SSR alias redirect without rendering article content', async () => {
-    const fixture = TestBed.createComponent(PublicArticle);
-    const loading = fixture.componentInstance.load(publication.id, 'old-title');
-    TestBed.inject(HttpTestingController)
-      .expectOne((request) => request.params.get('slug') === 'old-title')
-      .flush({ ...publication, requestedSlugIsAlias: true });
-    await loading;
-    expect(response.status).toBe(307);
-    expect(response.headers).toEqual({
-      'Cache-Control': 'no-store',
-      Location: publication.canonicalUrl,
-    });
-    expect(fixture.componentInstance.article()).toBeNull();
-    expect(TestBed.inject(Title).getTitle()).toBe('Portal');
-  });
-
   it('clears publication data and metadata if server rendering fails after the public response', async () => {
     const fixture = TestBed.createComponent(PublicArticle);
     vi.spyOn(document.head, 'appendChild').mockImplementationOnce(() => {
       throw new Error('Server DOM write failed');
     });
-    const loading = fixture.componentInstance.load(publication.id, publication.slug);
+    const loading = fixture.componentInstance.load('published-title-15-11-2026-abcdef');
     TestBed.inject(HttpTestingController)
       .expectOne((request) => request.url.includes('/api/news/articles/'))
       .flush(publication);
@@ -123,7 +105,7 @@ describe('Public article visibility', () => {
   it('distinguishes unknown material from withdrawal and displays blocked body-image placeholders', async () => {
     const fixture = TestBed.createComponent(PublicArticle);
     fixture.detectChanges();
-    const loading = fixture.componentInstance.load('unknown', 'unknown');
+    const loading = fixture.componentInstance.load('unknown');
     TestBed.inject(HttpTestingController)
       .expectOne((request) => request.url.includes('/api/news/articles/'))
       .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });

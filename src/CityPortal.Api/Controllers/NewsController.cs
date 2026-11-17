@@ -38,9 +38,9 @@ public sealed class NewsController : ControllerBase
     public Task<NewsPage<PublicTaxonomyResponse>> TaxonomyAsync(string kind, CancellationToken cancellationToken, int page = 1, int pageSize = 100) =>
         _discovery.TaxonomyAsync(kind, page, pageSize, cancellationToken);
 
-    [HttpGet("articles/{id:guid}", Name = "getPublicArticle")]
+    [HttpGet("articles/by-address/{address}", Name = "getPublicArticle")]
     [ProducesResponseType<PublicArticleResponse>(200)]
     [ProducesResponseType(404)]
-    public Task<PublicArticleResponse> GetAsync(Guid id, CancellationToken cancellationToken, string? slug = null) =>
-        _articles.GetAsync(id, slug, cancellationToken);
+    public Task<PublicArticleResponse> GetAsync(string address, CancellationToken cancellationToken) =>
+        _articles.GetAsync(address, cancellationToken);
 }

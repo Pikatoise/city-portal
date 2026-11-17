@@ -89,7 +89,7 @@ describe('Public discovery', () => {
       '2',
     );
     expect(fixture.nativeElement.textContent).toContain('Public one');
-    expect(response.headers).toEqual({ 'Cache-Control': 'no-store' });
+    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     fixture.componentInstance.query = 'new';
     await fixture.componentInstance.search();

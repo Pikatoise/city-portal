@@ -11,6 +11,7 @@ export interface ArticleResponse {
   id: string;
   previewHtml: string;
   previouslySubmitted?: boolean;
+  publicAddress?: (string | null);
   publicationState?: string;
   revisionId: string;
   state: string;

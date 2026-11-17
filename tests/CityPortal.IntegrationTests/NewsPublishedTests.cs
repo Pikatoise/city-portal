@@ -10,6 +10,157 @@ namespace CityPortal.IntegrationTests;
 
 public sealed partial class NewsTests
 {
+    [Fact]
+    public async Task Published_ConcurrentCorrectionsToSameAddressAllowOnlyOneAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient firstEditor) = await ActorAsync(factory, database, "Editor");
+        (_, HttpClient secondEditor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (firstEditor)
+        using (secondEditor)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(firstEditor, "categories", "Concurrent corrections");
+            ArticleResponse first = await PublishedAsync(owner, firstEditor, category.Id, "First title");
+            ArticleResponse second = await PublishedAsync(owner, firstEditor, category.Id, "Second title");
+            var replacement = Guid.Parse(second.Id.ToString("N")[..26] + first.Id.ToString("N")[^6..]);
+            await ReassignArticleIdAsync(database, second.Id, replacement);
+            second = second with { Id = replacement };
+            ArticleContent content = Complete(category.Id, "Shared corrected title");
+            HttpResponseMessage[] results = await Task.WhenAll(CorrectionResponseAsync(firstEditor, first, content, "Correction"), CorrectionResponseAsync(secondEditor, second, content, "Correction"));
+            Assert.Single(results, result => result.StatusCode == HttpStatusCode.OK);
+            Assert.Single(results, result => result.StatusCode == HttpStatusCode.BadRequest);
+            Assert.Contains("Change the title", await results.Single(result => result.StatusCode == HttpStatusCode.BadRequest).Content.ReadAsStringAsync());
+            Assert.Equal(1L, await ScalarAsync<long>(database, "SELECT count(*) FROM news.\"Revisions\" WHERE \"Title\"='Shared corrected title' AND \"State\"='Published' AND @id IS NOT NULL", first.Id));
+            foreach (HttpResponseMessage result in results)
+                result.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Published_ConcurrentIdenticalAddressesAllowOnlyOnePublicationAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient firstOwner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient secondOwner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (firstOwner)
+        using (secondOwner)
+        using (editor)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Concurrent addresses");
+            ArticleResponse first = await ApprovedAsync(firstOwner, editor, category.Id);
+            ArticleResponse second = await ApprovedAsync(secondOwner, editor, category.Id);
+            var replacement = Guid.Parse(second.Id.ToString("N")[..26] + first.Id.ToString("N")[^6..]);
+            await ReassignArticleIdAsync(database, second.Id, replacement);
+            second = second with { Id = replacement };
+            HttpResponseMessage[] results = await Task.WhenAll(ActResponseAsync(firstOwner, first, "publish"), ActResponseAsync(secondOwner, second, "publish"));
+            Assert.Single(results, result => result.StatusCode == HttpStatusCode.OK);
+            Assert.Single(results, result => result.StatusCode == HttpStatusCode.BadRequest);
+            Assert.Contains("Change the title", await results.Single(result => result.StatusCode == HttpStatusCode.BadRequest).Content.ReadAsStringAsync());
+            Assert.Equal(1L, await ScalarAsync<long>(database, "SELECT count(*) FROM news.\"Articles\" WHERE \"PublicationState\"='Published' AND @id IS NOT NULL", first.Id));
+            foreach (HttpResponseMessage result in results)
+                result.Dispose();
+        }
+    }
+
+    private static async Task<ArticleResponse> ApprovedAsync(HttpClient owner, HttpClient editor, Guid categoryId)
+    {
+        ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(categoryId, "Concurrent title"));
+        article = await ActAsync(owner, article, "submit");
+        article = await ActAsync(editor, article, "claim");
+        return await ActAsync(editor, article, "approve");
+    }
+
+    private static async Task ReassignArticleIdAsync(string database, Guid id, Guid replacement)
+    {
+        await using var connection = new Npgsql.NpgsqlConnection(database);
+        await connection.OpenAsync();
+        await using var command = new Npgsql.NpgsqlCommand("SET session_replication_role = replica; UPDATE news.\"Articles\" SET \"Id\"=@replacement WHERE \"Id\"=@id; UPDATE news.\"Revisions\" SET \"ArticleId\"=@replacement WHERE \"ArticleId\"=@id; UPDATE news.\"History\" SET \"ArticleId\"=@replacement WHERE \"ArticleId\"=@id; SET session_replication_role = origin;", connection);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("replacement", replacement);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    [Fact]
+    public async Task Published_MigrationBackfillsWithoutChangingRevisionOrPublicationTimeAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Migration");
+            ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Тест migration");
+            DateTime first = await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id);
+            await ExecuteAsync(database, "UPDATE news.\"Articles\" SET \"PublicAddress\"=NULL, \"FirstPublishedLocalDate\"=NULL WHERE \"Id\"=@id", article.Id);
+            await factory.Services.MigrateNewsAsync(CancellationToken.None);
+            ArticleResponse restored = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+            Assert.Equal(article.PublicAddress, restored.PublicAddress);
+            Assert.Equal(article.RevisionId, restored.RevisionId);
+            Assert.Equal(article.Content.Title, restored.Content.Title);
+            Assert.Equal(first, await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id));
+        }
+    }
+
+    [Fact]
+    public async Task Published_AddressKeepsFirstCityDateAfterTimeZoneChangeAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        {
+            await ExecuteAsync(database, "UPDATE identity.\"SiteConfiguration\" SET \"TimeZone\"='Pacific/Kiritimati' WHERE \"Id\"=1", Guid.Empty);
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Time zone");
+            ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Original title");
+            DateTime publishedAt = await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id);
+            var expectedDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(publishedAt, TimeZoneInfo.FindSystemTimeZoneById("Pacific/Kiritimati")));
+            Assert.Equal(ArticleUrls.Address("Original title", expectedDate, article.Id), article.PublicAddress);
+            await ExecuteAsync(database, "UPDATE identity.\"SiteConfiguration\" SET \"TimeZone\"='Pacific/Honolulu' WHERE \"Id\"=1", Guid.Empty);
+            ArticleResponse corrected = await CorrectAsync(editor, article, Complete(category.Id, "Corrected title"), "Correction");
+            Assert.Equal(ArticleUrls.Address("Corrected title", expectedDate, article.Id), corrected.PublicAddress);
+        }
+    }
+
+    [Fact]
+    public async Task Published_AddressCollisionRejectsCorrectionWithoutChangingPublicationAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        (_, HttpClient owner) = await ActorAsync(factory, database, "Author");
+        (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
+        using (owner)
+        using (editor)
+        {
+            TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Address collisions");
+            ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Original title");
+            ArticleResponse blocker = await PublishedAsync(owner, editor, category.Id, "Other title");
+            DateOnly date = await ScalarAsync<DateOnly>(database, "SELECT \"FirstPublishedLocalDate\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id);
+            string collision = ArticleUrls.Address("Collision title", date, article.Id);
+            await using var connection = new Npgsql.NpgsqlConnection(database);
+            await connection.OpenAsync();
+            await using var command = new Npgsql.NpgsqlCommand("UPDATE news.\"Articles\" SET \"PublicAddress\"=@address WHERE \"Id\"=@id", connection);
+            command.Parameters.AddWithValue("id", blocker.Id);
+            command.Parameters.AddWithValue("address", collision);
+            await command.ExecuteNonQueryAsync();
+            using HttpResponseMessage response = await CorrectionResponseAsync(editor, article, Complete(category.Id, "Collision title"), "Correction");
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("Change the title", await response.Content.ReadAsStringAsync());
+            ArticleResponse unchanged = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+            Assert.Equal(article.Version, unchanged.Version);
+            Assert.Equal(article.PublicAddress, unchanged.PublicAddress);
+            Assert.Equal(article.RevisionId, unchanged.RevisionId);
+        }
+    }
+
     [Theory]
     [InlineData("Draft")]
     [InlineData("InReview")]
@@ -92,7 +243,7 @@ public sealed partial class NewsTests
     }
 
     [Fact]
-    public async Task Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync()
+    public async Task Published_PublicReadsAndWithdrawal_ExposeOnlyCurrentPublicContentAsync()
     {
         (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
         await using ApiFactory lifetime = factory;
@@ -107,7 +258,7 @@ public sealed partial class NewsTests
             Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/news/articles/{draft.Id}")).StatusCode);
             ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Original public title");
             using JsonDocument original = await PublicAsync(anonymous, article.Id);
-            string firstSlug = original.RootElement.GetProperty("slug").GetString()!;
+            string firstAddress = original.RootElement.GetProperty("canonicalUrl").GetString()!;
             string firstDate = original.RootElement.GetProperty("firstPublishedAtUtc").GetString()!;
             string publicUpdated = original.RootElement.GetProperty("updatedAtUtc").GetString()!;
             article = await ActAsync(owner, article, "working-version");
@@ -124,17 +275,15 @@ public sealed partial class NewsTests
             Assert.Equal(publicUpdated, renamed.RootElement.GetProperty("updatedAtUtc").GetString());
             ArticleResponse corrected = await CorrectAsync(editor, article, Complete(category.Id, "Current corrected title"), "Verified correction");
             using JsonDocument current = await PublicAsync(anonymous, article.Id);
-            string currentSlug = current.RootElement.GetProperty("slug").GetString()!;
-            Assert.NotEqual(firstSlug, currentSlug);
+            string currentAddress = current.RootElement.GetProperty("canonicalUrl").GetString()!;
+            Assert.NotEqual(firstAddress, currentAddress);
             Assert.Equal(firstDate, current.RootElement.GetProperty("firstPublishedAtUtc").GetString());
-            using JsonDocument alias = await PublicAsync(anonymous, article.Id, firstSlug);
-            Assert.True(alias.RootElement.GetProperty("requestedSlugIsAlias").GetBoolean());
-            Assert.Equal(current.RootElement.GetProperty("canonicalUrl").GetString(), alias.RootElement.GetProperty("canonicalUrl").GetString());
-            Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/news/articles/{article.Id}?slug=unsubmitted-private-title")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/news/articles/by-address/" + firstAddress["/news/".Length..])).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/news/articles/{article.Id}")).StatusCode);
             corrected = await ActAsync(editor, corrected, "withdraw", "Private withdrawal reason");
-            foreach (string slug in new[] { firstSlug, currentSlug })
+            foreach (string address in new[] { currentAddress })
             {
-                using HttpResponseMessage hidden = await anonymous.GetAsync($"/api/news/articles/{article.Id}?slug={Uri.EscapeDataString(slug)}");
+                using HttpResponseMessage hidden = await anonymous.GetAsync("/api/news/articles/by-address/" + address["/news/".Length..]);
                 Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
                 Assert.True(hidden.Headers.CacheControl?.NoStore);
                 string body = await hidden.Content.ReadAsStringAsync();
@@ -175,7 +324,7 @@ public sealed partial class NewsTests
             ArticleResponse state = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
             Assert.Equal(article.Version + 1, state.Version);
             bool corrected = responses[0].IsSuccessStatusCode;
-            using HttpResponseMessage publicResponse = await anonymous.GetAsync($"/api/news/articles/{article.Id}");
+            using HttpResponseMessage publicResponse = await anonymous.GetAsync("/api/news/articles/by-address/" + (state.PublicAddress ?? article.PublicAddress!)["/news/".Length..]);
             if (!corrected && competingAction == "withdraw")
             {
                 Assert.Equal("Withdrawn", state.PublicationState);
@@ -420,9 +569,11 @@ public sealed partial class NewsTests
         return (await response.Content.ReadFromJsonAsync<ArticleResponse>())!;
     }
 
-    private static async Task<JsonDocument> PublicAsync(HttpClient client, Guid id, string? slug = null)
+    private static async Task<JsonDocument> PublicAsync(HttpClient client, Guid id)
     {
-        using HttpResponseMessage response = await client.GetAsync($"/api/news/articles/{id}" + (slug is null ? "" : $"?slug={Uri.EscapeDataString(slug)}"));
+        using var list = JsonDocument.Parse(await client.GetStringAsync("/api/news/articles"));
+        string address = list.RootElement.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == id).GetProperty("canonicalUrl").GetString()!;
+        using HttpResponseMessage response = await client.GetAsync("/api/news/articles/by-address/" + address["/news/".Length..]);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync());

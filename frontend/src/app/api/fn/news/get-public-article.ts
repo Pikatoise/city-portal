@@ -10,15 +10,13 @@ import { RequestBuilder } from '../../request-builder';
 import { PublicArticleResponse } from '../../models/public-article-response';
 
 export interface GetPublicArticle$Params {
-  id: string;
-  slug?: string;
+  address: string;
 }
 
 export function getPublicArticle(http: HttpClient, rootUrl: string, params: GetPublicArticle$Params, context?: HttpContext): Observable<StrictHttpResponse<PublicArticleResponse>> {
   const rb = new RequestBuilder(rootUrl, getPublicArticle.PATH, 'get');
   if (params) {
-    rb.path('id', params.id, {});
-    rb.query('slug', params.slug, {});
+    rb.path('address', params.address, {});
   }
 
   return http.request(
@@ -31,4 +29,4 @@ export function getPublicArticle(http: HttpClient, rootUrl: string, params: GetP
   );
 }
 
-getPublicArticle.PATH = '/api/news/articles/{id}';
+getPublicArticle.PATH = '/api/news/articles/by-address/{address}';

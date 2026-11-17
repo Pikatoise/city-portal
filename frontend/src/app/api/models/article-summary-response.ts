@@ -8,6 +8,7 @@
 export interface ArticleSummaryResponse {
   featured?: boolean;
   id: string;
+  publicAddress?: (string | null);
   state: string;
   title: string;
   updatedAtUtc: string;

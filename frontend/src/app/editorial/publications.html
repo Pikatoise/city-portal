@@ -55,7 +55,7 @@
           <button type="button" (click)="feature(row)" [disabled]="busy()">
             {{ row.featured ? 'Убрать из выбора редакции' : 'Добавить в выбор редакции' }}
           </button>
-          <button type="button" (click)="openPublic(row.id)" [disabled]="busy()">
+          <button type="button" (click)="openPublic(row)" [disabled]="busy()">
             Открыть статью
           </button>
           <a [routerLink]="['/staff/articles', row.id]">Исправить опубликованную версию</a>
