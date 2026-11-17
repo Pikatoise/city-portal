@@ -372,4 +372,36 @@ the acceptance evidence and remaining deployment checks.
 
 Production author drafts, submissions, recall, approved Save, and publication run at `/account/articles`. The editor queue and retained review/history UI run at `/staff/reviews`; Administrator has effective editorial permissions. Run the explicit migration command before API/Worker startup when upgrading to the EditorialReview News migration. Role changes release News assignments within the same database transaction; do not replace administration operations with direct role-table edits in production.
 
-Review/publication does not yet provide public article pages or SSR discovery. Published corrections/withdrawal remain the following slice. See [NEWS.md](NEWS.md) for the delivered boundary and verification matrix.
+Published corrections/withdrawal, public article SSR, discovery and editorial
+homepage curation are implemented. See [NEWS.md](NEWS.md) for their contracts
+and [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md) for technical verification
+and remaining owner review.
+
+## Stage 2 Upgrade and Recovery
+
+Before applying `DiscoveryReadPerformance`, stop API writes and the Worker and
+take a consistent PostgreSQL/object/key backup. The explicit migration adds the
+current-public-revision index and rewrites generated search vectors to use the
+new physical storage policy. Existing content and article versions stay intact.
+Allow time and disk headroom for updating all retained revisions. Normal
+API/Worker startup still never migrates. Repeat the explicit migration command,
+then start API and Worker and verify readiness/publication visibility.
+
+Keep PostgreSQL, processed objects, Data Protection keys and private deployment
+configuration as one recovery set. Export objects using authenticated S3
+operations with full listing pagination; a live object-store directory copy is
+not a portable backup. Restrict backup access like production credentials and
+keep it outside source control. Keep writers stopped until all parts are
+captured, or use a separately designed consistent snapshot scheme.
+
+Restore into a new database, private bucket and key directory/volume. Configure
+the restored API/Worker for these resources and a separate broker vhost. Restore
+keys before protected-payload delivery. Apply explicit migrations, start the
+application, and verify public/private images, retained history, SMTP decryption
+and pending work. Keep the original environment until recovery is reviewed.
+The combined automated regression and its limits are in STAGE_2_ACCEPTANCE.md.
+
+After a Release API build and production frontend build, reproduce the isolated
+capacity baseline with `python scripts/check-news-capacity.py`. This creates a
+new fixture database/vhost and leaves ignored results, plans and keys. It uses
+local Compose infrastructure and does not deploy.

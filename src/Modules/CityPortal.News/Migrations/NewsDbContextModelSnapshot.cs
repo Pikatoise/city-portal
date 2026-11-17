@@ -265,6 +265,9 @@ namespace CityPortal.News.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PublishedRevisionId")
+                        .HasFilter("\"PublicationState\" = 'Published' AND \"DeletedAtUtc\" IS NULL");
+
                     b.HasIndex("ReviewerId");
 
                     b.HasIndex("AuthorId", "UpdatedAtUtc");

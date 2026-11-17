@@ -1,5 +1,11 @@
 # News Drafting, Review, and Published Changes
 
+Current Stage 2 technical acceptance, combined recovery, capacity measurements
+and remaining owner review are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
+`DiscoveryReadPerformance` adds the measured public-revision lookup index and
+search-vector storage policy. Apply the explicit upgrade with writers stopped
+as described in DEVELOPMENT.md. Owner acceptance remains outstanding.
+
 ## Delivered Boundary
 
 Issue #10 implements the production author workspace at `/account/articles` and editorial category/tag management at `/staff/taxonomy`. Authors create, reopen, save, preview, and delete incomplete drafts; choose own Ready uploads or approved shared templates; and edit structured body, sources, contextual image text, taxonomy, and SEO fields. The five sections follow the accepted Text/Images/Parameters/Preview/History layout. Review actions now use production API operations rather than simulated state.

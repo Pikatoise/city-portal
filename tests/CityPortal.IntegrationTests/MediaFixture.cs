@@ -35,7 +35,7 @@ public sealed class MediaFixture : IAsyncLifetime
         await _accounts.DisposeAsync();
     }
 
-    public async Task<(ApiFactory Factory, string Database, string Endpoint)> CreateAsync()
+    public async Task<(ApiFactory Factory, string Database, string Endpoint)> CreateAsync(IReadOnlyDictionary<string, string>? additionalSettings = null)
     {
         string endpoint = $"http://{_storage.Hostname}:{_storage.GetMappedPublicPort(9000)}";
         Dictionary<string, string> settings = new()
@@ -46,13 +46,16 @@ public sealed class MediaFixture : IAsyncLifetime
             ["Media:SecretKey"] = _secret,
             ["Media:Bucket"] = "media-" + Guid.NewGuid().ToString("N")
         };
+        if (additionalSettings is not null)
+            foreach (KeyValuePair<string, string> setting in additionalSettings)
+                settings[setting.Key] = setting.Value;
         (ApiFactory factory, string database) = await _accounts.CreateAsync(settings: settings);
         await factory.Services.MigrateMediaAsync(CancellationToken.None);
         await factory.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
         return (factory, database, endpoint);
     }
 
-    public async Task<ApiFactory> RestoreAsync(ApiFactory source, string database)
+    public async Task<ApiFactory> RestoreAsync(ApiFactory source, string database, string? restoredKeysPath = null, int objectPageSize = 1000)
     {
         var settings = new NpgsqlConnectionStringBuilder(database);
         string original = settings.Database!;
@@ -68,12 +71,20 @@ public sealed class MediaFixture : IAsyncLifetime
             ["Media:SecretKey"] = storage.SecretKey,
             ["Media:Bucket"] = bucket
         };
+        if (restoredKeysPath is not null)
+            options["Security:DataProtectionKeysPath"] = restoredKeysPath;
         var restored = new ApiFactory("Development", settings.ConnectionString, source.Services.GetRequiredService<IConfiguration>().GetConnectionString("Messaging")!, settings: options);
         await restored.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
         using var client = new AmazonS3Client(new BasicAWSCredentials(storage.AccessKey, storage.SecretKey), new AmazonS3Config { ServiceURL = storage.Endpoint, ForcePathStyle = true, AuthenticationRegion = "us-east-1" });
-        ListObjectsV2Response objects = await client.ListObjectsV2Async(new ListObjectsV2Request { BucketName = storage.Bucket });
-        foreach (S3Object item in objects.S3Objects ?? [])
-            await client.CopyObjectAsync(new CopyObjectRequest { SourceBucket = storage.Bucket, SourceKey = item.Key, DestinationBucket = bucket, DestinationKey = item.Key });
+        string? continuation = null;
+        do
+        {
+            ListObjectsV2Response objects = await client.ListObjectsV2Async(new ListObjectsV2Request { BucketName = storage.Bucket, ContinuationToken = continuation, MaxKeys = objectPageSize });
+            foreach (S3Object item in objects.S3Objects ?? [])
+                await client.CopyObjectAsync(new CopyObjectRequest { SourceBucket = storage.Bucket, SourceKey = item.Key, DestinationBucket = bucket, DestinationKey = item.Key });
+            continuation = objects.IsTruncated == true ? objects.NextContinuationToken : null;
+        }
+        while (continuation is not null);
         return restored;
     }
 }

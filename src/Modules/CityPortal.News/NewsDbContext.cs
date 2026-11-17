@@ -27,6 +27,9 @@ internal sealed class NewsDbContext : DbContext
         model.Entity<NewsArticle>().Property(item => item.PublicationState).HasMaxLength(32);
         model.Entity<NewsArticle>().HasIndex(item => new { item.AuthorId, item.UpdatedAtUtc });
         model.Entity<NewsArticle>().HasIndex(item => item.ReviewerId);
+        // Taxonomy existence checks start at a matching revision, then recheck its current public article.
+        model.Entity<NewsArticle>().HasIndex(item => item.PublishedRevisionId)
+            .HasFilter("\"PublicationState\" = 'Published' AND \"DeletedAtUtc\" IS NULL");
         // Public listing reads only live publications in first-publication order.
         model.Entity<NewsArticle>().HasIndex(item => new { item.FirstPublishedAtUtc, item.Id }).IsDescending(true, false)
             .HasFilter("\"PublicationState\" = 'Published' AND \"DeletedAtUtc\" IS NULL");

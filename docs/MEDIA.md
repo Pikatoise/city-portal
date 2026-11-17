@@ -1,5 +1,10 @@
 # Media Implementation and Operations
 
+The fresh combined News/Media/notification/key recovery and final Stage 2
+technical evidence are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
+It exercises paginated object copying and all four processed public variants.
+Owner stage acceptance remains outstanding.
+
 ## Ownership and Tools
 
 Media owns processed images, private S3 objects, revision references, shared-template proposals, moderation history, and removal requests. Product rules remain in [Stage 2](stages/STAGE_2.md). Browser-rendered libraries are at `/account/media` and `/staff/media`.

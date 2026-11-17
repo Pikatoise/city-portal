@@ -230,7 +230,7 @@ The category/search bar also includes an All News button that opens the complete
 
 The owner approved mandatory archival on a template author's removal request and a seven-day workflow Email delivery/replay window. On 2026-11-16 the owner confirmed that editors choose the two production homepage categories and their order; Transport and Culture remain prototype examples. Administrator has the same effective editorial permission. Implementation may discover a real conflict or new business choice; discuss that specific issue rather than inventing behavior.
 
-The following workflow issues are tracked in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#11 remain in progress for final stage integration/review; #12 and #13 are implemented and verified; #14 remains Todo. The current branch is `prototype/stage-2-news-review`; Drafting/CSS checkpoint b38ed07 and review/first-publication commit 0708b94 are pushed.
+The following workflow issues are tracked in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3). Issues #7-#13 are implemented; final Stage 2 owner review remains outstanding. Issue #14 is In Progress: technical verification is complete and owner acceptance remains open. The current branch is `prototype/stage-2-news-review`; published revisions and discovery are captured in 4ec91bb and 28c050d.
 
 | Issue | Workflow | Dependencies |
 | --- | --- | --- |
@@ -243,7 +243,15 @@ The following workflow issues are tracked in [GitHub Project 3](https://github.c
 | [#13](https://github.com/Pikatoise/city-portal/issues/13) | SSR discovery and featured homepage | #7, #12. |
 | [#14](https://github.com/Pikatoise/city-portal/issues/14) | Acceptance, backup/restore, owner review | #8-#13. |
 
-Stage 1 acceptance remains closed. Concrete prototype review and Stage 2 completion review remain future work, not open business decisions.
+Stage 1 acceptance remains closed. Stage 2 completion review remains outstanding.
+
+Issue #14 evidence and the owner review script are in
+[STAGE_2_ACCEPTANCE.md](../STAGE_2_ACCEPTANCE.md). Local engineering measurement
+targets are API p95 <= 500 ms and SSR p95 <= 1,000 ms at eight readers on the
+specified baseline, not a production SLA. The measured migration adds a partial
+current-public-revision index and favors inline search-vector storage. Apply it
+with writers stopped: it recomputes existing generated vectors without changing
+article content or versions.
 
 ## Acceptance Criteria
 
@@ -343,3 +351,36 @@ Real isolated HTTPS checks covered editor category order/featured UI, homepage/l
 Spec and Standards reviews found and resolved interruptible-scroll cleanup, reused-slide image failure state, missing featured credit and one-line metadata. Backend regression also corrected the explicit migration-count expectation and serialized test classes sharing the production process-wide upload slot; production throttling was preserved. The owner authorized GPT to finish implementation directly after DeepSeek hit its free quota; the old Orca assignment was confirmed stopped before GPT edits.
 
 Issue #13 is delivered locally. Stage 2 stays open. Continue with #14 for cross-workflow acceptance, representative capacity measurements, fresh backup/restore, failure/recovery evidence and final owner review. No Stage 3 specification, new push or production deployment is implied.
+
+### Issue #14 Technical Verification: 2026-11-17
+
+Release build passed with zero warnings/errors. The complete backend suite
+passed 165 tests, zero failed/skipped, with parsed TRX outcomes. Frontend passed
+90 tests; production SSR build, formatting, generated-client and runtime OpenAPI
+consistency passed. Real infrastructure regressions cover authorization, races,
+rollback, broker/SMTP/storage outages, duplicate delivery and restarts.
+
+The new combined regression restores an actual PostgreSQL dump, processed
+objects into an isolated bucket and Data Protection keys into a new directory.
+It verifies public/private News and Media, retained history, encrypted SMTP
+configuration, pending image processing and pending Email from an independent
+worker host. Paginated object copying is exercised. The migration regression
+verifies preserved existing text/search/version, physical policy and repeatability.
+
+The 10,000-article/100,000-reference/100-category/1,000-tag baseline justified the
+DiscoveryReadPerformance migration. Final warm eight-reader measurements passed
+local p95 targets with zero HTTP errors: API 19.66-81.94 ms, SSR 302.44-875.91 ms.
+Individual SSR requests still reached 2.96 seconds; a fresh post-migration tag
+run exceeded its p95 target before the repeated warm run passed. Environment,
+plans, memory and limitations are in STAGE_2_ACCEPTANCE.md.
+
+Fresh isolated HTTPS browser checks with separate Author-only and Administrator
+accounts covered return/private correction/resubmission/publication, proposal
+isolation, direct correction/retained supersession, template block placeholders,
+withdrawn current/old URLs and reviewed republication. The reviewer had no
+assigned Editor role. Real Worker processing and SMTP delivery were checked;
+1440px/390px layouts had no overflow and recorded no browser page errors.
+
+Owner review of workflows, transaction/data flow and a failure scenario is still
+required. Issue #14 and Stage 2 remain open. No Stage 3 specification, push or
+production deployment is included.
