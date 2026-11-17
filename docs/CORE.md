@@ -26,6 +26,8 @@ Start with one main project per module. Extract contract projects when dependenc
 
 Each module owns its EF Core DbContext, PostgreSQL schema, and migrations within one application database per deployment. Cross-module workflows may share an explicitly coordinated transaction. Separate DbContexts do not imply separate databases or eventual consistency for every interaction.
 
+UI styling follows [UI_STYLE.md](UI_STYLE.md), with shared CSS variables for the application and visual prototypes. Preserve accepted public layouts while applying the same controls and typography to account/staff/editor screens.
+
 ## Technology Stack
 
 | Area | Confirmed direction or constraint |
@@ -49,6 +51,12 @@ Each module owns its EF Core DbContext, PostgreSQL schema, and migrations within
 | Hosting | Linux. |
 
 Pin compatible stable Angular and dependency versions when creating the solution. A dedicated search engine requires a demonstrated capability or scale need. Redis, RabbitMQ, Wolverine, Quartz.NET, and the Worker are selected infrastructure; implement their feature-specific use with the relevant workflows.
+
+## Media Storage and Processing
+
+The Media module now uses SkiaSharp 4.156.0, AWSSDK.S3 4.1.0, and private RustFS 1.0.0 for local storage. Processed payloads are staged durably in PostgreSQL before the Worker writes deterministic S3 objects; only Ready images can be attached. Media reconciliation shares the existing persistent Quartz scheduler registration. Details, configuration, authorization boundaries, and recovery evidence are in [MEDIA.md](MEDIA.md).
+
+Template decisions atomically enqueue configurable account/Email notifications through explicit Notifications operations on the same database transaction. Notifications owns channel preferences, account notices, durable deduplication receipts, and the existing Wolverine Email Outbox/Inbox delivery pipeline. Media marks image references as current or historical so template block/unblock fanout includes current drafts/publications without notifying authors solely because of retained history. News must maintain that distinction when integrating revision references.
 
 ## Frontend and Public Delivery
 
@@ -84,6 +92,8 @@ Authenticate browser requests with an ASP.NET Core Identity Secure, HttpOnly aut
 
 Enforce roles, policies, resource ownership, and state-dependent permissions in the API. Angular route guards and hidden controls improve the interface but do not grant or enforce backend access.
 
+Administrator grants all effective Editor permissions without requiring an assigned Editor role. Preserve the distinction between assigned roles and effective permissions. Ownership restrictions still apply: another author's draft is private before submission, including from editors and administrators.
+
 Check current account blocking and effective permissions for protected operations instead of trusting stale cookie claims alone. Blocking and role removal apply to requests beginning after the change is committed. Define the handling of already-running operations while designing their transactions.
 
 Account blocking and hiding all of the account's advertisements form one atomic cross-module operation. After a successful block, subsequent public reads must not show those listings, including direct URLs and cached results. If either module update fails, roll back the entire operation and report the failure to staff. Unblocking does not automatically relist advertisements.
@@ -105,6 +115,8 @@ Record significant editorial, moderation, and administrative actions with the re
 ## Domain Implementation Requirements
 
 ### News
+
+Production drafting/taxonomy now use the owned News schema and migration, current-author API operations, transactional Media references, version-1 structured content, and an independent server validator/renderer. The browser author workspace provides durable incomplete drafts, serialized five-second autosave, manual Save, conflict-copy/reload handling, and real Media selection. Draft saves mutate one working revision; retained deletion preserves saved text privately. Implementation boundaries and evidence are in [NEWS.md](NEWS.md). Review and first publication now retain immutable submitted content, current reviewer audiences, independent approval/publication, and transactional workflow notifications. Identity joins News assignment release through IAccountRoleChangeObserver within the role-change transaction; keeping Administrator preserves editorial permissions. Published corrections, withdrawal/republication, public article SSR and discovery are implemented. Stage 2 technical verification is complete; owner acceptance remains open.
 
 Implement the full editorial process and published article corrections during delivery stage 2. Follow VALUE.md for review ownership, returns, final rejection, approval, publication permissions, direct editor corrections, withdrawal, and republication.
 
@@ -160,11 +172,23 @@ Email is introduced with accounts and each workflow's notifications. Telegram, w
 
 Use S3-compatible object storage for files and the Media module for metadata, ownership, and usage links. Uploaded files remain private until validated. Check actual format, file size, and image dimensions; generate storage keys on the server rather than trusting user filenames.
 
-The initial upload implementation supports images. Other file types require separate agreement. Choose exact formats, upload limits, processing rules, and storage organization before implementing uploads. Keep draft materials private and grant public access only according to the owning content's publication rules.
+Stage 2 image formats and limits are specified in [STAGE_2.md](stages/STAGE_2.md#content-and-state-contracts). Processing corrects orientation, removes metadata, and produces page variants; original uploads are not retained. Media also owns author-submitted shared image templates and their moderation by Moderator or Administrator users. Authors may reuse approved templates, not arbitrary uploads from other authors. Template rejection requires a reason and permits author correction/resubmission; approved files are immutable. Moderator/Administrator template operations include archival preventing new selections and reasoned blocking that denies public delivery even when published content references the image. Preserve referenced files; blocked images render as placeholders in articles. Moderator/Administrator users can reverse erroneous blocks with a reason and audit record; restored delivery still requires current publication visibility.
 
-Materials transferred from suggestions into articles need independent retained references. Define cleanup of unused files without deleting files still used by surviving articles or revisions. Improved media capabilities can follow later, but basic upload security, sanitization, authorization, XSS prevention, rate limiting, and anti-spam controls apply from the first relevant release.
+Keep draft materials private. Public image access requires use in currently published content and no applicable template block; withdrawal closes access if no other current publication references the image. Retained private/history references prevent deletion without granting public access. Approved-template previews are available to authors; approval alone does not grant anonymous access. Template review permission for Administrator does not imply a general grant of every Moderator permission. Other file types require separate agreement.
+
+Stage 2 starts with private object buckets and API-streamed image reads that recheck current visibility and template blocks. Do not expose direct object URLs or shared-cache public article/feed/image responses initially. Preserve this access contract when considering later caching or signed delivery.
+
+Materials transferred from suggestions into articles need independent retained references. Clean up never-attached uploads seven days after creation; protect article, template-proposal, draft, revision, and history references. Coordinate reference attachment with cleanup and reconcile partial object-storage failures without deleting referenced files. Improved media capabilities can follow later, but basic upload security, sanitization, authorization, XSS prevention, rate limiting, and anti-spam controls apply from the first relevant release.
 
 ## Data Access, Search, and Cache
+
+Stage 2 capacity checks justified a partial index on the current public
+`PublishedRevisionId` and `MAIN` physical storage for generated search vectors.
+The owned DiscoveryReadPerformance migration recomputes existing vectors while
+preserving article content and versions. Apply it with writers stopped and
+allow time/disk space for retained revisions. Measurement details and latency
+limitations are in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md); no shared public
+cache or new search engine was added.
 
 Use efficient PostgreSQL queries, suitable indexes, pagination, and bounded reads. Start with PostgreSQL Full-Text Search over published content. Use ordinary query filters for category, district, price, and related attributes. Draft content must not enter public search.
 
@@ -175,6 +199,14 @@ Redis failure should permit database-backed reads while preserving visibility gu
 Use Dapper only for a demonstrated query benefit. Evaluate a dedicated search engine only for an unmet capability or measured scale need. Define numerical performance targets and a representative data set before load testing. Avoid speculative infrastructure, Kubernetes, and unnecessary distribution beyond the selected architecture.
 
 ## Testing, Observability, and Operations
+
+Local review starts through `scripts/start-stand.py`, including loopback pgAdmin
+and five confirmed role-specific demo accounts whose persisted local credentials
+are printed on every successful launch. `compose.stand.yaml` isolates the review
+database, broker vhost and Media bucket. Empty review taxonomy dictionaries
+receive initial demo categories/tags through the administrator API; nonempty
+dictionaries and normal installation data are preserved;
+public deployment does not enable this fixture setup or pgAdmin by default.
 
 Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Keep build-time code-style diagnostics and the CI formatting check; code review covers conventions that built-in tooling cannot enforce.
 
@@ -195,7 +227,7 @@ Deliver functional stages in this order:
 | Stage | Scope |
 | --- | --- |
 | 1 (complete) | Accounts, roles, Email, first-run installation, and the Identity/Notifications foundation. |
-| 2 | Complete news workflow, including published corrections, revision history, Media, public SSR pages, and basic news search. |
+| 2 (complete) | Complete news workflow, including published corrections, revision history, Media, public SSR pages, and basic news search. |
 | 3 | Citizen suggestions, assignment, conversion into articles, and 72-hour deletion. |
 | 4 | Classifieds, moderation, reports, account and listing blocking, and lifecycle management. |
 | 5 | Comments and their moderation. |
@@ -217,4 +249,4 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts and verification summary remain the baseline for delivered workflows. Stage 2 is next in the delivery order; its specification has not yet been agreed. Tracking is maintained in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
+[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) is complete and owner-accepted as of 2026-11-13. Its contracts remain the delivered baseline. [Stage 2: News and Media](stages/STAGE_2.md) has completed its specification; homepage/article visuals are owner-accepted. Production Media, template notifications, and News drafting/taxonomy are implemented and locally verified. Production author and reviewer workspaces now deliver review and first publication. Issue #12 implements published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with visibility-checked addresses. Issue #13 implements public SSR discovery, Russian search, related/featured news, ordered editorial homepage categories, and the production homepage. Issue #14 completed technical verification, combined recovery and capacity measurement; the owner reviewed workflows, transaction/data flow and failure handling and explicitly accepted Stage 2 on 2026-11-17. Evidence and limitations are in STAGE_2_ACCEPTANCE.md. Issues #7-#14 in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) track the stage; all Stage 2 issues are complete. Stage 3 specification is next and requires agreement of its workflows with the owner.

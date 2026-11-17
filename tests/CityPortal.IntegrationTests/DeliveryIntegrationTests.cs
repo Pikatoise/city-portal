@@ -26,6 +26,115 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
     }
 
     [Fact]
+    public async Task WorkflowMail_OutageRetryAndReplay_DeliversGenericNoticeWithoutAnAuthenticationLinkAsync()
+    {
+        _fixture.Time.Now = DateTimeOffset.UtcNow;
+        using IHost host = _fixture.BuildHost(false, true);
+        await host.StartAsync();
+        var recipient = new WorkflowRecipient(Guid.NewGuid(), "workflow@example.test");
+        DateTimeOffset created = _fixture.Time.Now;
+        try
+        {
+            Guid id = await _fixture.QueueWorkflowAsync(host, recipient, Guid.NewGuid(), created);
+            _fixture.Smtp.RejectionCode = 450;
+            await _fixture.DeliverAsync(host, id, 0);
+            Assert.Equal("RetryScheduled", await _fixture.StateAsync(id));
+            DateTimeOffset next = await _fixture.ScalarAsync<DateTimeOffset>("SELECT \"NextAttemptAtUtc\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", id);
+            Assert.Equal(created.AddMinutes(1).Ticks / 10, next.Ticks / 10);
+            _fixture.Time.Now = next.AddSeconds(1);
+            _fixture.Smtp.RejectionCode = 550;
+            await _fixture.DeliverAsync(host, id, 1);
+            Assert.Equal("Failed", await _fixture.StateAsync(id));
+            long version = await _fixture.ScalarAsync<long>("SELECT \"Version\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", id);
+            await _fixture.ReplayAsync(host, id, version);
+            Assert.Equal(created.AddDays(7).Ticks / 10, (await _fixture.ScalarAsync<DateTimeOffset>("SELECT \"ExpiresAtUtc\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", id)).Ticks / 10);
+            _fixture.Smtp.RejectionCode = 0;
+            await _fixture.DeliverAsync(host, id, 2);
+            await _fixture.DeliverAsync(host, id, 2);
+            Assert.Equal("Sent", await _fixture.StateAsync(id));
+            string raw = Assert.Single(_fixture.Smtp.Accepted, value => value.Contains(id.ToString("N"), StringComparison.Ordinal));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(raw));
+            using MimeKit.MimeMessage mail = await MimeKit.MimeMessage.LoadAsync(stream);
+            Assert.Contains("уведомление", mail.Subject);
+            Assert.Contains("Шаблон изображения одобрен", mail.TextBody);
+            Assert.Contains("/account/notifications", mail.TextBody);
+            Assert.DoesNotContain("token=", mail.TextBody);
+            Assert.DoesNotContain("confirm-email", mail.TextBody);
+            Assert.DoesNotContain("reset-password", mail.TextBody);
+            Assert.Equal(3L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"EmailAttempts\" WHERE \"DeliveryId\"=@id", id));
+        }
+        finally
+        {
+            _fixture.Smtp.RejectionCode = 0;
+            _fixture.Time.Now = DateTimeOffset.UtcNow;
+            await host.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task WorkflowMail_SevenDayExpiryAndThirtyDayRetention_RejectReplayAndRemoveReadAndUnreadNoticesAsync()
+    {
+        _fixture.Time.Now = DateTimeOffset.UtcNow;
+        using IHost host = _fixture.BuildHost(false, true);
+        await host.StartAsync();
+        var recipient = new WorkflowRecipient(Guid.NewGuid(), "expiry@example.test");
+        DateTimeOffset created = _fixture.Time.Now;
+        try
+        {
+            Guid pending = await _fixture.QueueWorkflowAsync(host, recipient, Guid.NewGuid(), created);
+            Guid failed = await _fixture.QueueWorkflowAsync(host, recipient, Guid.NewGuid(), created);
+            _fixture.Smtp.RejectionCode = 550;
+            await _fixture.DeliverAsync(host, failed, 0);
+            long version = await _fixture.ScalarAsync<long>("SELECT \"Version\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", failed);
+            _fixture.Time.Now = created.AddDays(7);
+            int connections = _fixture.Smtp.ConnectionCount;
+            await _fixture.DeliverAsync(host, pending, 0);
+            Assert.Equal("Skipped", await _fixture.StateAsync(pending));
+            Assert.Equal(connections, _fixture.Smtp.ConnectionCount);
+            Assert.Equal(EmailReplayResult.InvalidLink, await _fixture.TryReplayAsync(host, failed, version));
+            await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+            AccountNotifications notifications = scope.ServiceProvider.GetRequiredService<AccountNotifications>();
+            Assert.True(await notifications.MarkReadAsync(recipient.AccountId, pending, CancellationToken.None));
+            EmailRetentionJob retention = scope.ServiceProvider.GetRequiredService<EmailRetentionJob>();
+            await retention.Execute(JobExecutionContextBuilder.For(retention).Build(), CancellationToken.None);
+            Assert.Equal("Skipped", await _fixture.StateAsync(failed));
+            Assert.Equal("", await _fixture.ScalarAsync<string>("SELECT \"ProtectedPayload\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", failed));
+            _fixture.Time.Now = created.AddDays(30).AddTicks(-10);
+            Assert.Equal(2, (await notifications.ListAsync(recipient.AccountId, 1, 20, CancellationToken.None)).Items.Length);
+            _fixture.Time.Now = created.AddDays(30);
+            await retention.Execute(JobExecutionContextBuilder.For(retention).Build(), CancellationToken.None);
+            Assert.Empty((await notifications.ListAsync(recipient.AccountId, 1, 20, CancellationToken.None)).Items);
+            Assert.Equal(0L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"AccountNotifications\" WHERE \"AccountId\"=@id", recipient.AccountId));
+            Assert.Equal(2L, await _fixture.ScalarAsync<long>("SELECT count(*) FROM notifications.\"WorkflowReceipts\" WHERE \"AccountId\"=@id", recipient.AccountId));
+        }
+        finally
+        {
+            _fixture.Smtp.RejectionCode = 0;
+            _fixture.Time.Now = DateTimeOffset.UtcNow;
+            await host.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task WorkflowMail_DisabledAfterQueue_SkipsSmtpAndPreservesAccountNoticeAsync()
+    {
+        _fixture.Time.Now = DateTimeOffset.UtcNow;
+        using IHost host = _fixture.BuildHost(false, true);
+        await host.StartAsync();
+        var recipient = new WorkflowRecipient(Guid.NewGuid(), "preferences@example.test");
+        Guid id = await _fixture.QueueWorkflowAsync(host, recipient, Guid.NewGuid(), _fixture.Time.Now);
+        await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+        AccountNotifications notifications = scope.ServiceProvider.GetRequiredService<AccountNotifications>();
+        await notifications.SavePreferencesAsync(recipient.AccountId, [new NotificationPreferenceResponse("template.approved", true, false)], CancellationToken.None);
+        int connections = _fixture.Smtp.ConnectionCount;
+        await _fixture.DeliverAsync(host, id, 0);
+        Assert.Equal("Skipped", await _fixture.StateAsync(id));
+        Assert.Equal(connections, _fixture.Smtp.ConnectionCount);
+        Assert.Equal(id, Assert.Single((await notifications.ListAsync(recipient.AccountId, 1, 20, CancellationToken.None)).Items).Id);
+        await host.StopAsync();
+    }
+
+    [Fact]
     public async Task Delivery_WithStoredSmtpConfiguration_UsesPersistedServerAndBrandAcrossNewHostAsync()
     {
         using IHost host = _fixture.BuildHost(false, true);
@@ -420,6 +529,26 @@ public sealed class DeliveryIntegrationTests : IClassFixture<DeliveryIntegration
             Assert.Equal(EmailReplayResult.Accepted, await administration.ReplayAsync(id, version, Guid.NewGuid(), connection, transaction, CancellationToken.None));
             await transaction.CommitAsync();
             await administration.FlushAfterCommitAsync();
+        }
+
+        public async Task<Guid> QueueWorkflowAsync(IHost host, WorkflowRecipient recipient, Guid eventId, DateTimeOffset created)
+        {
+            await using var connection = new NpgsqlConnection(_database.GetConnectionString());
+            await connection.OpenAsync();
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+            await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<WorkflowNotificationQueue>().QueueAsync(eventId, "template.approved", eventId, created, [recipient], connection, transaction, CancellationToken.None);
+            await transaction.CommitAsync();
+            return await ScalarAsync<Guid>("SELECT \"NotificationId\" FROM notifications.\"WorkflowReceipts\" WHERE \"EventId\"=@id", eventId);
+        }
+
+        public async Task<EmailReplayResult> TryReplayAsync(IHost host, Guid id, long version)
+        {
+            await using var connection = new NpgsqlConnection(_database.GetConnectionString());
+            await connection.OpenAsync();
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+            await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<EmailAdministration>().ReplayAsync(id, version, Guid.NewGuid(), connection, transaction, CancellationToken.None);
         }
 
         public Task<string> StateAsync(Guid id) => ScalarAsync<string>("SELECT \"State\" FROM notifications.\"EmailDeliveries\" WHERE \"Id\"=@id", id);

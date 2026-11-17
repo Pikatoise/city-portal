@@ -1,0 +1,261 @@
+<section class="review-workspace" aria-labelledby="review-title">
+  <nav class="staff-nav">
+    <a routerLink="/staff/publications">Опубликованные статьи</a
+    ><a routerLink="/account">Личный кабинет</a><a routerLink="/staff/taxonomy">Категории и теги</a>
+  </nav>
+  <h1 id="review-title">Редакция</h1>
+  @if (error()) {
+    <p role="alert" class="field-error">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (!allowed() && !busy()) {
+    <p>Нужны права редактора и подтверждённый Email.</p>
+  }
+  @if (allowed()) {
+    <nav class="review-actions" aria-label="Очереди проверки">
+      <button
+        type="button"
+        (click)="mine.set(false); selected.set(null); load()"
+        [disabled]="busy()"
+        [attr.aria-pressed]="!mine()"
+      >
+        Общая очередь
+      </button>
+      <button
+        type="button"
+        (click)="mine.set(true); selected.set(null); load()"
+        [disabled]="busy()"
+        [attr.aria-pressed]="mine()"
+      >
+        Мои проверки и история
+      </button>
+      <button type="button" (click)="load(page())" [disabled]="busy()">Обновить очередь</button>
+    </nav>
+    @for (row of rows(); track row.id) {
+      <article class="review-row">
+        <div>
+          <h2>{{ row.title }}</h2>
+          <p>
+            {{ state(row.state) }} · {{ row.reviewerId ? 'Назначен редактор' : 'В общей очереди' }}
+          </p>
+        </div>
+        <div class="review-actions">
+          @if (canRead(row)) {
+            <button type="button" (click)="open(row.id)" [disabled]="busy()">Открыть</button>
+          }
+          @if (row.state === 'InReview') {
+            @if (!row.reviewerId) {
+              <button type="button" (click)="act(row.id, row.version, 'claim')" [disabled]="busy()">
+                Взять на проверку
+              </button>
+            } @else if (row.reviewerId !== profile()?.id) {
+              <button
+                type="button"
+                (click)="act(row.id, row.version, 'takeover')"
+                [disabled]="busy()"
+              >
+                Перехватить проверку
+              </button>
+            }
+          }
+          @if (row.state === 'Approved') {
+            <button type="button" (click)="act(row.id, row.version, 'publish')" [disabled]="busy()">
+              Опубликовать
+            </button>
+          }
+        </div>
+      </article>
+    }
+    @if (!rows().length && !busy()) {
+      <p>В этой очереди пока нет статей.</p>
+    }
+    @if (total() > 20) {
+      <nav class="staff-pagination" aria-label="Страницы проверок">
+        <button type="button" (click)="load(page() - 1)" [disabled]="busy() || page() === 1">
+          Назад</button
+        ><span>{{ page() }}</span
+        ><button
+          type="button"
+          (click)="load(page() + 1)"
+          [disabled]="busy() || page() * 20 >= total()"
+        >
+          Далее
+        </button>
+      </nav>
+    }
+    @if (selected(); as review) {
+      <section class="review-detail" aria-labelledby="selected-title">
+        <div class="review-actions">
+          <h2 id="selected-title">Отправленная версия</h2>
+          <button type="button" (click)="open(review.article.id)" [disabled]="busy()">
+            Обновить версию
+          </button>
+        </div>
+        <p>{{ state(review.workingState) }}{{ review.deleted ? ' · Удалено автором' : '' }}</p>
+        @if (review.workingState === 'Draft') {
+          <p>Показана последняя отправленная версия. Текущие исправления видит только автор.</p>
+        }
+        <h3>{{ review.article.content.title }}</h3>
+        <p>Категория: {{ taxonomyName(review.article.content.categoryId) }}</p>
+        <p>
+          Теги:
+          @for (tag of review.article.content.tagIds; track tag) {
+            <span>{{ taxonomyName(tag) }} </span>
+          }
+        </p>
+        <p>{{ review.article.content.summary }}</p>
+        @if (review.article.content.cover; as cover) {
+          <figure>
+            <img [src]="'/api/media/images/' + cover.mediaId + '/1280'" [alt]="cover.alt || ''" />
+            <figcaption>{{ cover.caption }}</figcaption>
+          </figure>
+        }
+        <div [innerHTML]="review.article.previewHtml"></div>
+        @for (image of review.article.content.gallery; track $index) {
+          <figure>
+            <img [src]="'/api/media/images/' + image.mediaId + '/1280'" [alt]="image.alt || ''" />
+            <figcaption>{{ image.caption }}</figcaption>
+          </figure>
+        }
+        <p>Использованы чужие материалы: {{ review.article.content.usesOthers ? 'да' : 'нет' }}</p>
+        @for (source of review.article.content.sources; track $index) {
+          <p>
+            <a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.name }}</a>
+          </p>
+        }
+        <p>SEO-заголовок: {{ review.article.content.seoTitle || review.article.content.title }}</p>
+        <p>
+          SEO-описание:
+          {{ review.article.content.seoDescription || review.article.content.summary }}
+        </p>
+        @if (!review.deleted) {
+          @if (review.workingState === 'InReview' && review.reviewerId === profile()?.id) {
+            <label
+              >Обратная связь или причина<textarea
+                [(ngModel)]="reason"
+                maxlength="4000"
+                rows="4"
+                [disabled]="busy()"
+              ></textarea>
+            </label>
+            <div class="review-actions">
+              <button
+                type="button"
+                (click)="act(review.article.id, review.article.version, 'return')"
+                [disabled]="busy() || !reason.trim()"
+              >
+                На доработку</button
+              ><button
+                type="button"
+                (click)="act(review.article.id, review.article.version, 'reject')"
+                [disabled]="busy() || !reason.trim()"
+              >
+                Отклонить окончательно</button
+              ><button
+                type="button"
+                class="primary-button"
+                (click)="act(review.article.id, review.article.version, 'approve')"
+                [disabled]="busy()"
+              >
+                Одобрить</button
+              ><button
+                type="button"
+                (click)="act(review.article.id, review.article.version, 'release')"
+                [disabled]="busy()"
+              >
+                Вернуть в очередь
+              </button>
+            </div>
+          }
+          @if (review.workingState === 'Approved') {
+            <button
+              type="button"
+              class="primary-button"
+              (click)="act(review.article.id, review.article.version, 'publish')"
+              [disabled]="busy()"
+            >
+              Опубликовать одобренную версию
+            </button>
+          }
+        }
+        <h3>История и сохранённые версии</h3>
+        @for (entry of history(); track entry.id) {
+          <article class="history-entry">
+            <p>{{ clock.format(entry.createdAtUtc) }} · {{ actionName(entry.action) }}</p>
+            <p>{{ entry.reason }}</p>
+            <button type="button" (click)="snapshot.set(entry)">Показать версию</button>
+          </article>
+        }
+        @if (historyTotal() > 20) {
+          <nav class="staff-pagination" aria-label="Страницы истории">
+            <button
+              type="button"
+              (click)="loadHistory(historyPage() - 1)"
+              [disabled]="historyPage() === 1"
+            >
+              Назад</button
+            ><span>{{ historyPage() }}</span
+            ><button
+              type="button"
+              (click)="loadHistory(historyPage() + 1)"
+              [disabled]="historyPage() * 20 >= historyTotal()"
+            >
+              Далее
+            </button>
+          </nav>
+        }
+        @if (snapshot(); as entry) {
+          <section class="history-entry">
+            <h3>{{ entry.revision.content.title }}</h3>
+            <p>{{ entry.revision.content.summary }}</p>
+            <p>Категория: {{ taxonomyName(entry.revision.content.categoryId) }}</p>
+            <p>
+              Теги:
+              @for (tag of entry.revision.content.tagIds; track tag) {
+                <span>{{ taxonomyName(tag) }} </span>
+              }
+            </p>
+            @if (entry.revision.content.cover; as image) {
+              <figure>
+                <img
+                  [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                  [alt]="image.alt || ''"
+                />
+                <figcaption>{{ image.caption }}</figcaption>
+              </figure>
+            }
+            <div [innerHTML]="entry.revision.previewHtml"></div>
+            @for (image of entry.revision.content.gallery; track $index) {
+              <figure>
+                <img
+                  [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                  [alt]="image.alt || ''"
+                />
+                <figcaption>{{ image.caption }}</figcaption>
+              </figure>
+            }
+            <p>
+              Использованы чужие материалы: {{ entry.revision.content.usesOthers ? 'да' : 'нет' }}
+            </p>
+            @for (source of entry.revision.content.sources; track $index) {
+              <p>
+                <a [href]="source.url" target="_blank" rel="noopener noreferrer">{{
+                  source.name
+                }}</a>
+              </p>
+            }
+            <p>
+              SEO-заголовок: {{ entry.revision.content.seoTitle || entry.revision.content.title }}
+            </p>
+            <p>
+              SEO-описание:
+              {{ entry.revision.content.seoDescription || entry.revision.content.summary }}
+            </p>
+          </section>
+        }
+      </section>
+    }
+  }
+</section>

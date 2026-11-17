@@ -1,0 +1,626 @@
+<section aria-labelledby="author-title" class="author-workspace">
+  <nav class="workspace-nav" aria-label="Рабочее пространство">
+    <button type="button" (click)="back()" [disabled]="busy() || saving()">
+      {{ correctionMode ? 'Опубликованные статьи' : 'Мои статьи' }}</button><a
+      routerLink="/account/media"
+      >Медиатека</a
+    ><a routerLink="/account">Личный кабинет</a><span>{{ profile()?.displayName }}</span>
+  </nav>
+  @if (error()) {
+    <p role="alert" class="errors">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status" class="notice">{{ notice() }}</p>
+  }
+  @if (!allowed() && !busy()) {
+    <a routerLink="/account/login">Войти в аккаунт</a>
+  }
+  @if (allowed()) {
+    @if (!article()) {
+      <div class="page-heading">
+        <div>
+          <p class="muted">Авторская</p>
+          <h1 id="author-title">Мои статьи</h1>
+        </div>
+        <button type="button" class="primary-button" (click)="create()" [disabled]="busy()">
+          Новая статья
+        </button>
+      </div>
+      <form class="list-search" (ngSubmit)="load()">
+        <label>Поиск по заголовку<input type="search" name="query" [(ngModel)]="query" /></label
+        ><button type="submit" [disabled]="busy()">Найти</button>
+      </form>
+      @for (item of rows(); track item.id) {
+        <article class="article-row">
+          <div>
+            <p class="muted">{{ stateName(item.state) }} · {{ clock.format(item.updatedAtUtc) }}</p>
+            <h2>
+              <button type="button" class="text-link" (click)="open(item.id)" [disabled]="busy()">
+                {{ item.title || 'Без заголовка' }}
+              </button>
+            </h2>
+          </div>
+          <button type="button" (click)="open(item.id)" [disabled]="busy()">Открыть</button>
+        </article>
+      }
+      @if (!busy() && !rows().length) {
+        <p>Статей пока нет. Создай черновик, чтобы начать работу.</p>
+      }
+      @if (total() > 20) {
+        <nav class="staff-pagination" aria-label="Страницы статей">
+          <button type="button" (click)="load(page() - 1)" [disabled]="busy() || page() === 1">
+            Назад</button
+          ><span>Страница {{ page() }}</span
+          ><button
+            type="button"
+            (click)="load(page() + 1)"
+            [disabled]="busy() || page() * 20 >= total()"
+          >
+            Далее
+          </button>
+        </nav>
+      }
+    } @else {
+      <div class="action-bar">
+        <div>
+          <span class="state">{{ stateName(article()!.state) }}</span><span class="save-state">{{
+            saving() ? 'Сохраняем…' : dirty() ? 'Есть несохранённые правки' : 'Сохранено'
+          }}</span>
+        </div>
+        <div class="actions">
+          @if (article()!.publicationState === 'Published') {
+            <button type="button" (click)="openPublic()" [disabled]="busy() || saving()">
+              Открыть статью
+            </button>
+          }
+          <button type="button" (click)="tab.set('preview')">Предпросмотр</button
+          ><button
+            type="button"
+            class="primary-button"
+            (click)="save()"
+            [disabled]="busy() || saving() || conflict() || !editable()"
+          >
+            {{ correctionMode ? 'Опубликовать исправления' : 'Сохранить' }}
+          </button>
+          @if (!correctionMode && article()!.state === 'Draft') {
+            <button
+              type="button"
+              (click)="workflow('submit')"
+              [disabled]="busy() || saving() || conflict()"
+            >
+              Отправить на проверку
+            </button>
+          }
+          @if (!correctionMode && article()!.state === 'InReview') {
+            <button type="button" (click)="workflow('recall')" [disabled]="busy()">
+              Отозвать для исправлений
+            </button>
+          }
+          @if (!correctionMode && article()!.state === 'Approved') {
+            <button type="button" (click)="workflow('publish')" [disabled]="busy() || dirty()">
+              Опубликовать
+            </button>
+          }
+        </div>
+      </div>
+      @if (
+        !correctionMode &&
+        (article()!.state === 'Published' || article()!.state === 'Superseded') &&
+        article()!.publicationState === 'Published'
+      ) {
+        <p>
+          Опубликованная версия доступна читателям. Предложение изменений пройдёт проверку отдельно.
+        </p>
+        <button type="button" (click)="workflow('working-version')" [disabled]="busy() || saving()">
+          Предложить изменения
+        </button>
+      }
+      @if (!correctionMode && article()!.publicationState === 'Withdrawn') {
+        <p role="status">
+          Материал снят с публикации. Подготовь исправления и отправь их на проверку.
+        </p>
+      }
+      @if (
+        !correctionMode &&
+        article()!.publicationState === 'Published' &&
+        article()!.state !== 'Published'
+      ) {
+        <p>Это предложение изменений. До публикации читатели видят прежнюю версию.</p>
+      }
+      @if (correctionMode) {
+        <p>
+          Изменения сразу заменят опубликованную версию. Рабочая версия автора будет закрыта; текст
+          и история сохранятся.
+        </p>
+        <label
+          >Причина исправления<textarea
+            [(ngModel)]="changeDescription"
+            rows="3"
+            maxlength="2000"
+            [disabled]="saving()"
+          ></textarea>
+        </label>
+      }
+      @if (conflict()) {
+        <section class="conflict" aria-label="Конфликт сохранения">
+          <h2>Статья изменилась в другой вкладке</h2>
+          <p>
+            Автосохранение остановлено. Твои правки остались в форме. Скопируй их перед загрузкой
+            серверной версии.
+          </p>
+          <div class="actions">
+            <button type="button" (click)="copyEdits()">Скопировать правки</button
+            ><button type="button" (click)="reloadCurrent()" [disabled]="busy()">
+              Загрузить серверную версию
+            </button>
+          </div>
+        </section>
+      }
+      @if (copyBuffer()) {
+        <label class="copy-buffer"
+          >Копия несохранённых правок<textarea readonly rows="8" [value]="copyBuffer()"></textarea>
+        </label>
+      }
+      <nav class="document-nav" aria-label="Разделы статьи">
+        @for (item of tabs; track item.id) {
+          <button
+            type="button"
+            [class.current]="tab() === item.id"
+            [attr.aria-current]="tab() === item.id ? 'page' : null"
+            (click)="selectTab(item.id)"
+          >
+            {{ item.name }}
+          </button>
+        }
+      </nav>
+      <div class="work-grid">
+        <div class="document-column">
+          @if (!correctionMode && article()!.state === 'Approved') {
+            <p>
+              Автосохранение отключено. «Сохранить» отправит изменённую версию на повторную
+              проверку.
+            </p>
+          }
+          @if (article()!.state === 'Draft' && article()!.previouslySubmitted) {
+            <label
+              >Что изменилось<textarea
+                [(ngModel)]="changeDescription"
+                rows="3"
+                [disabled]="busy()"
+              ></textarea>
+            </label>
+          }
+          <fieldset
+            [disabled]="!editable() || busy()"
+            [attr.inert]="!editable() || busy() ? '' : null"
+          >
+            <section [hidden]="tab() !== 'text'" class="writing">
+              <h1 id="author-title" class="visually-hidden">Редактор статьи</h1>
+              <label
+                >Заголовок<textarea
+                  class="headline-input"
+                  rows="2"
+                  name="title"
+                  [(ngModel)]="form().title"
+                  (ngModelChange)="changed()"
+                  placeholder="Расскажи, что произошло"
+                ></textarea>
+              </label>
+              <label
+                >Краткое описание<textarea
+                  rows="3"
+                  name="summary"
+                  [(ngModel)]="form().summary"
+                  (ngModelChange)="changed()"
+                  placeholder="Главное в двух-трёх предложениях"
+                ></textarea>
+              </label>
+              <div class="format-toolbar" role="group" aria-label="Форматирование текста">
+                <button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleBold()?.run()"
+                  aria-label="Полужирный"
+                >
+                  Ж</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleItalic()?.run()"
+                  aria-label="Курсив"
+                >
+                  К</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleHeading({ level: 2 })?.run()"
+                >
+                  H2</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleHeading({ level: 3 })?.run()"
+                >
+                  H3</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleBulletList()?.run()"
+                >
+                  Список</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleOrderedList()?.run()"
+                >
+                  Нумерация</button
+                ><button
+                  type="button"
+                  (click)="editor?.chain()?.focus()?.toggleBlockquote()?.run()"
+                >
+                  Цитата</button
+                ><button type="button" (click)="pick('inline')">Изображение</button
+                ><button type="button" (click)="editor?.chain()?.focus()?.undo()?.run()">
+                  Отменить</button
+                ><button type="button" (click)="editor?.chain()?.focus()?.redo()?.run()">
+                  Повторить
+                </button>
+              </div>
+              <div class="link-tools">
+                <label
+                  >Ссылка для выделенного текста<input
+                    name="linkUrl"
+                    type="url"
+                    [(ngModel)]="linkUrl"
+                    placeholder="https://" /></label
+                ><button type="button" (click)="link()">Добавить ссылку</button
+                ><button type="button" (click)="editor?.chain()?.focus()?.unsetLink()?.run()">
+                  Убрать ссылку
+                </button>
+              </div>
+              <div #bodyHost class="body-host"></div>
+              @if (inline(); as image) {
+                <fieldset class="inline-settings">
+                  <legend>Изображение в тексте</legend>
+                  <label
+                    >Альтернативный текст<input
+                      [ngModel]="image.alt"
+                      (ngModelChange)="setInline('alt', $event)" /></label
+                  ><label
+                    >Подпись<input
+                      [ngModel]="image.caption"
+                      (ngModelChange)="setInline('caption', $event)"
+                  /></label>
+                </fieldset>
+              }
+            </section>
+            <section [hidden]="tab() !== 'images'">
+              <h2>Обложка и галерея</h2>
+              <p>
+                При отправке статьи у каждого изображения должен быть альтернативный текст. В
+                черновике его можно заполнить позже.
+              </p>
+              @if (form().cover; as image) {
+                <div class="image-placement">
+                  <img
+                    [src]="'/api/media/images/' + image.mediaId + '/480'"
+                    [alt]="image.alt || 'Обложка'"
+                  />
+                  <div>
+                    <label
+                      >Альтернативный текст обложки<input
+                        [(ngModel)]="image.alt"
+                        (ngModelChange)="changed()" /></label
+                    ><label
+                      >Подпись обложки<input
+                        [(ngModel)]="image.caption"
+                        (ngModelChange)="changed()" /></label
+                    ><button type="button" (click)="form().cover = null; changed()">
+                      Убрать обложку
+                    </button>
+                  </div>
+                </div>
+              }
+              <div class="actions">
+                <button type="button" (click)="pick('cover')">
+                  {{ form().cover ? 'Заменить обложку' : 'Выбрать обложку' }}</button><button
+                  type="button"
+                  (click)="pick('gallery')"
+                >
+                  Добавить в галерею
+                </button>
+              </div>
+              @for (image of form().gallery; track $index; let index = $index) {
+                <div class="image-placement">
+                  <img
+                    [src]="'/api/media/images/' + image.mediaId + '/480'"
+                    [alt]="image.alt || 'Изображение галереи'"
+                  />
+                  <div>
+                    <label
+                      >Альтернативный текст<input
+                        [(ngModel)]="image.alt"
+                        (ngModelChange)="changed()" /></label
+                    ><label
+                      >Подпись<input
+                        [(ngModel)]="image.caption"
+                        (ngModelChange)="changed()" /></label
+                    ><button type="button" (click)="removeImage(index)">Убрать из галереи</button>
+                  </div>
+                </div>
+              }
+            </section>
+            <section [hidden]="tab() !== 'parameters'">
+              <h2>Параметры статьи</h2>
+              <label
+                >Категория<select [(ngModel)]="form().categoryId" (ngModelChange)="changed()">
+                  <option [ngValue]="null">Не выбрана</option>
+                  @for (category of categories(); track category.id) {
+                    <option
+                      [ngValue]="category.id"
+                      [disabled]="
+                        category.archived && article()?.content?.categoryId !== category.id
+                      "
+                    >
+                      {{ category.name }}{{ category.archived ? ' · В архиве' : '' }}
+                    </option>
+                  }
+                </select></label
+              >
+              <fieldset>
+                <legend>Теги</legend>
+                @for (tag of tags(); track tag.id) {
+                  <label class="checkbox-label"
+                    ><input
+                      type="checkbox"
+                      [checked]="form().tagIds.includes(tag.id)"
+                      [disabled]="
+                        (tag.archived && !(article()?.content?.tagIds ?? []).includes(tag.id)) ||
+                        (!form().tagIds.includes(tag.id) && form().tagIds.length >= 10)
+                      "
+                      (change)="toggleTag(tag.id, $any($event.target).checked)"
+                    />{{ tag.name }}{{ tag.archived ? ' · В архиве' : '' }}</label
+                  >
+                } @empty {
+                  <p class="muted">Редакция ещё не добавила теги.</p>
+                }
+              </fieldset>
+              <label class="checkbox-label"
+                ><input
+                  type="checkbox"
+                  [(ngModel)]="form().usesOthers"
+                  (ngModelChange)="changed()"
+                />Использованы чужие материалы</label
+              >
+              <h3>Источники</h3>
+              @for (source of form().sources; track $index; let index = $index) {
+                <div class="source-row">
+                  <label
+                    >Название источника<input
+                      [(ngModel)]="source.name"
+                      (ngModelChange)="changed()" /></label
+                  ><label
+                    >Ссылка<input
+                      type="url"
+                      [(ngModel)]="source.url"
+                      (ngModelChange)="changed()" /></label
+                  ><button type="button" (click)="removeSource(index)">Убрать источник</button>
+                </div>
+              }
+              <button type="button" (click)="source()" [disabled]="form().sources.length >= 20">
+                Добавить источник
+              </button>
+              <h3 class="seo-heading">Поиск и предпросмотр ссылки</h3>
+              <label
+                >SEO-заголовок<input
+                  [(ngModel)]="form().seoTitle"
+                  (ngModelChange)="changed()" /></label
+              ><label
+                >SEO-описание<textarea
+                  rows="3"
+                  [(ngModel)]="form().seoDescription"
+                  (ngModelChange)="changed()"
+                ></textarea>
+              </label>
+            </section>
+          </fieldset>
+          <article #previewHost [hidden]="tab() !== 'preview'" class="reader-preview">
+            <p class="muted">Предпросмотр · {{ profile()?.displayName }}</p>
+            <h1>{{ form().title || 'Без заголовка' }}</h1>
+            <p class="article-summary">{{ form().summary }}</p>
+            @if (form().cover; as image) {
+              <figure>
+                <img [src]="'/api/media/images/' + image.mediaId + '/1280'" [alt]="image.alt" />
+                <figcaption>{{ image.caption }}</figcaption>
+              </figure>
+            }
+            <div class="body-copy" [innerHTML]="preview()"></div>
+            @for (image of form().gallery; track $index) {
+              <figure>
+                <img [src]="'/api/media/images/' + image.mediaId + '/1280'" [alt]="image.alt" />
+                <figcaption>{{ image.caption }}</figcaption>
+              </figure>
+            }
+            @if (form().sources.length) {
+              <h2>Источники</h2>
+              <ul>
+                @for (source of form().sources; track $index) {
+                  <li>
+                    @if (safeArticleUrl(source.url)) {
+                      <a [href]="source.url" rel="noopener noreferrer" target="_blank">{{
+                        source.name
+                      }}</a>
+                    } @else {
+                      {{ source.name }}
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+          <section [hidden]="tab() !== 'history'">
+            <h2>История статьи</h2>
+            @for (entry of history(); track entry.id) {
+              <article>
+                <p>{{ clock.format(entry.createdAtUtc) }} · {{ actionName(entry.action) }}</p>
+                <p>{{ entry.reason }}</p>
+                <button type="button" (click)="historySnapshot.set(entry)">
+                  Показать сохранённую версию
+                </button>
+              </article>
+            }
+            @if (!history().length) {
+              <p>Истории редакционных решений пока нет.</p>
+            }
+            @if (historyTotal() > 20) {
+              <nav class="staff-pagination" aria-label="Страницы истории">
+                <button
+                  type="button"
+                  (click)="loadHistory(historyPage() - 1)"
+                  [disabled]="historyPage() === 1"
+                >
+                  Назад</button
+                ><span>{{ historyPage() }}</span
+                ><button
+                  type="button"
+                  (click)="loadHistory(historyPage() + 1)"
+                  [disabled]="historyPage() * 20 >= historyTotal()"
+                >
+                  Далее
+                </button>
+              </nav>
+            }
+            @if (historySnapshot(); as entry) {
+              <section class="history-snapshot">
+                <h3>{{ entry.revision.content.title }}</h3>
+                <p>{{ entry.revision.content.summary }}</p>
+                <p>Категория: {{ taxonomyName(entry.revision.content.categoryId) }}</p>
+                <p>
+                  Теги:
+                  @for (tag of entry.revision.content.tagIds; track tag) {
+                    <span>{{ taxonomyName(tag) }} </span>
+                  }
+                </p>
+                @if (entry.revision.content.cover; as image) {
+                  <figure>
+                    <img
+                      [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                      [alt]="image.alt || ''"
+                    />
+                    <figcaption>{{ image.caption }}</figcaption>
+                  </figure>
+                }
+                <div [innerHTML]="entry.revision.previewHtml"></div>
+                @for (image of entry.revision.content.gallery; track $index) {
+                  <figure>
+                    <img
+                      [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                      [alt]="image.alt || ''"
+                    />
+                    <figcaption>{{ image.caption }}</figcaption>
+                  </figure>
+                }
+                <p>
+                  Использованы чужие материалы:
+                  {{ entry.revision.content.usesOthers ? 'да' : 'нет' }}
+                </p>
+                @for (source of entry.revision.content.sources; track $index) {
+                  <p>
+                    <a [href]="source.url" target="_blank" rel="noopener noreferrer">{{
+                      source.name
+                    }}</a>
+                  </p>
+                }
+                <p>
+                  SEO-заголовок:
+                  {{ entry.revision.content.seoTitle || entry.revision.content.title }}
+                </p>
+                <p>
+                  SEO-описание:
+                  {{ entry.revision.content.seoDescription || entry.revision.content.summary }}
+                </p>
+              </section>
+            }
+          </section>
+        </div>
+        <aside class="context-panel">
+          <h2>Перед отправкой</h2>
+          <p>
+            Черновик можешь сохранять без заголовка, категории и текста. Для готовой статьи
+            понадобятся все три поля и краткое описание.
+          </p>
+          @if (!correctionMode) {
+            <p>Автосохранение срабатывает через пять секунд после последней правки.</p>
+          } @else {
+            <p>Исправления публикуются только после явного сохранения. Автосохранение отключено.</p>
+          }
+          <p class="muted">
+            Изображения из черновика доступны только по правам доступа к материалу.
+          </p>
+          @if (!correctionMode && article()!.publicationState === 'NeverPublished') {
+            <button
+              type="button"
+              class="danger"
+              (click)="remove()"
+              [disabled]="busy() || saving() || article()!.publicationState === 'Published'"
+            >
+              Удалить статью
+            </button>
+          }
+        </aside>
+      </div>
+    }
+  }
+</section>
+<dialog #mediaDialog aria-labelledby="article-media-title">
+  <div class="picker-header">
+    <h2 id="article-media-title">Выбрать изображение</h2>
+    <button type="button" (click)="mediaDialog.close()" aria-label="Закрыть выбор изображений">
+      ×
+    </button>
+  </div>
+  <div class="actions">
+    <button type="button" (click)="loadMedia('own', 1)" [disabled]="mediaBusy()">
+      Мои загрузки</button
+    ><button type="button" (click)="loadMedia('templates', 1)" [disabled]="mediaBusy()">
+      Общие шаблоны</button
+    ><button type="button" (click)="loadMedia()" [disabled]="mediaBusy()">Обновить</button
+    ><label class="upload-label"
+      >Загрузить изображение<input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        (change)="upload($event)"
+        [disabled]="mediaBusy()"
+    /></label>
+  </div>
+  @if (mediaNotice()) {
+    <p role="status">{{ mediaNotice() }}</p>
+  }
+  @if (mediaError()) {
+    <p role="alert">{{ mediaError() }}</p>
+  }
+  <div class="media-choices">
+    @for (image of choices(); track image.id) {
+      <button type="button" (click)="choose(image.id)" [disabled]="!image.ready || mediaBusy()">
+        @if (image.ready) {
+          <img [src]="'/api/media/images/' + image.id + '/480'" [alt]="image.name" />
+        }
+        <span>{{ image.name }}{{ image.ready ? '' : ' · Обрабатывается' }}</span>
+      </button>
+    } @empty {
+      <p>Доступных изображений пока нет.</p>
+    }
+  </div>
+  @if (mediaTotal() > 20) {
+    <div class="staff-pagination">
+      <button
+        type="button"
+        (click)="loadMedia(mediaScope(), mediaPage() - 1)"
+        [disabled]="mediaBusy() || mediaPage() === 1"
+      >
+        Назад</button
+      ><span>Страница {{ mediaPage() }}</span
+      ><button
+        type="button"
+        (click)="loadMedia(mediaScope(), mediaPage() + 1)"
+        [disabled]="mediaBusy() || mediaPage() * 20 >= mediaTotal()"
+      >
+        Далее
+      </button>
+    </div>
+  }
+</dialog>

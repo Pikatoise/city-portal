@@ -6,6 +6,7 @@
     <UserSecretsId>cityportal-api-development</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Modules/CityPortal.Media/CityPortal.Media.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.20.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
@@ -20,5 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="../Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />
+    <ProjectReference Include="..\Modules\CityPortal.News\CityPortal.News.csproj" />
   </ItemGroup>
 </Project>

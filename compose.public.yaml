@@ -1,5 +1,7 @@
 # Apply only after completing setup with the loopback-only base configuration.
 services:
+  pgadmin:
+    profiles: [local-tools]
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Production

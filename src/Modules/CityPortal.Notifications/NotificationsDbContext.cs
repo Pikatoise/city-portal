@@ -14,16 +14,27 @@ internal sealed class NotificationsDbContext : DbContext
 
     public DbSet<EmailReplay> Replays => Set<EmailReplay>();
     public DbSet<MailConfiguration> MailConfigurations => Set<MailConfiguration>();
+    public DbSet<AccountNotification> AccountNotifications => Set<AccountNotification>();
+    public DbSet<NotificationPreference> Preferences => Set<NotificationPreference>();
+    public DbSet<WorkflowReceipt> WorkflowReceipts => Set<WorkflowReceipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("notifications");
         modelBuilder.Entity<MailConfiguration>().ToTable("MailConfiguration");
+        modelBuilder.Entity<NotificationPreference>().HasKey(item => new { item.AccountId, item.Type });
+        modelBuilder.Entity<NotificationPreference>().Property(item => item.Type).HasMaxLength(40);
+        modelBuilder.Entity<WorkflowReceipt>().HasKey(item => new { item.EventId, item.AccountId, item.Type });
+        modelBuilder.Entity<WorkflowReceipt>().Property(item => item.Type).HasMaxLength(40);
+        modelBuilder.Entity<AccountNotification>().Property(item => item.Type).HasMaxLength(40);
+        modelBuilder.Entity<AccountNotification>().HasIndex(item => new { item.AccountId, item.CreatedAtUtc });
+        modelBuilder.Entity<AccountNotification>().HasIndex(item => item.CreatedAtUtc);
         modelBuilder.Entity<EmailDelivery>(entity =>
         {
             entity.ToTable("EmailDeliveries");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Purpose).HasMaxLength(32);
+            entity.Property(x => x.NotificationType).HasMaxLength(40);
             entity.Property(x => x.State).HasMaxLength(32);
             entity.Property(x => x.ErrorCode).HasMaxLength(80);
             entity.Property(x => x.Version).IsConcurrencyToken();

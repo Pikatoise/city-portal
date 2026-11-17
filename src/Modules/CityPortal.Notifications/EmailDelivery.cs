@@ -10,6 +10,8 @@ internal sealed class EmailDelivery
 
     public string Purpose { get; set; } = "";
 
+    public string? NotificationType { get; set; }
+
     public string ProtectedPayload { get; set; } = "";
 
     public string State { get; set; } = "Queued";

@@ -39,6 +39,15 @@ The owner defines scenarios and key decisions; AI implements agreed behavior and
 5. When work changes an agreed requirement, contract, or technical decision, update every affected specification in the same work session. Update VALUE.md for product changes and CORE.md for architecture or delivery changes; keep stage specifications consistent with both. Confirm new business rules and features with the owner before implementing them.
 6. Close the stage only when its acceptance criteria pass and the owner has reviewed the result. Record remaining limitations and the review outcome before describing the next stage. Keep GitHub Issues and Projects aligned with the stage specification.
 
+## Workspace Cleanup
+
+Keep temporary scripts, logs, screenshots, runtime copies and test fixtures only
+for the task that needs them. Before finishing, stop task-owned processes and
+remove those files, disposable databases, broker vhosts and object buckets.
+Record durable verification results in the existing project documentation.
+Preserve active stand data, credentials, required SDKs and dependencies. Keep
+diagnostic artifacts only while they are needed to investigate an unresolved failure.
+
 ## Communication
 
 Respond to the owner in Russian, briefly and directly. Write code, comments, and documentation in English. Before the first reply in a session, read the `plain-writing` skill and apply it to written communication.

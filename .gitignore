@@ -64,6 +64,9 @@ node_modules/
 dist/
 coverage/
 .local/
+.playwright-cli/
+__pycache__/
+*.pyc
 *.pfx
 *.pem
 *.key

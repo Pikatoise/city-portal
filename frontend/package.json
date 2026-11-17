@@ -25,6 +25,9 @@
     "@angular/platform-server": "22.2.5",
     "@angular/router": "22.2.5",
     "@angular/ssr": "22.2.6",
+    "@tiptap/core": "3.34.0",
+    "@tiptap/pm": "3.34.0",
+    "@tiptap/starter-kit": "3.34.0",
     "express": "5.3.0",
     "rxjs": "7.8.2",
     "tslib": "2.9.1"

@@ -1,0 +1,348 @@
+<section class="media-workspace" aria-labelledby="media-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Материалы города</p>
+      <h1 id="media-title">Медиатека</h1>
+      <p class="muted">Твои изображения и общие шаблоны для статей.</p>
+    </div>
+    <a routerLink="/account">Личный кабинет</a>
+  </header>
+  @if (error()) {
+    <p role="alert" class="form-error">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="notice" role="status">{{ notice() }}</p>
+  }
+  @if (!profile()) {
+    <p><a routerLink="/account/login">Войти в аккаунт</a></p>
+  }
+  @if (author() || moderator()) {
+    <nav class="media-tabs" aria-label="Разделы медиатеки">
+      @if (author()) {
+        @for (
+          item of [
+            ['uploads', 'Мои загрузки'],
+            ['shared', 'Общие шаблоны'],
+            ['proposals', 'Мои предложения'],
+          ];
+          track item[0]
+        ) {
+          <button
+            [class.current]="section() === item[0]"
+            [attr.aria-current]="section() === item[0] ? 'page' : null"
+            (click)="changeSection(item[0])"
+            [disabled]="busy()"
+          >
+            {{ item[1] }}
+          </button>
+        }
+      }
+      @if (moderator()) {
+        @for (
+          item of [
+            ['queue', 'На проверке'],
+            ['moderation', 'Управление шаблонами'],
+            ['requests', 'Запросы авторов'],
+          ];
+          track item[0]
+        ) {
+          <button
+            [class.current]="section() === item[0]"
+            [attr.aria-current]="section() === item[0] ? 'page' : null"
+            (click)="changeSection(item[0])"
+            [disabled]="busy()"
+          >
+            {{ item[1] }}
+          </button>
+        }
+      }
+    </nav>
+    <div class="collection-heading">
+      <div>
+        <h2>
+          {{
+            section() === 'uploads'
+              ? 'Мои загрузки'
+              : section() === 'shared'
+                ? 'Общие шаблоны'
+                : section() === 'proposals'
+                  ? 'Мои предложения'
+                  : section() === 'queue'
+                    ? 'Ожидают решения'
+                    : section() === 'requests'
+                      ? 'Архивирование по запросу автора'
+                      : 'Все шаблоны'
+          }}
+        </h2>
+        <p class="muted">
+          {{
+            section() === 'uploads'
+              ? 'JPEG, PNG, статический WebP. До 10 МиБ и 40 мегапикселей.'
+              : section() === 'shared'
+                ? 'Одобренные изображения, доступные авторам сайта.'
+                : section() === 'requests'
+                  ? 'Каждый запрос автора требует архивирования шаблона.'
+                  : 'Решения сохраняются вместе с причиной и историей.'
+          }}
+        </p>
+      </div>
+      <div class="actions">
+        @if (section() === 'uploads') {
+          <label class="upload-label" [class.disabled]="busy()"
+            >Загрузить изображение<input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              [disabled]="busy()"
+              (change)="upload($event)"
+          /></label>
+        }
+        <button (click)="load()" [disabled]="busy()">Обновить</button>
+      </div>
+    </div>
+    @if (busy()) {
+      <p role="status">Загружаем данные…</p>
+    }
+    <div class="image-grid" [attr.aria-busy]="busy()">
+      @for (image of images(); track image.id) {
+        <article class="image-card">
+          <div class="image-area">
+            @if (image.state === 'Ready' && !failedPreviews().includes(image.id)) {
+              <img
+                [src]="preview(image.id)"
+                [alt]="image.name"
+                loading="lazy"
+                (error)="previewFailed(image.id)"
+              />
+            } @else {
+              <span>{{
+                image.state === 'Processing'
+                  ? 'Записывается в хранилище'
+                  : image.state === 'Failed'
+                    ? 'Обработка не завершена'
+                    : 'Изображение недоступно'
+              }}</span>
+            }
+          </div>
+          <div class="card-copy">
+            <h3>{{ image.name }}</h3>
+            <p class="muted">
+              {{ image.width }} × {{ image.height }} · {{ clock.format(image.createdAtUtc) }}
+            </p>
+            @if (image.errorCode) {
+              <p class="muted">
+                {{
+                  image.state === 'Processing'
+                    ? 'Хранилище временно недоступно. Запись повторится автоматически.'
+                    : 'Не удалось подготовить изображение. Попробуй загрузить файл снова.'
+                }}
+              </p>
+            }
+            @if (image.state === 'Ready') {
+              <button (click)="begin('propose', undefined, image.id)" [disabled]="busy()">
+                Предложить в общие шаблоны
+              </button>
+            }
+          </div>
+        </article>
+      }
+      @for (template of templates(); track template.id) {
+        <article class="image-card">
+          <div class="image-area">
+            @if (
+              (!template.blocked || moderator()) && !failedPreviews().includes(template.imageId)
+            ) {
+              <img
+                [src]="preview(template.imageId)"
+                [alt]="template.name"
+                loading="lazy"
+                (error)="previewFailed(template.imageId)"
+              />
+            } @else {
+              <span>{{
+                template.blocked ? 'Изображение заблокировано' : 'Изображение недоступно'
+              }}</span>
+            }
+          </div>
+          <div class="card-copy">
+            <p class="state">{{ state(template) }}</p>
+            <h3>{{ template.name }}</h3>
+            @if (template.reason && (template.own || moderator())) {
+              <p class="feedback">{{ template.reason }}</p>
+            }
+            <div class="card-actions">
+              @if (author() && template.own) {
+                @if (template.approval !== 'Approved' && !template.submitted) {
+                  <button (click)="begin('submit', template)" [disabled]="busy()">
+                    {{
+                      template.approval === 'Rejected'
+                        ? 'Исправить и отправить'
+                        : 'Отправить на проверку'
+                    }}
+                  </button>
+                }
+                @if (template.approval === 'Approved' && !template.archived) {
+                  <button (click)="begin('removal', template)" [disabled]="busy()">
+                    Попросить архивировать
+                  </button>
+                }
+              }
+              @if (moderator()) {
+                @if (template.approval === 'Pending' && template.submitted) {
+                  <button class="primary" (click)="begin('approve', template)" [disabled]="busy()">
+                    Одобрить</button
+                  ><button (click)="begin('reject', template)" [disabled]="busy()">
+                    Отклонить
+                  </button>
+                }
+                @if (template.approval === 'Approved') {
+                  <button
+                    (click)="begin(template.archived ? 'restore' : 'archive', template)"
+                    [disabled]="busy()"
+                  >
+                    {{ template.archived ? 'Восстановить' : 'Архивировать' }}</button><button
+                    (click)="begin(template.blocked ? 'unblock' : 'block', template)"
+                    [disabled]="busy()"
+                  >
+                    {{ template.blocked ? 'Разблокировать' : 'Заблокировать' }}
+                  </button>
+                }
+              }
+              @if (template.own || moderator()) {
+                <button class="text-link" (click)="openHistory(template)" [disabled]="busy()">
+                  История решений
+                </button>
+              }
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+    @for (request of requests(); track request.id) {
+      <article class="request-row">
+        <div>
+          <h3>Запрос на архивирование</h3>
+          <p class="muted">{{ clock.format(request.createdAtUtc) }}</p>
+        </div>
+        <button (click)="resolve(request)" [disabled]="busy()">
+          Архивировать и закрыть запрос
+        </button>
+      </article>
+    }
+    @if (!busy() && !images().length && !templates().length && !requests().length) {
+      <div class="empty">
+        <h3>
+          {{ section() === 'uploads' ? 'Загрузи первое изображение' : 'Здесь пока нет материалов' }}
+        </h3>
+        <p class="muted">
+          {{
+            section() === 'uploads'
+              ? 'После обработки его можно будет использовать в статье или предложить другим авторам.'
+              : 'Новые материалы появятся в этом списке.'
+          }}
+        </p>
+      </div>
+    }
+    @if (total() > 20) {
+      <nav class="paging" aria-label="Страницы медиатеки">
+        <button (click)="load(page() - 1)" [disabled]="busy() || page() === 1">Назад</button
+        ><span>Страница {{ page() }}</span
+        ><button (click)="load(page() + 1)" [disabled]="busy() || page() * 20 >= total()">
+          Далее
+        </button>
+      </nav>
+    }
+    @if (historyId()) {
+      <section class="history">
+        <div class="collection-heading">
+          <div>
+            <h2>История: {{ historyTitle() }}</h2>
+            <p class="muted">Решения и причины сохраняются независимо от уведомлений.</p>
+          </div>
+          <button (click)="historyId.set('')">Закрыть историю</button>
+        </div>
+        @for (entry of history(); track entry.id) {
+          <article class="history-entry">
+            <p class="muted">{{ clock.format(entry.createdAtUtc) }}</p>
+            <h3>{{ historyLabels[entry.action] || entry.action }}</h3>
+            @if (entry.reason) {
+              <p>{{ entry.reason }}</p>
+            }
+          </article>
+        }
+        @if (historyTotal() > 20) {
+          <nav class="paging" aria-label="Страницы истории">
+            <button
+              (click)="moreHistory(historyPage() - 1)"
+              [disabled]="busy() || historyPage() === 1"
+            >
+              Назад</button
+            ><span>{{ historyPage() }}</span
+            ><button
+              (click)="moreHistory(historyPage() + 1)"
+              [disabled]="busy() || historyPage() * 20 >= historyTotal()"
+            >
+              Далее
+            </button>
+          </nav>
+        }
+      </section>
+    }
+    @if (section() === 'uploads') {
+      <p class="retention-note">
+        Загрузки, которые ни разу не использовались в статье или предложении шаблона, удаляются
+        через семь дней. Изображения из сохранённых версий и истории остаются.
+      </p>
+    }
+  }
+</section>
+<dialog #actionDialog (cancel)="action.set('')" aria-labelledby="media-action-title">
+  <form (ngSubmit)="submit()">
+    <div class="collection-heading">
+      <h2 id="media-action-title">{{ actionLabels[action()] }}</h2>
+      <button type="button" (click)="close()" aria-label="Закрыть окно" [disabled]="busy()">
+        ×
+      </button>
+    </div>
+    @if (action() === 'propose' || action() === 'submit') {
+      <label>Название шаблона<input name="templateName" [(ngModel)]="name" required /></label>
+    }
+    @if (action() === 'submit' && target()?.approval === 'Rejected') {
+      <label
+        >Исправленное изображение<select name="replacement" [(ngModel)]="replacement">
+          <option value="">Оставить прежнее изображение</option>
+          @for (image of replacements(); track image.id) {
+            <option [value]="image.id">{{ image.name }}</option>
+          }
+        </select></label
+      >
+      <p class="muted">Для замены сначала загрузи новый файл в «Мои загрузки».</p>
+    }
+    @if (['reject', 'block', 'unblock'].includes(action())) {
+      <label
+        >Причина<textarea name="reason" [(ngModel)]="reason" rows="4" required></textarea>
+      </label>
+    }
+    @if (action() === 'propose') {
+      <p>Изображение отправится модераторам. После одобрения его смогут выбирать другие авторы.</p>
+    }
+    @if (action() === 'archive' || action() === 'removal') {
+      <p>Шаблон уберут из новых выборов. Существующие ссылки в статьях и версиях сохранятся.</p>
+    }
+    @if (action() === 'block') {
+      <p>Изображение перестанет показываться даже в опубликованных статьях.</p>
+    }
+    @if (error()) {
+      <p class="form-error" role="alert">{{ error() }}</p>
+    }
+    <div class="actions">
+      <button type="submit" class="primary" [disabled]="busy()">
+        {{ busy() ? 'Сохраняем…' : 'Подтвердить' }}</button><button
+        type="button"
+        (click)="close()"
+        [disabled]="busy()"
+      >
+        Отмена
+      </button>
+    </div>
+  </form>
+</dialog>

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { getSystemInfo } from '../api/fn/system/get-system-info';
+import { Api } from '../api/api';
 
 @Injectable({ providedIn: 'root' })
 export class CityClock {
@@ -9,7 +10,8 @@ export class CityClock {
 
   constructor() {
     const http = inject(HttpClient);
-    void firstValueFrom(getSystemInfo(http, ''))
+    const api = inject(Api);
+    void firstValueFrom(getSystemInfo(http, api.rootUrl))
       .then((response) => this.timeZone.set(response.body.timeZone))
       .catch(() => {
         // Keep explicitly labelled UTC if metadata is temporarily unavailable.

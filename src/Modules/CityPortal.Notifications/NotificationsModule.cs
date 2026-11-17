@@ -18,6 +18,8 @@ public static class NotificationsModule
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "notifications")));
         services.TryAddSingleton(TimeProvider.System);
         services.AddOptions<AccountMailOptions>();
+        services.AddScoped(provider => new AccountNotifications(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped(provider => new WorkflowNotificationQueue(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IDataProtectionProvider>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new MailConfigurationStore(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDataProtectionProvider>(), provider.GetRequiredService<IOptions<AccountMailOptions>>()));
         services.AddScoped(provider => new EmailAdministration(provider.GetRequiredService<NotificationsDbContext>(), provider.GetRequiredService<IDbContextOutbox>(), provider.GetRequiredService<IAccountMailLinkValidator>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new AccountMailQueue(provider.GetRequiredService<NotificationsDbContext>(),
@@ -42,7 +44,7 @@ public static class NotificationsModule
         return services;
     }
 
-    public static IServiceCollection AddAccountMailWorker(this IServiceCollection services, IConfiguration configuration, string connectionString)
+    public static IServiceCollection AddAccountMailWorker(this IServiceCollection services, IConfiguration configuration, string connectionString, Action<IQuartzBuilder>? configureJobs = null)
     {
         services.Configure<AccountMailOptions>(configuration.GetSection("Mail"));
         services.AddScoped(provider => new AccountMailDeliveryService(provider.GetRequiredService<NotificationsDbContext>(),
@@ -67,6 +69,7 @@ public static class NotificationsModule
             quartz.AddJob<EmailRetentionJob>(job => job.WithIdentity(key).RequestRecovery());
             quartz.AddTrigger(trigger => trigger.WithIdentity("completed-email-retention-daily", "notifications").ForJob(key)
                 .WithSimpleSchedule(schedule => schedule.WithInterval(TimeSpan.FromHours(24)).RepeatForever().WithMisfireInstruction(SimpleTriggerMisfireInstruction.FireNow)));
+            configureJobs?.Invoke(quartz);
         });
         services.AddQuartzHostedService("CityPortal.Email", options => options.WaitForJobsToComplete = true);
         return services;

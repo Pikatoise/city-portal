@@ -1,0 +1,126 @@
+@if (!isList) {
+  <div class="portal-tools">
+    <nav aria-label="Категории новостей">
+      <button type="button" (click)="scroll('news-latest')">Последние</button>
+      @for (block of home()?.categories ?? []; track block.category.id) {
+        <button type="button" (click)="scroll('category-' + block.category.id)">
+          {{ block.category.name }}
+        </button>
+      }
+      <a routerLink="/news">Все новости</a>
+    </nav>
+    <form (ngSubmit)="search()" role="search">
+      <input
+        name="header-query"
+        type="search"
+        [(ngModel)]="query"
+        maxlength="200"
+        aria-label="Поиск новостей"
+        placeholder="Поиск по новостям"
+      /><button type="submit">Найти</button>
+    </form>
+  </div>
+}
+<section class="news-page" [class.list-page]="isList">
+  @if (isList) {
+    <h1>Новости</h1>
+    <form class="filters" (ngSubmit)="search()" role="search">
+      <label>Поиск<input type="search" name="query" [(ngModel)]="query" maxlength="200" /></label>
+      <label
+        >Категория<select name="category" [(ngModel)]="categoryId">
+          <option value="">Все категории</option>
+          @for (item of categories(); track item.id) {
+            <option [value]="item.id">{{ item.name }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Тег<select name="tag" [(ngModel)]="tagId">
+          <option value="">Все теги</option>
+          @for (item of tags(); track item.id) {
+            <option [value]="item.id">{{ item.name }}</option>
+          }
+        </select></label
+      >
+      <label>Дата публикации от<input type="date" name="from" [(ngModel)]="from" /></label
+      ><label>Дата публикации до<input type="date" name="to" [(ngModel)]="to" /></label>
+      <div class="filter-actions">
+        <button type="submit">Найти</button
+        ><button type="button" (click)="reset()">Сбросить</button>
+      </div>
+    </form>
+  }
+  @if (loading()) {
+    <p role="status">Загружаем новости…</p>
+  }
+  @if (error()) {
+    <p role="alert">{{ error() }} <button type="button" (click)="load()">Повторить</button></p>
+  }
+  @if (home(); as home) {
+    <section id="news-latest" aria-labelledby="featured-heading">
+      <div class="section-heading">
+        <h1 id="featured-heading">Выбор редакции</h1>
+        <h2 class="latest-label">Последние новости</h2>
+      </div>
+      <div class="featured-grid">
+        <div class="featured">
+          @if (home.featured.length) {
+            <app-featured-news [stories]="home.featured" />
+          } @else {
+            <div class="empty-featured">Редакция пока не выбрала новости.</div>
+          }
+        </div>
+        <div class="recent">
+          @for (story of home.latest.slice(0, 3); track story.id) {
+            <app-news-card
+              class="compact"
+              [story]="story"
+              [category]="categoryName(story.categoryId)"
+            />
+          } @empty {
+            <p>Опубликованных новостей пока нет.</p>
+          }
+        </div>
+      </div>
+      @for (story of home.latest.slice(3, 5); track story.id) {
+        <app-news-card [story]="story" [category]="categoryName(story.categoryId)" />
+      }
+      <a class="more" routerLink="/news">Все последние новости</a>
+    </section>
+    @for (block of home.categories; track block.category.id) {
+      <section [id]="'category-' + block.category.id" class="category-block">
+        <div class="section-heading">
+          <h2>{{ block.category.name }}</h2>
+        </div>
+        @for (story of block.articles; track story.id) {
+          <app-news-card [story]="story" />
+        } @empty {
+          <p>В этой категории пока нет публикаций.</p>
+        }
+        <a class="more" routerLink="/news" [queryParams]="{ categoryId: block.category.id }"
+          >Все новости категории «{{ block.category.name }}»</a
+        >
+      </section>
+    }
+  }
+  @if (result(); as result) {
+    <p class="count" role="status">Найдено: {{ result.total }}</p>
+    @for (story of result.items; track story.id) {
+      <app-news-card [story]="story" [category]="categoryName(story.categoryId)" />
+    } @empty {
+      <p>Новостей по этому запросу нет. Попробуй изменить фильтры.</p>
+    }
+    @if (pages().length > 1) {
+      <nav class="pagination" aria-label="Страницы новостей">
+        @for (number of pages(); track number) {
+          <a
+            routerLink="/news"
+            [queryParams]="pageParams(number)"
+            [attr.aria-current]="number === page() ? 'page' : null"
+            >{{ number }}</a
+          >
+        }
+      </nav>
+    }
+  }
+</section>

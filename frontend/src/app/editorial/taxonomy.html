@@ -1,0 +1,57 @@
+<section class="staff-panel" aria-labelledby="taxonomy-title">
+  <p class="eyebrow">Редакция</p>
+  <h1 id="taxonomy-title">Категории и теги</h1>
+  <nav class="staff-nav" aria-label="Редакция">
+    <a routerLink="/account/articles">Мои статьи</a><a routerLink="/account">Личный кабинет</a>
+  </nav>
+  @if (error()) {
+    <p role="alert" class="form-error">{{ error() }}</p>
+  }
+  @if (allowed()) {
+    <div class="staff-nav">
+      <button
+        type="button"
+        (click)="load('categories')"
+        [disabled]="busy()"
+        [attr.aria-pressed]="kind() === 'categories'"
+      >
+        Категории</button
+      ><button
+        type="button"
+        (click)="load('tags')"
+        [disabled]="busy()"
+        [attr.aria-pressed]="kind() === 'tags'"
+      >
+        Теги
+      </button>
+    </div>
+    <form (ngSubmit)="save()">
+      <label for="taxonomy-name">{{
+        editing() ? 'Изменить название' : 'Новое название'
+      }}</label><input
+        id="taxonomy-name"
+        name="name"
+        [(ngModel)]="name"
+        required
+        [disabled]="busy()"
+      /><button type="submit" class="primary-button" [disabled]="busy()">
+        {{ editing() ? 'Сохранить' : 'Создать' }}
+      </button>
+    </form>
+    <ul>
+      @for (entry of entries(); track entry.id) {
+        <li>
+          <span>{{ entry.name }}{{ entry.archived ? ' · В архиве' : '' }}</span>
+          <div>
+            <button type="button" (click)="edit(entry)" [disabled]="busy()">Переименовать</button
+            ><button type="button" (click)="archive(entry)" [disabled]="busy() || entry.archived">
+              {{ entry.archived ? 'В архиве' : 'В архив' }}
+            </button>
+          </div>
+        </li>
+      } @empty {
+        <li>Записей пока нет.</li>
+      }
+    </ul>
+  }
+</section>

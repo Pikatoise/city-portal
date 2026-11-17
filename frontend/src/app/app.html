@@ -2,17 +2,18 @@
 <header class="site-header">
   @if (installation.installed()) {
     <a class="brand" routerLink="/" [attr.aria-label]="site.name() + ', главная'"
-      >{{ site.name() }}<span></span
+      >{{ site.name() }}<span aria-hidden="true"></span
     ></a>
     <nav aria-label="Основная навигация">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
         >Главная</a
       >
+      <a routerLink="/news" routerLinkActive="active">Новости</a>
       <a routerLink="/account" routerLinkActive="active">Личный кабинет</a>
       <a routerLink="/staff" routerLinkActive="active">Для сотрудников</a>
     </nav>
   } @else {
-    <span class="brand">{{ site.name() }}<span></span></span>
+    <span class="brand">{{ site.name() }}<span aria-hidden="true"></span></span>
   }
 </header>
 <main id="main-content">
@@ -26,5 +27,7 @@
   }
 </main>
 @if (installation.installed()) {
-  <footer>{{ site.name() }} · {{ site.city() || 'Городской портал в разработке' }}</footer>
+  <footer class="site-footer">
+    {{ site.name() }} · {{ site.city() || 'Городской портал в разработке' }}
+  </footer>
 }

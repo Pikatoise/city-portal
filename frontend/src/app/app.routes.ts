@@ -8,6 +8,55 @@ export const routes: Routes = [
     canActivateChild: [requireInstallation],
     children: [
       {
+        path: 'news',
+        data: { list: true },
+        loadComponent: () => import('./news/discovery').then((m) => m.Discovery),
+      },
+      {
+        path: 'account/articles',
+        loadComponent: () => import('./editorial/author-workspace').then((m) => m.AuthorWorkspace),
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
+        path: 'staff/publications',
+        loadComponent: () => import('./editorial/publications').then((m) => m.Publications),
+      },
+      {
+        path: 'staff/articles/:id',
+        data: { correction: true },
+        loadComponent: () => import('./editorial/author-workspace').then((m) => m.AuthorWorkspace),
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
+        path: 'news/:address',
+        loadComponent: () => import('./news/public-article').then((m) => m.PublicArticle),
+      },
+      {
+        path: 'news/**',
+        loadComponent: () => import('./news/missing-article').then((m) => m.MissingArticle),
+      },
+      {
+        path: 'staff/taxonomy',
+        loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
+      },
+      {
+        path: 'staff/reviews',
+        loadComponent: () =>
+          import('./editorial/review-workspace/review-workspace').then((m) => m.ReviewWorkspace),
+      },
+      {
+        path: 'account/notifications',
+        loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
+      },
+      {
+        path: 'account/media',
+        loadComponent: () => import('./media/media-library').then((m) => m.MediaLibrary),
+      },
+      {
+        path: 'staff/media',
+        loadComponent: () => import('./media/media-library').then((m) => m.MediaLibrary),
+      },
+      {
         path: 'account/forgot-password',
         loadComponent: () => import('./account/forgot-password').then((m) => m.ForgotPassword),
       },
@@ -15,7 +64,11 @@ export const routes: Routes = [
         path: 'account/reset-password',
         loadComponent: () => import('./account/reset-password').then((m) => m.ResetPassword),
       },
-      { path: '', pathMatch: 'full', loadComponent: () => import('./home').then((m) => m.Home) },
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () => import('./news/discovery').then((m) => m.Discovery),
+      },
       {
         path: 'account/register',
         loadComponent: () => import('./account/register').then((m) => m.Register),

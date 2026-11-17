@@ -42,7 +42,7 @@ describe('Installation page access', () => {
     expect(fixture.nativeElement.querySelector('footer')).toBeNull();
     installation.complete();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('nav a').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('nav a').length).toBe(4);
     expect(fixture.nativeElement.querySelector('a.brand')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('footer')).not.toBeNull();
   });

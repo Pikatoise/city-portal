@@ -1,0 +1,107 @@
+<section class="public-article">
+  <nav class="breadcrumbs" aria-label="Путь к статье">
+    <a routerLink="/">Главная</a><span aria-hidden="true">/</span><a routerLink="/news">Новости</a>
+  </nav>
+  @switch (state()) {
+    @case ('withdrawn') {
+      <h1>Материал снят с публикации</h1>
+    }
+    @case ('missing') {
+      <h1>Материал не найден</h1>
+    }
+    @case ('failed') {
+      <h1>Материал временно недоступен</h1>
+      <p>Повтори запрос позже.</p>
+    }
+    @case ('loading') {
+      <p role="status">Загрузка материала…</p>
+    }
+    @case ('published') {
+      @if (article(); as article) {
+        <article>
+          <header>
+            <h1>{{ article.content.title }}</h1>
+            <p class="summary">{{ article.content.summary }}</p>
+          </header>
+          @if (article.content.cover; as image) {
+            <figure>
+              <img
+                [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                [alt]="image.alt || ''"
+                (error)="unavailable($event)"
+              />
+              <figcaption>{{ image.caption }}</figcaption>
+            </figure>
+          }
+          <div
+            class="body-copy"
+            [innerHTML]="article.previewHtml"
+            (error)="unavailable($event)"
+          ></div>
+          @for (image of article.content.gallery; track $index) {
+            <figure>
+              <img
+                [src]="'/api/media/images/' + image.mediaId + '/1280'"
+                [alt]="image.alt || ''"
+                (error)="unavailable($event)"
+              />
+              <figcaption>{{ image.caption }}</figcaption>
+            </figure>
+          }
+          @if (article.content.sources?.length) {
+            <h2>Источники</h2>
+            <ul>
+              @for (source of article.content.sources; track $index) {
+                <li>
+                  <a [href]="source.url" rel="noopener noreferrer" target="_blank">{{
+                    source.name
+                  }}</a>
+                </li>
+              }
+            </ul>
+          }
+          <footer>
+            @if (article.content.categoryId) {
+              <a routerLink="/news" [queryParams]="{ categoryId: article.content.categoryId }"
+                >Новости категории</a
+              >
+            }
+            <nav aria-label="Теги статьи">
+              @for (tagId of article.content.tagIds; track tagId) {
+                @for (entry of taxonomy(); track entry.id) {
+                  @if (entry.id === tagId) {
+                    <a routerLink="/news" [queryParams]="{ tagId }">{{ entry.name }}</a>
+                  }
+                }
+              }
+            </nav>
+            <p>{{ article.authorDisplayName }}</p>
+            <p>
+              Опубликовано
+              <time [attr.datetime]="article.firstPublishedAtUtc">{{
+                clock.format(article.firstPublishedAtUtc)
+              }}</time>
+            </p>
+            <p>
+              Обновлено
+              <time [attr.datetime]="article.updatedAtUtc">{{
+                clock.format(article.updatedAtUtc)
+              }}</time>
+            </p>
+          </footer>
+        </article>
+        @if (related().length) {
+          <section aria-labelledby="related-heading">
+            <h2 id="related-heading">Читайте также</h2>
+            @for (story of related(); track story.id) {
+              <app-news-card [story]="story" />
+            }
+          </section>
+        }
+        @if (relatedFailed()) {
+          <p role="status">Похожие новости сейчас недоступны.</p>
+        }
+      }
+    }
+  }
+</section>

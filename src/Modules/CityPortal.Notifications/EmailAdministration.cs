@@ -46,7 +46,8 @@ public sealed class EmailAdministration
         if (delivery.Version != version || delivery.State != "Failed")
             return EmailReplayResult.Conflict;
         if (delivery.ExpiresAtUtc <= _time.GetUtcNow() || string.IsNullOrEmpty(delivery.ProtectedPayload)
-            || !await _links.IsActiveAsync(delivery.AccountId, delivery.LinkId, cancellationToken))
+            || delivery.Purpose != "workflow" && !await _links.IsActiveAsync(delivery.AccountId, delivery.LinkId, cancellationToken)
+            || delivery.Purpose == "workflow" && await _context.Preferences.AnyAsync(item => item.AccountId == delivery.AccountId && item.Type == delivery.NotificationType && !item.Email, cancellationToken))
             return EmailReplayResult.InvalidLink;
         _context.Replays.Add(new EmailReplay { Id = Guid.NewGuid(), ActorId = actorId, DeliveryId = id, CreatedAtUtc = _time.GetUtcNow(), PreviousVersion = version });
         delivery.State = "Queued";

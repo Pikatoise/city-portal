@@ -4,6 +4,54 @@ This guide covers installation, local development, and operational checks for
 the completed account, administration, and durable Email workflows. Contracts
 and the owner acceptance record are in [STAGE_1.md](stages/STAGE_1.md).
 
+## Local Review Stand
+
+Run `python scripts/start-stand.py` from the repository root to build and start
+the complete local review stack, including pgAdmin. Use `--no-build` to reuse
+the current images on later launches. The command prints the portal, pgAdmin
+and Mailpit URLs, plus Email/password pairs for five separate confirmed demo
+accounts: RegularUser, Editor, Author, Moderator and Administrator.
+
+The portal uses only `https://localhost:8443`. Earlier acceptance proxies and
+their alternate ports have been retired.
+
+The stand uses `compose.stand.yaml`, a dedicated `cityportal_stand` database,
+RabbitMQ vhost and private Media bucket. It preserves the normal `cityportal`
+installation. Completed disposable acceptance databases were removed. On a new stand,
+the helper completes installation with the demo administrator, registers the
+other accounts, confirms their Email through real Worker/Mailpit delivery and
+assigns their roles through the administration API. Every account retains
+RegularUser; Administrator does not receive a separate Editor role.
+
+When the stand's category or tag dictionary is empty, the launcher creates demo
+entries through the administrator API: categories City, Transport, Culture and
+Sport (`Город`, `Транспорт`, `Культура`, `Спорт`), and tags Improvement, Roads,
+Education and Events (`Благоустройство`, `Дороги`, `Образование`, `События`).
+Each dictionary is checked separately. A nonempty dictionary is preserved,
+including renamed or archived entries; repeated starts do not reset editorial
+choices. This fixture seeding applies only to the local review stand.
+
+Passwords are generated once and stored in ignored `.local/stand/accounts.json`;
+repeated starts verify the logins and show the same credentials. Service secrets
+remain in ignored `.env`. The helper never resets an existing account password.
+It targets the local review stand only and is separate from public deployment.
+
+pgAdmin starts with the local Compose stack at `http://localhost:5050`. Its
+login is `PGADMIN_EMAIL` (default `pgadmin@example.com`) and `PGADMIN_PASSWORD`.
+The launcher generates a separate password if missing. A manual Compose launch
+without PGADMIN_PASSWORD uses POSTGRES_PASSWORD as the local fallback. Initial
+pgAdmin credentials initialize its persistent volume; changing environment
+values later does not reset that stored password. The preloaded server uses
+host `postgres`, port 5432 and user `cityportal`; enter POSTGRES_PASSWORD when
+connecting. For the printed stand accounts, select **Databases > cityportal_stand
+> Schemas > identity > Tables > AspNetUsers**. The `cityportal` database is a
+separate retained installation and contains different accounts. An Email from
+the stand cannot log in to that installation or receive its recovery message.
+
+The public Compose override excludes pgAdmin unless the `local-tools` profile
+is explicitly requested. Its published port remains loopback-only. Container
+configuration follows the [pgAdmin container documentation](https://www.pgadmin.org/docs/pgadmin4/9.19/container_deployment.html).
+
 ## First-Run Setup
 
 After explicit migrations, a new empty installation redirects browser visitors
@@ -169,12 +217,14 @@ Changing `.env` later does not change an existing database user's password.
 The local PostgreSQL connection disables GSS encryption because this development
 stack uses password authentication without Kerberos.
 
+Set separate random `MEDIA_ACCESS_KEY` and `MEDIA_SECRET_KEY` values too. Media uses a private RustFS bucket; see [MEDIA.md](MEDIA.md) for processing, access, and recovery contracts.
+
 ## Build, Migrate, and Start
 
 ```powershell
 docker compose config --quiet
 docker compose build
-docker compose up -d --wait postgres rabbitmq mailpit
+docker compose up -d --wait postgres rabbitmq mailpit media-store
 docker compose run --rm --no-deps api --migrate
 docker compose up -d api worker frontend proxy
 docker compose ps
@@ -183,6 +233,12 @@ docker compose ps
 The migration command applies module-owned migrations explicitly. Normal API and
 Worker startup never applies migrations. Run the migration command once before
 starting the application and again when a change introduces migrations.
+
+News drafting adds an owned `news` schema/migration and a readiness check. Apply
+the explicit migration command when upgrading an existing Stage 1/Media database
+before starting the updated API/Worker. Confirmed authors use `/account/articles`;
+editors/administrators manage categories and tags at `/staff/taxonomy`. The current
+drafting boundary and remaining editorial/public workflows are in [NEWS.md](NEWS.md).
 
 The site is at `https://localhost:8443`. Caddy routes `/api/` to the API and `/`
 to the Angular Node server, keeping browser requests on one HTTPS origin. Local
@@ -245,8 +301,9 @@ validation still use the exported root. Linux curl needs only `--cacert`.
 | `http://localhost:15672/`                | RabbitMQ management UI with `.env` credentials.       |
 | `localhost:5432`                         | PostgreSQL database `cityportal`, user `cityportal`.  |
 | `localhost:5672`                         | RabbitMQ AMQP.                                        |
+| `http://localhost:9000/`                 | Private RustFS S3 endpoint; credentials required.      |
 
-All published ports bind to loopback. PostgreSQL, RabbitMQ, Mailpit, and Caddy
+All published ports bind to loopback. PostgreSQL, RabbitMQ, Mailpit, RustFS, and Caddy
 retain their state in named volumes across `docker compose down` and restart.
 Never remove volumes as a routine recovery step.
 
@@ -349,8 +406,7 @@ the acceptance evidence and remaining deployment checks.
   delivery or application business correctness.
 - Configure trusted proxy addresses, protected persistent keys, SMTP credentials,
   and production HTTPS for the deployment environment.
-- Redis and S3-compatible storage remain selected infrastructure; this foundation
-  does not start them before a concrete workflow uses them.
+- Redis remains selected infrastructure for a justified later workflow. Media now starts private S3-compatible RustFS storage with a persistent volume and loopback-only port 9000.
 
 ## References
 
@@ -360,3 +416,40 @@ the acceptance evidence and remaining deployment checks.
 - [Mailpit configuration](https://mailpit.axllent.org/docs/configuration/).
 - [Npgsql GSS encryption configuration](https://www.npgsql.org/doc/security.html).
 - [curl certificate and revocation options](https://curl.se/docs/manpage.html).
+# Editorial Review
+
+Production author drafts, submissions, recall, approved Save, and publication run at `/account/articles`. The editor queue and retained review/history UI run at `/staff/reviews`; Administrator has effective editorial permissions. Run the explicit migration command before API/Worker startup when upgrading to the EditorialReview News migration. Role changes release News assignments within the same database transaction; do not replace administration operations with direct role-table edits in production.
+
+Published corrections/withdrawal, public article SSR, discovery and editorial
+homepage curation are implemented. See [NEWS.md](NEWS.md) for their contracts
+and [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md) for technical verification
+and remaining owner review.
+
+## Stage 2 Upgrade and Recovery
+
+Before applying `DiscoveryReadPerformance`, stop API writes and the Worker and
+take a consistent PostgreSQL/object/key backup. The explicit migration adds the
+current-public-revision index and rewrites generated search vectors to use the
+new physical storage policy. Existing content and article versions stay intact.
+Allow time and disk headroom for updating all retained revisions. Normal
+API/Worker startup still never migrates. Repeat the explicit migration command,
+then start API and Worker and verify readiness/publication visibility.
+
+Keep PostgreSQL, processed objects, Data Protection keys and private deployment
+configuration as one recovery set. Export objects using authenticated S3
+operations with full listing pagination; a live object-store directory copy is
+not a portable backup. Restrict backup access like production credentials and
+keep it outside source control. Keep writers stopped until all parts are
+captured, or use a separately designed consistent snapshot scheme.
+
+Restore into a new database, private bucket and key directory/volume. Configure
+the restored API/Worker for these resources and a separate broker vhost. Restore
+keys before protected-payload delivery. Apply explicit migrations, start the
+application, and verify public/private images, retained history, SMTP decryption
+and pending work. Keep the original environment until recovery is reviewed.
+The combined automated regression and its limits are in STAGE_2_ACCEPTANCE.md.
+
+After a Release API build and production frontend build, reproduce the isolated
+capacity baseline with `python scripts/check-news-capacity.py`. This creates a
+new fixture database/vhost and leaves ignored results, plans and keys. It uses
+local Compose infrastructure and does not deploy.
