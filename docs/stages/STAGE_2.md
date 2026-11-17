@@ -399,8 +399,9 @@ assigned Editor role. Real Worker processing and SMTP delivery were checked;
 1440px/390px layouts had no overflow and recorded no browser page errors.
 
 Owner review of workflows, transaction/data flow and a failure scenario is still
-required. Issue #14 and Stage 2 remain open. No Stage 3 specification, push or
-production deployment is included.
+required. Issue #14 and Stage 2 remain open. The owner authorized publishing the
+current review branch; this does not close acceptance. No Stage 3 specification
+or production deployment is included.
 
 The owner-requested workspace cleanup removed completed diagnostic artifacts,
 copied runtimes, build outputs and disposable infrastructure fixtures. The old
