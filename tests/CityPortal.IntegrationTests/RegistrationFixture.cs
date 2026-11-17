@@ -46,7 +46,8 @@ public sealed class RegistrationFixture : IAsyncLifetime
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand("CREATE DATABASE " + name, connection);
         await command.ExecuteNonQueryAsync();
-        var databaseSettings = new NpgsqlConnectionStringBuilder(_database.GetConnectionString()) { Database = name };
+        // Each test uses a new database. Per-database pools would retain idle connections until the test process exits.
+        var databaseSettings = new NpgsqlConnectionStringBuilder(_database.GetConnectionString()) { Database = name, Pooling = false };
         var factory = new ApiFactory("Development", databaseSettings.ConnectionString, _broker.GetConnectionString(), time, settings);
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);

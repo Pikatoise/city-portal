@@ -89,7 +89,10 @@ export class Discovery {
     this.result.set(null);
     if (this.response) {
       this.response.status = 200;
-      this.response.headers = { 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' };
+      this.response.headers = {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'text/html; charset=utf-8',
+      };
     }
     const params = this.route.snapshot.queryParamMap;
     this.query = params.get('query') ?? '';

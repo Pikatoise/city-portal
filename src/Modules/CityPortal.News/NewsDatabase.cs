@@ -17,6 +17,12 @@ internal static class NewsDatabase
     internal static AccountOperationException Conflict() => new(409, "article_conflict", "The item changed. Preserve unsaved edits and reload the current version.");
     internal static AccountOperationException Invalid(string field, string message) => new(400, "invalid_article", message, new Dictionary<string, string[]> { [field] = [message] });
 
+    internal static async Task RequireAddressesAsync(NewsDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.Articles.AsNoTracking().AnyAsync(item => item.FirstPublishedAtUtc != null && (item.PublicAddress == null || item.FirstPublishedLocalDate == null), cancellationToken))
+            throw new AccountOperationException(503, "news_migration_incomplete", "Public news is temporarily unavailable while its migration is incomplete.");
+    }
+
     internal static void Page(int page, int pageSize)
     {
         if (page is < 1 or > 100000 || pageSize is < 1 or > 100)

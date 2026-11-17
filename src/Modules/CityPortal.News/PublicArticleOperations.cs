@@ -17,6 +17,7 @@ public sealed class PublicArticleOperations
 
     public async Task<PublicArticleResponse> GetAsync(string address, CancellationToken cancellationToken)
     {
+        await NewsDatabase.RequireAddressesAsync(_context, cancellationToken);
         // Read visibility and the public snapshot together; working revisions never enter this query.
         var row = await (from article in _context.Articles.AsNoTracking()
                          join revision in _context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id

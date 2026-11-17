@@ -236,6 +236,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
 
     private async Task SetAddressAsync(NewsDbContext context, NewsArticle article, string title, CancellationToken cancellationToken)
     {
+        await NewsDatabase.RequireAddressesAsync(context, cancellationToken);
         if (article.FirstPublishedLocalDate is null)
         {
             InstallationInfo site = await _installation.GetAsync(cancellationToken);

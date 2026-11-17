@@ -74,7 +74,10 @@ describe('Public article visibility', () => {
     await loading;
     fixture.detectChanges();
     expect(response.status).toBe(404);
-    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' });
+    expect(response.headers).toEqual({
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/html; charset=utf-8',
+    });
     expect(fixture.nativeElement.textContent).toContain('Материал снят с публикации');
     expect(fixture.nativeElement.textContent).not.toContain('Published title');
     expect(fixture.nativeElement.textContent).not.toContain('Current author');

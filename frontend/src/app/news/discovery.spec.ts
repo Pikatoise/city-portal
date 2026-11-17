@@ -89,7 +89,10 @@ describe('Public discovery', () => {
       '2',
     );
     expect(fixture.nativeElement.textContent).toContain('Public one');
-    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' });
+    expect(response.headers).toEqual({
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/html; charset=utf-8',
+    });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     fixture.componentInstance.query = 'new';
     await fixture.componentInstance.search();
@@ -106,12 +109,19 @@ describe('Public discovery', () => {
   });
   it('preserves encoded article addresses in cards and featured links', async () => {
     const canonicalUrl = '/news/article/%D1%82%D0%B5%D1%81%D1%82';
-    api.list.mockResolvedValue({ items: [{ ...story('one'), canonicalUrl }], total: 1, page: 1, pageSize: 20 });
+    api.list.mockResolvedValue({
+      items: [{ ...story('one'), canonicalUrl }],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    });
     const list = TestBed.createComponent(Discovery);
     list.detectChanges();
     await list.whenStable();
     list.detectChanges();
-    for (const link of list.nativeElement.querySelectorAll('app-news-card h3 a, app-news-card a.image'))
+    for (const link of list.nativeElement.querySelectorAll(
+      'app-news-card h3 a, app-news-card a.image',
+    ))
       expect(link.getAttribute('href')).toBe(canonicalUrl);
     expect(list.nativeElement.querySelectorAll('app-news-card h3 a')).toHaveLength(1);
 

@@ -94,11 +94,15 @@ public sealed partial class NewsTests
         (_, HttpClient editor) = await ActorAsync(factory, database, "Editor");
         using (owner)
         using (editor)
+        using (HttpClient anonymous = Client(factory))
         {
             TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Migration");
             ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Тест migration");
             DateTime first = await ScalarAsync<DateTime>(database, "SELECT \"FirstPublishedAtUtc\" FROM news.\"Articles\" WHERE \"Id\"=@id", article.Id);
             await ExecuteAsync(database, "UPDATE news.\"Articles\" SET \"PublicAddress\"=NULL, \"FirstPublishedLocalDate\"=NULL WHERE \"Id\"=@id", article.Id);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (await anonymous.GetAsync("/api/news/articles")).StatusCode);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (await anonymous.GetAsync("/api/news/articles/by-address/" + article.PublicAddress!["/news/".Length..])).StatusCode);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (await CorrectionResponseAsync(editor, article, Complete(category.Id, "Must wait"), "Correction")).StatusCode);
             await factory.Services.MigrateNewsAsync(CancellationToken.None);
             ArticleResponse restored = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
             Assert.Equal(article.PublicAddress, restored.PublicAddress);
@@ -127,6 +131,13 @@ public sealed partial class NewsTests
             await ExecuteAsync(database, "UPDATE identity.\"SiteConfiguration\" SET \"TimeZone\"='Pacific/Honolulu' WHERE \"Id\"=1", Guid.Empty);
             ArticleResponse corrected = await CorrectAsync(editor, article, Complete(category.Id, "Corrected title"), "Correction");
             Assert.Equal(ArticleUrls.Address("Corrected title", expectedDate, article.Id), corrected.PublicAddress);
+            corrected = await ActAsync(editor, corrected, "withdraw", "Correction required");
+            corrected = (await owner.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+            corrected = await SaveAsync(owner, corrected, Complete(category.Id, "Republished title"));
+            corrected = await ActAsync(owner, corrected, "submit", "Verified correction");
+            corrected = await ActAsync(editor, corrected, "approve");
+            corrected = await ActAsync(owner, corrected, "publish");
+            Assert.Equal(ArticleUrls.Address("Republished title", expectedDate, article.Id), corrected.PublicAddress);
         }
     }
 

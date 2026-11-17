@@ -100,6 +100,7 @@ public sealed partial class NewsTests
                 SELECT c.revision,c.id,'Published',r."ContentJson",r."Title",r."PlainText",r."PreviewHtml",true,r."CreatedAtUtc"
                 FROM copies c JOIN added a ON a."Id"=c.id CROSS JOIN news."Revisions" r JOIN news."Articles" source ON source."PublishedRevisionId"=r."Id" WHERE source."Id"=@id
                 """, article.Id);
+            await factory.Services.MigrateNewsAsync(CancellationToken.None);
             await ExecuteAsync(database, "UPDATE news.\"Articles\" SET \"FirstPublishedAtUtc\"='2026-11-16T00:00:00Z' WHERE \"DeletedAtUtc\" IS NULL AND @id IS NOT NULL", article.Id);
             NewsPage<PublicArticleSummaryResponse> first = await DiscoveryAsync(anonymous);
             NewsPage<PublicArticleSummaryResponse> second = await DiscoveryAsync(anonymous, "?page=2");

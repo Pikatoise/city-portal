@@ -82,7 +82,11 @@ export class PublicArticle implements OnInit {
     this.relatedFailed.set(false);
     this.state.set('loading');
     this.clearMetadata();
-    if (this.response) this.response.headers = { 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' };
+    if (this.response)
+      this.response.headers = {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'text/html; charset=utf-8',
+      };
     try {
       const article = await firstValueFrom(
         this.http.get<PublicArticleResponse>(

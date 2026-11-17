@@ -21,6 +21,7 @@ public sealed class PublicNewsDiscoveryOperations
 
     public async Task<NewsPage<PublicArticleSummaryResponse>> ListAsync(PublicNewsQuery request, CancellationToken cancellationToken)
     {
+        await NewsDatabase.RequireAddressesAsync(_context, cancellationToken);
         NewsDatabase.Page(request.Page, request.PageSize);
         string search = ArticleDocuments.Text(request.Query, 200, "query");
         (DateTimeOffset? start, DateTimeOffset? end) = await RangeAsync(request.FromDate, request.ToDate, cancellationToken);

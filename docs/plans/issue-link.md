@@ -2,7 +2,7 @@
 
 ## Status
 
-**Implemented; verification in progress.** The local review stand has been migrated to the new public address format.
+**Implemented and verified locally.** The local review stand has been migrated to the new public address format. Verification details and the concurrency-test boundary are recorded in the Stage 2 specification.
 
 The owner requested a complete replacement of the old public URL system. Do not retain old public routes, redirects, alias handling, or other compatibility code merely for the old format. The internal article GUID remains in the database and can continue to be used by internal operations.
 
@@ -18,7 +18,7 @@ The owner requested a complete replacement of the old public URL system. Do not 
 
 ## Implementation work
 
-Address generation uses lowercase Russian transliteration (including `ё` as `yo`, `й` as `y`, `х` as `kh`, and `щ` as `shch`). Hard and soft signs are omitted. ASCII letters and digits are retained; punctuation, whitespace, and unsupported characters separate words. Consecutive separators collapse, and an empty result becomes `article`. The title segment is limited to 120 ASCII characters without splitting a transliteration unit or leaving a trailing separator.
+Address generation normalizes Unicode to NFC and lowercases invariantly. Russian letters map as follows: `а a`, `б b`, `в v`, `г g`, `д d`, `е e`, `ё yo`, `ж zh`, `з z`, `и i`, `й y`, `к k`, `л l`, `м m`, `н n`, `о o`, `п p`, `р r`, `с s`, `т t`, `у u`, `ф f`, `х kh`, `ц ts`, `ч ch`, `ш sh`, `щ shch`, `ы y`, `э e`, `ю yu`, `я ya`. Hard and soft signs are omitted. ASCII letters and digits are retained; punctuation, whitespace, and unsupported characters separate words. Consecutive separators collapse, and an empty result becomes `article`. The title segment is limited to 120 ASCII characters without splitting a transliteration unit or leaving a trailing separator.
 
 1. Define one deterministic, server-side transliteration and URL generation routine. Specify its handling of punctuation, unsupported characters, empty results, and length limits before relying on it for persisted addresses. The conversation did not prescribe a complete transliteration table.
 2. Persist the first-publication local date and the current public address, or use an equivalent design that preserves the agreed behavior and makes complete addresses unique under concurrent writes. Backfill existing published articles using the available installation time zone and publication timestamp; do not reinterpret an already stored date after later time-zone changes. Verify the applicable historical time-zone data for the existing article.
