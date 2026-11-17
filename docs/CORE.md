@@ -200,6 +200,12 @@ Use Dapper only for a demonstrated query benefit. Evaluate a dedicated search en
 
 ## Testing, Observability, and Operations
 
+Local review starts through `scripts/start-stand.py`, including loopback pgAdmin
+and five confirmed role-specific demo accounts whose persisted local credentials
+are printed on every successful launch. `compose.stand.yaml` isolates the review
+database, broker vhost and Media bucket. Normal installation data is preserved;
+public deployment does not enable this fixture setup or pgAdmin by default.
+
 Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Keep build-time code-style diagnostics and the CI formatting check; code review covers conventions that built-in tooling cannot enforce.
 
 Use xUnit and Testcontainers with real PostgreSQL for transaction, query, migration, and concurrency integration tests. Add unit tests for state transitions and selected end-to-end Angular/API workflows.

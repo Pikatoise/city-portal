@@ -1,0 +1,12 @@
+# Disposable local review database; normal installation data stays in cityportal.
+services:
+  api:
+    environment:
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=cityportal_stand;Username=cityportal;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};GSS Encryption Mode=Disable
+      Media__Bucket: cityportal-stand
+      ConnectionStrings__Messaging: amqp://${RABBITMQ_USER:-cityportal}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672/cityportal_stand
+  worker:
+    environment:
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=cityportal_stand;Username=cityportal;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};GSS Encryption Mode=Disable
+      Media__Bucket: cityportal-stand
+      ConnectionStrings__Messaging: amqp://${RABBITMQ_USER:-cityportal}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672/cityportal_stand

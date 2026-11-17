@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "CityPortal local PostgreSQL",
+      "Group": "CityPortal",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "cityportal",
+      "Username": "cityportal",
+      "SSLMode": "prefer"
+    }
+  }
+}

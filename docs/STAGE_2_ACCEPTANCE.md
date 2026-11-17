@@ -205,6 +205,15 @@ No maximum-length-content or multi-hour soak claim is made.
 
 ## Owner review script
 
+The subsequent owner-requested review launcher is `python scripts/start-stand.py`.
+It starts the full Compose stack with pgAdmin and a dedicated `cityportal_stand`
+database/vhost/bucket, and prints persistent credentials for five separate
+confirmed roles. Initial creation, repeated startup with unchanged credentials,
+exact-role HTTPS logins and browser PostgreSQL/schema access through pgAdmin
+were verified. Setup and operational details are in DEVELOPMENT.md. Earlier
+capacity and browser fixtures remain separate; these additional local launch
+checks do not imply owner acceptance or a new full backend test run.
+
 1. Follow an author draft through return, private correction, resubmission,
    approval and publication. Inspect the separate current public revision.
 2. Open a proposed published change and verify public text stays unchanged.

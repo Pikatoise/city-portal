@@ -4,6 +4,40 @@ This guide covers installation, local development, and operational checks for
 the completed account, administration, and durable Email workflows. Contracts
 and the owner acceptance record are in [STAGE_1.md](stages/STAGE_1.md).
 
+## Local Review Stand
+
+Run `python scripts/start-stand.py` from the repository root to build and start
+the complete local review stack, including pgAdmin. Use `--no-build` to reuse
+the current images on later launches. The command prints the portal, pgAdmin
+and Mailpit URLs, plus Email/password pairs for five separate confirmed demo
+accounts: RegularUser, Editor, Author, Moderator and Administrator.
+
+The stand uses `compose.stand.yaml`, a dedicated `cityportal_stand` database,
+RabbitMQ vhost and private Media bucket. It preserves the normal `cityportal`
+installation and the earlier isolated acceptance databases. On a new stand,
+the helper completes installation with the demo administrator, registers the
+other accounts, confirms their Email through real Worker/Mailpit delivery and
+assigns their roles through the administration API. Every account retains
+RegularUser; Administrator does not receive a separate Editor role.
+
+Passwords are generated once and stored in ignored `.local/stand/accounts.json`;
+repeated starts verify the logins and show the same credentials. Service secrets
+remain in ignored `.env`. The helper never resets an existing account password.
+It targets the local review stand only and is separate from public deployment.
+
+pgAdmin starts with the local Compose stack at `http://localhost:5050`. Its
+login is `PGADMIN_EMAIL` (default `pgadmin@example.com`) and `PGADMIN_PASSWORD`.
+The launcher generates a separate password if missing. A manual Compose launch
+without PGADMIN_PASSWORD uses POSTGRES_PASSWORD as the local fallback. Initial
+pgAdmin credentials initialize its persistent volume; changing environment
+values later does not reset that stored password. The preloaded server uses
+host `postgres`, port 5432 and user `cityportal`; enter POSTGRES_PASSWORD when
+connecting. Select `cityportal_stand` or any retained acceptance database.
+
+The public Compose override excludes pgAdmin unless the `local-tools` profile
+is explicitly requested. Its published port remains loopback-only. Container
+configuration follows the [pgAdmin container documentation](https://www.pgadmin.org/docs/pgadmin4/9.19/container_deployment.html).
+
 ## First-Run Setup
 
 After explicit migrations, a new empty installation redirects browser visitors

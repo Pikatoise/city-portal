@@ -354,6 +354,23 @@ Issue #13 is delivered locally. Stage 2 stays open. Continue with #14 for cross-
 
 ### Issue #14 Technical Verification: 2026-11-17
 
+Owner follow-up: local stand startup must include browser-based pgAdmin and
+print credentials for separate RegularUser, Editor, Author, Moderator and
+Administrator demo accounts on every launch. The local helper and isolated
+review resources are documented in DEVELOPMENT.md. This is development/review
+tooling and does not change production registration or permissions.
+
+Follow-up verification: full API/Worker/frontend container build and local
+Compose startup passed with pgAdmin healthy. First setup, four real registration/
+Email-confirmation workflows and API role assignment prepared five separate
+confirmed accounts. A repeated `--no-build` launch retained the same credential
+file hash and printed all credentials again. Independent HTTPS login/profile
+checks verified each account's exact roles. Browser verification logged into
+pgAdmin, connected the preloaded PostgreSQL server and opened the stand database
+schemas. API/Worker readiness and base/stand/public Compose configuration passed;
+public configuration excludes pgAdmin by default. No additional .NET test run
+was needed for this infrastructure/helper-only change.
+
 Release build passed with zero warnings/errors. The complete backend suite
 passed 165 tests, zero failed/skipped, with parsed TRX outcomes. Frontend passed
 90 tests; production SSR build, formatting, generated-client and runtime OpenAPI
