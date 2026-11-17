@@ -2,9 +2,14 @@
 
 ## Status
 
-Issue #14 is in progress on `prototype/stage-2-news-review`, from baseline
+Issue #14 is complete on `prototype/stage-2-news-review`, from baseline
 `28c050d`. Technical verification completed on 2026-11-17.
-Owner review and Stage 2 acceptance remain outstanding. No Stage 3 specification,
+The owner confirmed on 2026-11-17 that the public URL replacement works and
+reported checking the current interface and functions, including article
+creation, review and publication. Functional UI review is accepted on that basis.
+The owner reviewed transaction/data flow and failure handling, including exhausted
+SMTP retries, administrator replay and retention, and explicitly accepted Stage 2
+on 2026-11-17. Issues #7-#14 are complete. Recorded limitations remain accepted. No Stage 3 specification,
 public deployment or remote CI result is implied.
 
 ## Acceptance evidence map
@@ -40,7 +45,7 @@ frontend mappings remain in `NEWS.md` and `MEDIA.md`.
 | Independent channel switches and user-owned notification read/delete | `Notifications_OwnershipCsrfAndPreferences_KeepChannelsIndependentAsync`; `WorkflowMail_DisabledAfterQueue_SkipsSmtpAndPreservesAccountNoticeAsync`. |
 | Affected-editor/current-author fanout, privacy and 30-day notification expiry | `TemplateNotifications_DecisionsAndAffectedCurrentAuthors_QueueOnceWithoutPrivateContentAsync`; `Notifications_RollbackDuplicateAndRetention_PreserveDurabilityBoundariesAsync`; `WorkflowMail_SevenDayExpiryAndThirtyDayRetention_RejectReplayAndRemoveReadAndUnreadNoticesAsync`. |
 | Migrations, generated contracts, builds/formatting, real infrastructure and backup/restore | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`; `DiscoveryMigration_ExistingPublishedSearchData_PreservesContentAndUsesMainStorageAsync`; `Recovery_DatabaseObjectsAndKeys_PreserveNewsPrivacyHistoryAndPendingDeliveryAsync`; final command record below. |
-| Owner reviews workflows, data flow and a failure scenario | Pending owner review; review script below. |
+| Owner reviews workflows, data flow and a failure scenario | Owner reviewed and accepted on 2026-11-17; see final acceptance in stages/STAGE_2.md. |
 
 ## Combined recovery
 
@@ -206,7 +211,7 @@ exercise metadata/query volume; processed-object transfer throughput is outside
 this measurement and is covered functionally by recovery/live Media checks.
 No maximum-length-content or multi-hour soak claim is made.
 
-## Owner review script
+## Completed owner review script (accepted 2026-11-17)
 
 ### Owner review fixes: article validation and initial taxonomy
 

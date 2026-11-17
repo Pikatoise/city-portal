@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Product decisions are agreed. Stage 1 is complete and owner-accepted. Public-page prototypes are owner-reviewed, and the author/editor prototype follows delegated refinement. Production Media, configurable template notifications, and author drafts/taxonomy are implemented and locally verified. Review and first publication are implemented and pushed in 0708b94. Issue #12 implements published changes, withdrawal/republication, and basic public article SSR. Issue #13 delivers public SSR discovery, search, related/featured news and the production homepage; final verification and owner acceptance remain #14. The public address contract has since been replaced as described below. Engineering defaults complete the implementation specification; final stage acceptance remains with the owner.
+Stage 2 is complete and owner-accepted as of 2026-11-17. News and Media workflows, public SSR discovery, the author/editor interfaces and the replacement public address contract are delivered. Technical verification, recovery and capacity evidence are recorded in this specification and STAGE_2_ACCEPTANCE.md. The owner checked the current interface and functions, reviewed transaction/data flow and failure handling, and explicitly accepted the stage. Issues #7-#14 are complete. Dated checkpoints below preserve historical status; this paragraph and the final acceptance record define the current status.
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -358,6 +358,18 @@ Spec and Standards reviews found and resolved interruptible-scroll cleanup, reus
 
 Issue #13 is delivered locally. Stage 2 stays open. Continue with #14 for cross-workflow acceptance, representative capacity measurements, fresh backup/restore, failure/recovery evidence and final owner review. No Stage 3 specification, new push or production deployment is implied.
 
+### Owner Functional Review: 2026-11-17
+
+The owner confirmed that the public address replacement works and reported
+checking the current interface and functions, including article creation,
+review and publication. Functional UI review is accepted on that basis. The
+completed `docs/plans/issue-link.md` task plan was removed; the current address
+contract and verification evidence remain in this specification.
+
+The remaining closure step is the learning review of transaction/data flow
+and a failure scenario, followed by the owner's final stage acceptance.
+Issue #14 and Stage 2 remain open until that review is recorded.
+
 ### Issue #14 Technical Verification: 2026-11-17
 
 Owner follow-up: local stand startup must include browser-based pgAdmin and
@@ -424,3 +436,25 @@ selection includes line breaks. Submission errors name the missing fields and
 the UI explains corrective actions and limits in Russian. Browser save/submit,
 17 document tests, 42 News integration tests, 95 frontend tests, builds and format
 checks passed. Details are in STAGE_2_ACCEPTANCE.md. Owner acceptance remains open.
+
+
+### Final Owner Acceptance: 2026-11-17
+
+The owner explicitly accepted Stage 2 after confirming the current interface,
+article creation/review/publication and replacement public addresses. The
+learning review traced the API request, current Identity authorization,
+News revision and URL changes, Media visibility, history and Notifications
+through one PostgreSQL transaction, then Outbox/broker/Worker delivery after commit.
+
+The owner reviewed rollback before commit, durable delivery after broker/SMTP
+outages, exhausted automatic retries, administrator replay and workflow Email
+expiry/retention, and accepted the result. Issues #7-#14 are complete; Stage 2
+is closed. Stage 3 can now be specified separately with the owner.
+
+Recorded limitations remain: SMTP acceptance followed by a crash before recording
+success can duplicate external Email; exhausted retries require administrator
+replay while the delivery remains eligible. Local warm capacity measurements
+are not a production SLA; cold/tail latency limitations remain documented.
+The address concurrency tests do not independently isolate contention on the
+address-specific lock. No production deployment or new CI/test run is implied
+by this acceptance record.
