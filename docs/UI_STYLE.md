@@ -1,10 +1,15 @@
 # CityPortal UI Style
 
+Stage 2 is owner-accepted as of 2026-11-17. The isolated fixture prototype was
+removed after acceptance; its visual decisions are implemented in production.
+Prototype file names and review limitations below describe historical work,
+which remains available in Git history.
+
 ## Direction and Scope
 
 Use calm editorial minimalism based on the owner-reviewed news homepage and article page. The content and images carry the hierarchy. Keep the established palette, fonts, orange logo dot, fluid public-page layout, and agreed navigation. Do not add fonts, decorative gradients, shadows, or boxed news cards. The existing lead-story image gradient is retained to make overlaid text readable.
 
-Apply this language to public pages, account/recovery/installation forms, staff screens, and the article-editor prototype. This is visual consistency work, not acceptance of editor workflows or delivery of production News/Media. Product contracts remain in VALUE and the stage specifications.
+Apply this language to public pages, account/recovery/installation forms, staff screens, and the production article editor. Historical checkpoints below record the earlier visual consistency work. Product contracts remain in VALUE and the stage specifications.
 
 ## Shared Foundation
 

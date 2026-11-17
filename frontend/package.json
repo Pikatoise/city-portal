@@ -12,8 +12,7 @@
     "refresh:api": "node scripts/refresh-api.mjs",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "api:check": "node scripts/check-api.mjs",
-    "prototype": "ng serve --configuration prototype --proxy-config proxy.conf.json --host 127.0.0.1 --port 4300"
+    "api:check": "node scripts/check-api.mjs"
   },
   "private": true,
   "packageManager": "npm@11.19.0",

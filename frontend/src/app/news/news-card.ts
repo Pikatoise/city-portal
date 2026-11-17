@@ -7,7 +7,11 @@ import { CityClock } from '../staff/city-clock';
   selector: 'app-news-card',
   imports: [RouterLink],
   template: ` <article>
-    <a class="image" [routerLink]="router.parseUrl(story().canonicalUrl)" [attr.aria-label]="story().title">
+    <a
+      class="image"
+      [routerLink]="router.parseUrl(story().canonicalUrl)"
+      [attr.aria-label]="story().title"
+    >
       @if (story().cover; as cover) {
         @if (!failed()) {
           <img

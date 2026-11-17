@@ -281,3 +281,48 @@ SDK, frontend dependencies and the normal retained installation remain available
 
 Record the owner's outcome and remaining limitations in `stages/STAGE_2.md`
 before closing #14 or the stage.
+
+
+## Post-acceptance cleanup and integration: 2026-11-17
+
+The owner requested publishing all current work, cleaning completed Stage 2
+artifacts, committing cleanup separately and merging the delivery branch into
+main. Acceptance checkpoint bb0d27f and the preceding implementation commits
+were pushed to the delivery branch before cleanup.
+
+Removed the isolated in-memory News UI prototype, its Angular build/serve
+configuration, npm launcher and TypeScript configuration, and the completed
+issue #14 execution plan. Production source has no prototype imports; accepted
+visual decisions and historical verification remain in the stage and UI records
+and Git history. Three production frontend files received Prettier-only changes.
+Durable operational, capacity and regression tools remain maintained sources.
+
+Active stand/normal installation data, credentials, persistent Docker volumes,
+the local .NET SDK and frontend dependencies are preserved. The existing nine
+Compose services remain the active stand. Temporary verification output and
+build caches are removed after recording results. Base and stand Compose
+configuration passed; public Compose configuration passed with a non-deployed
+example SITE_DOMAIN. Outgoing files were checked for credential/private-key
+patterns and owner-specific local paths; author identity uses GitHub noreply.
+
+
+Final cleanup verification: `dotnet test CityPortal.slnx --configuration Release
+--logger trx --results-directory .local/stage2-premerge-results` passed 184 tests,
+zero failed/skipped (8m24s). TRX counters and all 184 individual outcomes agree.
+`dotnet format CityPortal.slnx --verify-no-changes --no-restore` passed.
+Frontend `npm run format:check`, `npm run api:check`, `npm run build` and
+`npm test -- --watch=false` passed; 96 tests in 15 files. The initial frontend
+format check found three existing formatting mismatches, fixed by Prettier
+before the final successful run. Local Markdown links resolve after removals.
+
+
+Cleanup incident and recovery: a scoped `git clean -fdX` pathspec unexpectedly
+removed the ignored `.local` parent, including the SDK and stand credential
+file. Persistent Compose data and service secrets in `.env` were unaffected.
+The exact original five-account credentials were recovered from an earlier
+local launch record; certificate-verified HTTPS login, confirmed Email and
+exact roles were checked for every account without password changes. The
+stand CA was copied again from the existing proxy. SDK 10.0.403 was reinstalled
+at its original local path and version resolution verified. No account,
+article or stored Media data was recreated. Future cleanup must remove exact
+resolved directories directly and must not use ignored-parent Git pathspecs.

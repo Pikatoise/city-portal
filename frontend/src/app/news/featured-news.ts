@@ -42,7 +42,9 @@ import { CityClock } from '../staff/city-clock';
             <div class="copy">
               <p>Выбор редакции</p>
               <h2>
-                <a [routerLink]="router.parseUrl(story.canonicalUrl)" (click)="open($event)">{{ story.title }}</a>
+                <a [routerLink]="router.parseUrl(story.canonicalUrl)" (click)="open($event)">{{
+                  story.title
+                }}</a>
               </h2>
               <p class="summary">{{ story.summary }}</p>
               <span class="byline"

@@ -1,12 +1,16 @@
+> Stage 2 is complete and owner-accepted as of 2026-11-17. The final status
+> and accepted limitations are in [STAGE_2.md](stages/STAGE_2.md).
+> Pending-work statements in dated checkpoints below are historical.
+
 > Historical verification in this document describes the URL behavior at the time of each checkpoint. The current URL contract is in STAGE_2.md.
 
 # News Drafting, Review, and Published Changes
 
 Current Stage 2 technical acceptance, combined recovery, capacity measurements
-and remaining owner review are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
+and completed owner review are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
 `DiscoveryReadPerformance` adds the measured public-revision lookup index and
 search-vector storage policy. Apply the explicit upgrade with writers stopped
-as described in DEVELOPMENT.md. Owner acceptance remains outstanding.
+as described in DEVELOPMENT.md. Owner acceptance was recorded on 2026-11-17.
 
 ## Delivered Boundary
 

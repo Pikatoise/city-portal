@@ -1,9 +1,13 @@
+> Stage 2 is complete and owner-accepted as of 2026-11-17. The final status
+> and accepted limitations are in [STAGE_2.md](stages/STAGE_2.md).
+> Pending-work statements in dated checkpoints below are historical.
+
 # Media Implementation and Operations
 
 The fresh combined News/Media/notification/key recovery and final Stage 2
 technical evidence are recorded in [STAGE_2_ACCEPTANCE.md](STAGE_2_ACCEPTANCE.md).
 It exercises paginated object copying and all four processed public variants.
-Owner stage acceptance remains outstanding.
+Owner stage acceptance was recorded on 2026-11-17.
 
 ## Ownership and Tools
 
