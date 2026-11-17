@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CityPortal.Identity;
 
 namespace CityPortal.News;
 
@@ -37,9 +38,24 @@ public static class ArticleDocuments
             Gallery = gallery,
             Sources = sources
         };
-        if (requireComplete && (normalized.Title.Length == 0 || normalized.Summary.Length == 0 || normalized.CategoryId is null || string.IsNullOrWhiteSpace(document.PlainText.ToString())
-            || normalized.UsesOthers && sources.Length == 0 || sources.Any(source => source.Name.Length == 0 || source.Url.Length == 0) || document.MissingAlt))
-            throw NewsDatabase.Invalid("submission", "Provide title, summary, body, category, source attribution and alternative text before submission.");
+        if (requireComplete)
+        {
+            var errors = new Dictionary<string, string[]>();
+            if (normalized.Title.Length == 0)
+                errors["title"] = ["Provide a title before submission."];
+            if (normalized.Summary.Length == 0)
+                errors["summary"] = ["Provide a summary before submission."];
+            if (normalized.CategoryId is null)
+                errors["categoryId"] = ["Choose a category before submission."];
+            if (string.IsNullOrWhiteSpace(document.PlainText.ToString()))
+                errors["body"] = ["Provide article text before submission."];
+            if (normalized.UsesOthers && sources.Length == 0 || sources.Any(source => source.Name.Length == 0 || source.Url.Length == 0))
+                errors["sources"] = ["Provide a name and URL for each source; attribution requires at least one source."];
+            if (document.MissingAlt)
+                errors["bodyAlt"] = ["Every image in the article body requires alternative text before submission."];
+            if (errors.Count > 0)
+                throw new AccountOperationException(400, "invalid_article", "Complete the indicated fields before submission.", errors);
+        }
         return new ValidatedArticleContent(normalized, document.Html.ToString(), document.PlainText.ToString(), ids);
     }
 
@@ -107,16 +123,24 @@ public static class ArticleDocuments
             if (!allowed || block && ++_blocks > 2000)
                 throw NewsDatabase.Invalid("body", "Use only the supported document blocks and nesting (up to 2000 blocks).");
             var result = new JsonObject { ["type"] = type };
-            if (type == "text")
+            if (type is "text" or "hardBreak")
             {
-                if (element.TryGetProperty("attrs", out _) || element.TryGetProperty("content", out _))
+                bool lineBreak = type == "hardBreak";
+                if (lineBreak)
+                {
+                    Only(Attributes(element));
+                    RejectChildren(element);
+                    if (element.TryGetProperty("text", out _))
+                        throw NewsDatabase.Invalid("body", "Only text nodes may contain text.");
+                }
+                else if (element.TryGetProperty("attrs", out _) || element.TryGetProperty("content", out _))
                     throw NewsDatabase.Invalid("body", "Text nodes cannot contain attributes or children.");
-                string text = Text(String(element, "text"), 100000, "body", trim: false);
+                string text = lineBreak ? "\n" : Text(String(element, "text"), 100000, "body", trim: false);
                 if (text.Length == 0)
                     throw NewsDatabase.Invalid("body", "Text nodes must not be empty.");
                 Characters += text.EnumerateRunes().Count();
                 PlainText.Append(text);
-                string rendered = HtmlEncoder.Default.Encode(text);
+                string rendered = lineBreak ? "<br>" : HtmlEncoder.Default.Encode(text);
                 if (element.TryGetProperty("marks", out JsonElement marks))
                 {
                     if (marks.ValueKind != JsonValueKind.Array || marks.GetArrayLength() > 3)
@@ -150,7 +174,8 @@ public static class ArticleDocuments
                     }
                     result["marks"] = canonical;
                 }
-                result["text"] = text;
+                if (!lineBreak)
+                    result["text"] = text;
                 Html.Append(rendered);
                 return result;
             }
@@ -194,13 +219,6 @@ public static class ArticleDocuments
             else
                 Only(nodeAttrs);
             Html.Append(opening);
-            if (type == "hardBreak")
-            {
-                RejectChildren(element);
-                PlainText.Append('\n');
-                Characters++;
-                return result;
-            }
             var children = new JsonArray();
             if (element.TryGetProperty("content", out JsonElement content))
             {

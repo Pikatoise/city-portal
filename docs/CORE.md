@@ -203,7 +203,9 @@ Use Dapper only for a demonstrated query benefit. Evaluate a dedicated search en
 Local review starts through `scripts/start-stand.py`, including loopback pgAdmin
 and five confirmed role-specific demo accounts whose persisted local credentials
 are printed on every successful launch. `compose.stand.yaml` isolates the review
-database, broker vhost and Media bucket. Normal installation data is preserved;
+database, broker vhost and Media bucket. Empty review taxonomy dictionaries
+receive initial demo categories/tags through the administrator API; nonempty
+dictionaries and normal installation data are preserved;
 public deployment does not enable this fixture setup or pgAdmin by default.
 
 Follow [CODE_STYLE.md](CODE_STYLE.md) and the root `.editorconfig` for C#. Keep build-time code-style diagnostics and the CI formatting check; code review covers conventions that built-in tooling cannot enforce.

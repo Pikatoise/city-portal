@@ -208,6 +208,34 @@ No maximum-length-content or multi-hour soak claim is made.
 
 ## Owner review script
 
+### Owner review fixes: article validation and initial taxonomy
+
+The owner reported intermittent body validation failures while saving/submitting,
+unhelpful generic field feedback and empty taxonomy selectors. A live minimal
+case saved a plain hard break (200) but rejected a formatted hard break (400).
+Applying editor formatting across a selection containing Shift+Enter produces
+marks on hardBreak nodes. The validator now supports the same safe marks there
+as on text and preserves canonical round-trip/security checks.
+
+Missing submission fields are returned separately and frontend feedback explains
+the affected field, workspace tab, required value or limit in Russian. Empty
+local stand dictionaries receive four initial categories and four tags through
+the administrator API; existing dictionaries remain under editorial control.
+
+Verification: the new tests failed before the fix, then all 17 NewsDocumentTests,
+42 real-infrastructure NewsTests and 95 frontend tests passed. TRX totals and
+individual outcomes agree. Release solution build passed with zero warnings or
+errors; formatting, production SSR and API/Worker/frontend Docker builds passed.
+A browser author saved a formatted hard break, received specific missing-category
+feedback, selected the seeded category and submitted successfully to InReview.
+The temporary browser article was recalled/deleted and no page errors occurred.
+Existing owner article content was inspected only for structure and left intact.
+The repeat stand launch completed; all four categories and four tags retained
+identical IDs, versions and values, with no duplicates. Temporary helpers,
+reports, screenshots and build outputs were removed after verification.
+
+### Review steps
+
 The subsequent owner-requested review launcher is `python scripts/start-stand.py`.
 It starts the full Compose stack with pgAdmin and a dedicated `cityportal_stand`
 database/vhost/bucket, and prints persistent credentials for five separate

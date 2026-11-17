@@ -23,6 +23,14 @@ other accounts, confirms their Email through real Worker/Mailpit delivery and
 assigns their roles through the administration API. Every account retains
 RegularUser; Administrator does not receive a separate Editor role.
 
+When the stand's category or tag dictionary is empty, the launcher creates demo
+entries through the administrator API: categories City, Transport, Culture and
+Sport (`Город`, `Транспорт`, `Культура`, `Спорт`), and tags Improvement, Roads,
+Education and Events (`Благоустройство`, `Дороги`, `Образование`, `События`).
+Each dictionary is checked separately. A nonempty dictionary is preserved,
+including renamed or archived entries; repeated starts do not reset editorial
+choices. This fixture seeding applies only to the local review stand.
+
 Passwords are generated once and stored in ignored `.local/stand/accounts.json`;
 repeated starts verify the logins and show the same credentials. Service secrets
 remain in ignored `.env`. The helper never resets an existing account password.

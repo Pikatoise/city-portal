@@ -164,33 +164,118 @@ export function newsError(error: unknown): string {
       return 'Данные изменились. Сохрани копию своих правок и загрузи актуальную версию.';
     if (error.status === 400) {
       const fields = error.error?.errors as Record<string, string[]> | undefined;
-      if (fields) {
+      if (
+        fields &&
+        typeof fields === 'object' &&
+        !Array.isArray(fields) &&
+        Object.keys(fields).length
+      ) {
         const labels: Record<string, string> = {
-          title: 'заголовок',
-          summary: 'краткое описание',
-          body: 'текст',
-          images: 'изображения',
-          taxonomy: 'категория и теги',
-          sources: 'источники',
-          alt: 'альтернативный текст',
-          caption: 'подпись',
-          seoTitle: 'SEO-заголовок',
-          seoDescription: 'SEO-описание',
-          link: 'ссылка',
-          name: 'название',
-          content: 'поля статьи',
-          submission: 'обязательные поля',
-          page: 'номер страницы',
+          title: 'Заголовок (Текст)',
+          summary: 'Краткое описание',
+          body: 'Текст статьи (Текст)',
+          bodyAlt: 'Изображения в тексте (Текст)',
+          images: 'Изображения',
+          categoryId: 'Категория (Параметры)',
+          tagIds: 'Теги (Параметры)',
+          taxonomy: 'Категория и теги (Параметры)',
+          categories: 'Категории главной страницы',
+          featured: 'Избранные статьи',
+          sources: 'Источники (Параметры)',
+          alt: 'Альтернативный текст изображений',
+          caption: 'Подпись изображения',
+          seoTitle: 'SEO-заголовок (Параметры)',
+          seoDescription: 'SEO-описание (Параметры)',
+          link: 'Ссылка в тексте',
+          name: 'Название',
+          content: 'Поля статьи',
+          submission: 'Обязательные поля',
+          reason: 'Описание изменений или причина решения',
+          page: 'Номер страницы',
         };
-        return (
-          'Проверь поля: ' +
-          Object.keys(fields)
-            .map((field) => labels[field] ?? 'данные')
-            .join(', ') +
-          '. Изменения не сохранены.'
-        );
+        return Object.entries(fields)
+          .map(([field, messages]) => {
+            const reasons = Array.isArray(messages) && messages.length ? messages : [null];
+            return `${labels[field] ?? 'Данные'}: ${reasons.map(articleValidationReason).join(' ')}`;
+          })
+          .join(' ');
       }
     }
   }
   return errorMessage(error);
+}
+
+function articleValidationReason(value: unknown): string {
+  const messages: Record<string, string> = {
+    'Provide a title before submission.': 'Укажите заголовок перед отправкой на проверку.',
+    'Provide a summary before submission.':
+      'Добавьте краткое описание перед отправкой на проверку.',
+    'Choose a category before submission.': 'Выберите категорию перед отправкой на проверку.',
+    'Provide article text before submission.': 'Добавьте текст статьи перед отправкой на проверку.',
+    'Provide a name and URL for each source; attribution requires at least one source.':
+      'Укажите название и ссылку каждого источника. Если используются чужие материалы, добавьте хотя бы один источник.',
+    'Every image placement requires alternative text at submission.':
+      'Заполните альтернативный текст для каждого изображения: обложки, галереи и изображений в тексте.',
+    'Every image in the article body requires alternative text before submission.':
+      'Выберите каждое изображение в тексте и заполните его альтернативный текст.',
+    'Use absolute HTTP or HTTPS links without embedded credentials.':
+      'Укажите полную ссылку с http:// или https://, без логина и пароля в адресе.',
+    'Provide an absolute HTTP/HTTPS link.': 'Укажите полную ссылку с http:// или https://.',
+    'Provide valid Unicode text.': 'Удалите повреждённые символы или введите текст заново.',
+    'Use a version 1 structured document of up to 2 MiB.':
+      'Размер текста с форматированием не должен превышать 2 МиБ. Сократите статью.',
+    'The body must not exceed 100000 plain-text characters.':
+      'Сократите текст статьи до 100 000 символов.',
+    'The document is too deeply nested or contains too many nodes.':
+      'Упростите вложенные списки и цитаты: не более 24 уровней и 20 000 элементов.',
+    'Use only the supported document blocks and nesting (up to 2000 blocks).':
+      'Используйте абзацы, заголовки H2/H3, списки, цитаты и изображения; не более 2 000 блоков. Проверьте вложенность списков.',
+    'Use supported text marks only.':
+      'Уберите лишнее форматирование: доступны жирный, курсив и ссылки.',
+    'Use bold, italic and HTTP/HTTPS links only.':
+      'Поддерживаются жирный, курсив и ссылки http:// или https://. Уберите другое форматирование.',
+    'Use H2 or H3 subheadings.': 'Выберите для подзаголовка уровень H2 или H3.',
+    'Use a valid ordered-list start.': 'Начальный номер списка должен быть от 1 до 1 000 000.',
+    'Lists and quotations require valid child blocks.':
+      'Добавьте текст в пустой список или цитату либо удалите этот блок.',
+    'Text nodes must not be empty.':
+      'Удалите пустой фрагмент форматированного текста и введите его заново.',
+    'Text nodes cannot contain attributes or children.':
+      'Фрагмент текста содержит неподдерживаемое форматирование. Уберите форматирование этого фрагмента.',
+    'Only text nodes may contain text or marks.':
+      'Блок содержит неподдерживаемое форматирование. Уберите его или введите фрагмент заново.',
+    'Only text nodes may contain text.':
+      'Перенос строки содержит недопустимый текст. Удалите перенос и вставьте его заново.',
+    'Unsupported document property or attribute.':
+      'Обнаружено неподдерживаемое форматирование. Уберите его или вставьте фрагмент как обычный текст.',
+    'Block content must be an array.':
+      'Повреждена структура блока. Удалите этот блок и введите его заново.',
+    'This node cannot have children.':
+      'Повреждена структура изображения или переноса строки. Вставьте этот элемент заново.',
+    'Provide an integer attribute.':
+      'Проверьте уровень заголовка и начальный номер списка: требуются целые числа.',
+    'Use at most ten tags and twenty sources.':
+      'Выберите не более 10 тегов и добавьте не более 20 источников.',
+    'Use at most twenty distinct images and valid taxonomy IDs.':
+      'Используйте не более 20 разных изображений и выберите категорию и теги из списка.',
+    'Provide valid source entries.': 'Для каждого источника укажите название и полную ссылку.',
+    'Provide a valid Media ID.': 'Выберите готовое изображение через окно выбора изображений.',
+    'Use a valid Media ID.': 'Выберите готовое изображение через окно выбора изображений.',
+    'Select existing active taxonomy; only existing associations may retain archived entries.':
+      'Выберите действующую категорию и теги из списка. Архивные значения можно сохранить только у уже связанной с ними статьи.',
+    'Provide a category or tag name.': 'Введите название категории или тега.',
+    'Describe changes before resubmitting.':
+      'Заполните описание изменений перед повторной отправкой.',
+    'An editorial correction reason is required.': 'Укажите причину редакторского исправления.',
+    'A withdrawal reason is required.': 'Укажите причину снятия с публикации.',
+    'Feedback or a rejection reason is required.': 'Укажите замечания или причину отклонения.',
+    'Select two distinct active categories in display order.':
+      'Выберите две разные действующие категории в нужном порядке.',
+    'At most five articles can be selected.': 'Выберите не более пяти избранных статей.',
+  };
+  if (typeof value !== 'string') return 'Проверьте значение этого поля.';
+  const maximum = /^Use at most (\d+) characters without null characters\.$/.exec(value);
+  if (maximum)
+    return `Не более ${maximum[1]} символов. Удалите лишний текст и недопустимые нулевые символы.`;
+  return messages[value] ?? 'Проверьте значение этого поля.';
 }

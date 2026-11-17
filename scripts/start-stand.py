@@ -138,6 +138,14 @@ def main():
     if not client.call("/api/installation/status")["installed"]:
         client.call("/api/installation/complete", {**administrator, "displayName": "StandAdministrator", "name": "CityPortal Stand", "city": "Demo City", "region": "", "timeZone": values.get("CITY_TIME_ZONE", "UTC"), "smtpHost": "mailpit", "smtpPort": 1025, "senderAddress": "noreply@cityportal.test", "useTls": False})
     client.call("/api/auth/login", {**administrator, "rememberMe": False})
+    # Seed only empty local demo dictionaries; preserve editorial changes on restart.
+    for kind, names in {
+        "categories": ["Город", "Транспорт", "Культура", "Спорт"],
+        "tags": ["Благоустройство", "Дороги", "Образование", "События"],
+    }.items():
+        if int(client.call("/api/editorial/" + kind)["total"]) == 0:
+            for name in names:
+                client.call("/api/editorial/" + kind, {"name": name, "archived": False})
     for role in ROLES:
         account = accounts[role]
         person = Client(client.origin, ca)

@@ -6,6 +6,55 @@ namespace CityPortal.IntegrationTests;
 
 public sealed class NewsDocumentTests
 {
+    [Theory]
+    [InlineData("bold")]
+    [InlineData("italic")]
+    [InlineData("link")]
+    public void Documents_FormattedHardBreak_RoundTripsEditorContent(string mark)
+    {
+        using var body = JsonDocument.Parse("""
+            {"type":"doc","content":[{"type":"paragraph","content":[
+            {"type":"text","text":"Before"},
+            {"type":"hardBreak","marks":[MARK]},
+            {"type":"text","text":"After"}]}]}
+            """.Replace("MARK", mark == "link" ? "{\"type\":\"link\",\"attrs\":{\"href\":\"https://example.test\",\"target\":\"_blank\"}}" : JsonSerializer.Serialize(new { type = mark }), StringComparison.Ordinal));
+        ValidatedArticleContent valid = ArticleDocuments.Validate(new ArticleContent { Body = body.RootElement });
+        Assert.Equal("Before\nAfter\n", valid.PlainText);
+        Assert.Contains("<br>", valid.PreviewHtml);
+        JsonElement lineBreak = valid.Content.Body.GetProperty("content")[0].GetProperty("content")[1];
+        Assert.Equal(mark, lineBreak.GetProperty("marks")[0].GetProperty("type").GetString());
+        Assert.Equal(valid.Content.Body.GetRawText(), ArticleDocuments.Validate(valid.Content).Content.Body.GetRawText());
+        if (mark == "link")
+        {
+            Assert.DoesNotContain("target", lineBreak.GetRawText());
+            Assert.Contains("noopener noreferrer", valid.PreviewHtml);
+        }
+    }
+
+    [Theory]
+    [InlineData("unsafe-link")]
+    [InlineData("unsupported-mark")]
+    public void Documents_HardBreakMarks_PreserveSecurityValidation(string scenario)
+    {
+        string mark = scenario == "unsafe-link" ? "{\"type\":\"link\",\"attrs\":{\"href\":\"javascript:alert(1)\"}}" : "{\"type\":\"code\"}";
+        using var body = JsonDocument.Parse("{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"hardBreak\",\"marks\":[" + mark + "]}]}]}");
+        AccountOperationException failure = Assert.Throws<AccountOperationException>(() => ArticleDocuments.Validate(new ArticleContent { Body = body.RootElement }));
+        Assert.Equal(400, failure.Status);
+        Assert.Equal(scenario == "unsafe-link" ? "link" : "body", Assert.Single(failure.Errors!).Key);
+    }
+
+    [Fact]
+    public void Documents_MissingSubmissionFields_ReportEachField()
+    {
+        AccountOperationException failure = Assert.Throws<AccountOperationException>(() => ArticleDocuments.Validate(new ArticleContent(), true));
+        Assert.Equal(new[] { "body", "categoryId", "summary", "title" }, failure.Errors!.Keys.Order(StringComparer.Ordinal));
+        ArticleContent complete = Content("Report body") with { Title = "Report", Summary = "Summary", CategoryId = Guid.NewGuid() };
+        failure = Assert.Throws<AccountOperationException>(() => ArticleDocuments.Validate(complete with { CategoryId = null }, true));
+        Assert.Equal("categoryId", Assert.Single(failure.Errors!).Key);
+        failure = Assert.Throws<AccountOperationException>(() => ArticleDocuments.Validate(complete with { UsesOthers = true }, true));
+        Assert.Equal("sources", Assert.Single(failure.Errors!).Key);
+    }
+
     [Fact]
     public void Documents_IncompleteDraftAndCompleteSubmission_ApplyDifferentPresenceRules()
     {

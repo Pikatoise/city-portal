@@ -410,3 +410,11 @@ stand uses only https://localhost:8443 and cityportal_stand. Active credentials,
 normal installation data, the required local SDK and frontend dependencies are
 preserved. Verification results remain in STAGE_2_ACCEPTANCE.md; future temporary
 files and task-owned fixtures must be removed when their task finishes.
+
+Owner review follow-up: empty local stand taxonomy now receives four starter
+categories and four tags, while existing dictionaries are preserved. Article
+validation accepts supported formatting on hardBreak nodes emitted when a text
+selection includes line breaks. Submission errors name the missing fields and
+the UI explains corrective actions and limits in Russian. Browser save/submit,
+17 document tests, 42 News integration tests, 95 frontend tests, builds and format
+checks passed. Details are in STAGE_2_ACCEPTANCE.md. Owner acceptance remains open.

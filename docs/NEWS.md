@@ -30,6 +30,11 @@ Revision content has `schemaVersion: 1` and a ProseMirror JSON `body`; title/sum
 
 Supported nodes: doc, paragraph, heading (H2/H3), text, bulletList, orderedList, listItem, blockquote, hardBreak, and mediaFigure. Marks: bold, italic, and absolute HTTP/HTTPS link. Ordered-list start is retained within 1-1,000,000. Canonical link storage discards known Tiptap presentation metadata; server HTML escapes attributes and supplies `noopener noreferrer`. Pasted rich content becomes text; dropped/pasted image bytes are not stored as article HTML.
 
+Text and hardBreak nodes both accept the supported marks, matching editor
+formatting applied across line breaks. Formatted hard breaks round-trip through
+validation, canonical storage and rendering; unsafe links and unsupported marks
+remain rejected.
+
 The independent server allowlist enforces structure, properties, attributes, safe URLs, normalization, and field bounds. It renders from structured content rather than trusting HTML. Limits are 2 MiB body JSON, 2,000 blocks, 20,000 nodes, 24 node levels, and a 4 MiB complete save request. Body text is limited to 100,000 normalized scalars; repeated placements count once toward 20 distinct images. The depth bound keeps canonical serialization within runtime limits.
 
 Incomplete drafts may omit submission fields/alternative text, while supplied values retain maximum/security checks. `ArticleDocuments.Validate(..., requireComplete: true)` implements submission presence rules, including sources and every image's alternative text. Submission and explicit approved Save both enforce these rules before changing state.
@@ -37,6 +42,12 @@ Incomplete drafts may omit submission fields/alternative text, while supplied va
 ## Save and Failure Behavior
 
 Autosave runs after five idle seconds, with one active request. Edits arriving during a save stay dirty and subsequently use the returned version. Manual Save shares that boundary. Network/validation failures preserve dirty fields and do not report success. HTTP 409 stops autosave, preserves a complete local JSON copy, and offers copying before server reload. Edits arriving during reload are also preserved rather than overwritten.
+
+HTTP 400 feedback names the affected field and, where useful, its workspace tab,
+then explains the correction in Russian, including character limits and URL rules.
+Submission presence errors identify title, summary, article text, category, sources
+and alternative text separately. Feedback does not claim an earlier successful
+draft save failed. Unknown diagnostic strings are not shown as user instructions.
 
 The image picker uses real paginated own/template lists, upload, and processing state. Gated preview responses show unavailable images as placeholders. Draft references remain private; deletion makes them historical-only while preserving storage retention. Author/staff routes are browser-rendered with no-store responses.
 
