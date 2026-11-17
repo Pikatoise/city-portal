@@ -24,11 +24,15 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(args, *, data=None, env=None):
+def run(args, *, data=None, env=None, log=None):
     result = subprocess.run(args, cwd=ROOT, input=data, text=True, encoding="utf-8",
                             capture_output=True, env=env, check=False)
+    if log is not None or result.returncode:
+        log = log or ROOT / ".local/issue14" / ("command-failure-" + uuid.uuid4().hex + ".log")
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(result.stdout + "\n" + result.stderr, encoding="utf-8")
     if result.returncode:
-        raise RuntimeError(f"{args[0]} failed ({result.returncode}); inspect local logs.")
+        raise RuntimeError(f"{args[0]} failed ({result.returncode}); diagnostic: {log}")
     return result.stdout.strip()
 
 
@@ -159,7 +163,7 @@ def main():
                Media__AccessKey=secrets["MEDIA_ACCESS_KEY"], Media__SecretKey=secrets["MEDIA_SECRET_KEY"], Media__Bucket=name.replace('_', '-'))
     commands = [str(dotnet), str(runtime / "CityPortal.Api.dll")]
     for attempt in (1, 2):
-        (output / f"migration-{attempt}.log").write_text(run(commands + ["--migrate"], env=env), encoding="utf-8")
+        run(commands + ["--migrate"], env=env, log=output / f"migration-{attempt}.log")
     if not args.reuse:
         seed(name)
     print("Prepared isolated fixture " + name, flush=True)

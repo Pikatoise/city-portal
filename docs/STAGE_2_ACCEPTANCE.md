@@ -75,6 +75,22 @@ storage choice to existing revisions without changing text or article versions.
 The upgrade regression verifies preserved content/search, the physical policy,
 the index and repeat application.
 
+The independent Standards review identified two nonblocking gaps, both fixed:
+failed helper commands now retain stdout/stderr before exit-code checking, and
+the upgrade regression now stores a large vector under the preceding EXTENDED
+policy and checks its PostgreSQL row version changes during migration. Removing
+the recomputation UPDATE produced the intended `Assert.NotEqual` failure;
+restoring it passed the focused upgrade test (1 passed, 0 failed/skipped). The
+complete 165-test run preceded this assertion strengthening; the final focused
+run compiled the restored production migration and strengthened regression.
+The failure-logging probe also verified retained stderr for a child exit code 7.
+
+Specification review found zero blocking/missing implementation findings and
+no scope expansion. Standards review found zero documented-standard violations;
+its focused re-review confirmed both nonblocking gaps resolved and no new
+findings. These reviews were read-only and did not rerun tests. Owner acceptance
+is a separate remaining requirement.
+
 An isolated comparison measured the representative tag-page query at 62.428 ms
 before the index and 4.078 ms after it. A representative broad ranked search
 measured 471.552 ms before the storage change and 20.571 ms after it. These are

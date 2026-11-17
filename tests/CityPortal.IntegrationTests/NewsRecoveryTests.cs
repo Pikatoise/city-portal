@@ -27,17 +27,20 @@ public sealed partial class NewsTests
         using (HttpClient anonymous = Client(factory))
         {
             TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Upgrade category");
-            ArticleResponse article = await PublishedAsync(author, editor, category.Id, "Городские библиотеки");
-            string expectedContent = await ScalarAsync<string>(database, "SELECT \"ContentJson\"::text FROM news.\"Revisions\" WHERE \"Id\"=@id", article.RevisionId);
-            // Recreate the preceding migration's physical policy without changing business data.
+            // Store a large vector under the preceding policy before applying the upgrade.
             await ExecuteAsync(database, """
                 DROP INDEX news."IX_Articles_PublishedRevisionId";
                 ALTER TABLE news."Revisions" ALTER COLUMN "SearchVector" SET STORAGE EXTENDED;
                 DELETE FROM news."__EFMigrationsHistory" WHERE "MigrationId"='20261117072429_DiscoveryReadPerformance';
-                """, article.Id);
+                """, Guid.Empty);
+            string body = string.Join(" ", Enumerable.Range(0, 800).Select(index => "термин" + index));
+            ArticleResponse article = await PublishDiscoveryAsync(author, editor, NewsDocumentTests.Content(body) with { Title = "Городские библиотеки", Summary = "Upgrade fixture", CategoryId = category.Id });
+            string expectedContent = await ScalarAsync<string>(database, "SELECT \"ContentJson\"::text FROM news.\"Revisions\" WHERE \"Id\"=@id", article.RevisionId);
+            string previousRowVersion = await ScalarAsync<string>(database, "SELECT xmin::text FROM news.\"Revisions\" WHERE \"Id\"=@id", article.RevisionId);
             await factory.Services.MigrateNewsAsync(CancellationToken.None);
             await factory.Services.MigrateNewsAsync(CancellationToken.None);
             Assert.Equal(expectedContent, await ScalarAsync<string>(database, "SELECT \"ContentJson\"::text FROM news.\"Revisions\" WHERE \"Id\"=@id", article.RevisionId));
+            Assert.NotEqual(previousRowVersion, await ScalarAsync<string>(database, "SELECT xmin::text FROM news.\"Revisions\" WHERE \"Id\"=@id", article.RevisionId));
             Assert.Equal(article.Version, (await author.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!.Version);
             Assert.Equal(article.Id, Assert.Single((await DiscoveryAsync(anonymous, "?query=" + Uri.EscapeDataString("библиотека"))).Items).Id);
             Assert.Equal("m", await ScalarAsync<string>(database, """SELECT attstorage::text FROM pg_attribute WHERE attrelid='news."Revisions"'::regclass AND attname='SearchVector'""", article.Id));

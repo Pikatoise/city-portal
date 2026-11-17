@@ -33,5 +33,8 @@ Baseline: `28c050d` on `prototype/stage-2-news-review`.
 
 Backend recovery/upgrade and complete regression passed; frontend checks,
 runtime contracts and capacity measurements passed with recorded latency-tail
-limitations. Split-role HTTPS/browser verification passed. Owner review remains open. Detailed
+limitations. Split-role HTTPS/browser verification passed. Specification and
+Standards reviews completed; both nonblocking improvements were fixed and
+re-reviewed, including a successful mutation-sensitive upgrade regression.
+Owner review remains open. Detailed
 evidence is in [../STAGE_2_ACCEPTANCE.md](../STAGE_2_ACCEPTANCE.md).
