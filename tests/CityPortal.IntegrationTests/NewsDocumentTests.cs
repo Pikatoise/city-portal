@@ -6,6 +6,20 @@ namespace CityPortal.IntegrationTests;
 
 public sealed class NewsDocumentTests
 {
+    [Fact]
+    public void Documents_EditorLinkAttributes_AreAcceptedAndCanonicalized()
+    {
+        using var body = JsonDocument.Parse("""
+            {"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Example","marks":[{"type":"link","attrs":{"href":"https://example.test","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"title":null}}]}]}]}
+            """);
+        ValidatedArticleContent valid = ArticleDocuments.Validate(new ArticleContent { Body = body.RootElement });
+        JsonElement attributes = valid.Content.Body.GetProperty("content")[0].GetProperty("content")[0].GetProperty("marks")[0].GetProperty("attrs");
+        Assert.Equal("https://example.test", attributes.GetProperty("href").GetString());
+        Assert.Single(attributes.EnumerateObject());
+        Assert.Contains("href=\"https://example.test\"", valid.PreviewHtml);
+        Assert.Equal(valid.Content.Body.GetRawText(), ArticleDocuments.Validate(valid.Content).Content.Body.GetRawText());
+    }
+
     [Theory]
     [InlineData("bold")]
     [InlineData("italic")]

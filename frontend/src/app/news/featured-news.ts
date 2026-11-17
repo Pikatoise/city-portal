@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { PublicArticleSummaryResponse } from '../api/models/public-article-summary-response';
 import { CityClock } from '../staff/city-clock';
 
@@ -42,7 +42,7 @@ import { CityClock } from '../staff/city-clock';
             <div class="copy">
               <p>Выбор редакции</p>
               <h2>
-                <a [routerLink]="story.canonicalUrl" (click)="open($event)">{{ story.title }}</a>
+                <a [routerLink]="router.parseUrl(story.canonicalUrl)" (click)="open($event)">{{ story.title }}</a>
               </h2>
               <p class="summary">{{ story.summary }}</p>
               <span class="byline"
@@ -192,6 +192,7 @@ import { CityClock } from '../staff/city-clock';
   `,
 })
 export class FeaturedNews {
+  protected readonly router = inject(Router);
   readonly failedImages = signal(new Set<string>());
   readonly stories = input.required<PublicArticleSummaryResponse[]>();
   protected readonly clock = inject(CityClock);

@@ -87,6 +87,30 @@ describe('Author draft persistence', () => {
     ).not.toBeNull();
   });
 
+  it('shows source names as safe links in the article preview', async () => {
+    const fixture = TestBed.createComponent(AuthorWorkspace);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(0);
+    await fixture.componentInstance.create();
+    fixture.componentInstance.form.update((value) => ({
+      ...value,
+      sources: [
+        { name: 'Google', url: 'https://google.com' },
+        { name: 'Incomplete', url: '' },
+        { name: 'Unsafe', url: 'javascript:alert(1)' },
+      ],
+    }));
+    fixture.detectChanges();
+    const preview = fixture.nativeElement.querySelector('article.reader-preview');
+    const links = preview.querySelectorAll('li a');
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent.trim()).toBe('Google');
+    expect(links[0].getAttribute('href')).toBe('https://google.com');
+    expect(preview.textContent).not.toContain('https://google.com');
+    expect(preview.textContent).toContain('Incomplete');
+    expect(preview.textContent).toContain('Unsafe');
+  });
+
   async function workspace() {
     const fixture = TestBed.createComponent(AuthorWorkspace);
     const component = fixture.componentInstance;

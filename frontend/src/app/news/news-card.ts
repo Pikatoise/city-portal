@@ -1,5 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { PublicArticleSummaryResponse } from '../api/models/public-article-summary-response';
 import { CityClock } from '../staff/city-clock';
 
@@ -7,7 +7,7 @@ import { CityClock } from '../staff/city-clock';
   selector: 'app-news-card',
   imports: [RouterLink],
   template: ` <article>
-    <a class="image" [routerLink]="story().canonicalUrl" [attr.aria-label]="story().title">
+    <a class="image" [routerLink]="router.parseUrl(story().canonicalUrl)" [attr.aria-label]="story().title">
       @if (story().cover; as cover) {
         @if (!failed()) {
           <img
@@ -30,7 +30,7 @@ import { CityClock } from '../staff/city-clock';
         }}</a>
       }
       <h3>
-        <a [routerLink]="story().canonicalUrl">{{ story().title }}</a>
+        <a [routerLink]="router.parseUrl(story().canonicalUrl)">{{ story().title }}</a>
       </h3>
       <p>{{ story().summary }}</p>
       <div class="byline">
@@ -136,6 +136,7 @@ import { CityClock } from '../staff/city-clock';
   `,
 })
 export class NewsCard {
+  protected readonly router = inject(Router);
   readonly story = input.required<PublicArticleSummaryResponse>();
   readonly category = input('');
   protected readonly clock = inject(CityClock);

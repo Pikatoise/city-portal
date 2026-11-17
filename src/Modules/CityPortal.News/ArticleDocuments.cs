@@ -157,7 +157,7 @@ public static class ArticleDocuments
                         if (name == "link")
                         {
                             JsonElement attributes = Attributes(mark);
-                            Only(attributes, "href", "target", "rel", "class");
+                            Only(attributes, "href", "target", "rel", "class", "title");
                             string href = Url(String(attributes, "href"), "link");
                             if (href.Length == 0)
                                 throw NewsDatabase.Invalid("link", "Provide an absolute HTTP/HTTPS link.");

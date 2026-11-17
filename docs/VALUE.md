@@ -86,7 +86,7 @@ Sources are a separate list of source names and URLs. The author marks whether o
 
 At submission, the title contains 1-200 characters, the summary 1-500, and the body 1-100,000 plain-text characters excluding markup. A version may have at most ten tags. Drafts may omit required fields, but supplied content remains subject to the maximum limits.
 
-When a published title changes, update the article URL and redirect previous article URLs to the current one. Pending title changes do not alter the public URL before publication.
+Article URLs use the transliterated published title, the date of first publication in the city's time zone, and the last six hexadecimal characters of the article's GUID. The first-publication date in the URL remains unchanged if the city's time zone changes. When a published title changes, the URL changes and the previous URL stops working. Pending title changes do not alter the public URL before publication. If the complete URL is already used by another article, reject publication and ask for a different title.
 
 The visual editor supports paragraphs, subheadings, emphasis, lists, links, quotations, and images with captions. It does not support arbitrary HTML or complex page layout.
 

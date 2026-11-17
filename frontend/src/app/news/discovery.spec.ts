@@ -104,6 +104,22 @@ describe('Public discovery', () => {
       },
     });
   });
+  it('preserves encoded article addresses in cards and featured links', async () => {
+    const canonicalUrl = '/news/article/%D1%82%D0%B5%D1%81%D1%82';
+    api.list.mockResolvedValue({ items: [{ ...story('one'), canonicalUrl }], total: 1, page: 1, pageSize: 20 });
+    const list = TestBed.createComponent(Discovery);
+    list.detectChanges();
+    await list.whenStable();
+    list.detectChanges();
+    for (const link of list.nativeElement.querySelectorAll('app-news-card h3 a, app-news-card a.image'))
+      expect(link.getAttribute('href')).toBe(canonicalUrl);
+    expect(list.nativeElement.querySelectorAll('app-news-card h3 a')).toHaveLength(1);
+
+    const featured = TestBed.createComponent(FeaturedNews);
+    featured.componentRef.setInput('stories', [{ ...story('one'), canonicalUrl }]);
+    featured.detectChanges();
+    expect(featured.nativeElement.querySelector('h2 a').getAttribute('href')).toBe(canonicalUrl);
+  });
   it('clears results on invalid query and offers a retry', async () => {
     const fixture = TestBed.createComponent(Discovery);
     fixture.detectChanges();

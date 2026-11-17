@@ -61,6 +61,7 @@ const draft = (content: ArticleContent = {}): Draft => ({
   templateUrl: './author-workspace.html',
 })
 export class AuthorWorkspace implements OnInit, OnDestroy {
+  readonly safeArticleUrl = safeArticleUrl;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   constructor() {
     this.host.nativeElement.addEventListener('error', this.imageError, true);

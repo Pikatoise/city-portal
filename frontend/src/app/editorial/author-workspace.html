@@ -439,7 +439,13 @@
               <h2>Источники</h2>
               <ul>
                 @for (source of form().sources; track $index) {
-                  <li>{{ source.name }} · {{ source.url }}</li>
+                  <li>
+                    @if (safeArticleUrl(source.url)) {
+                      <a [href]="source.url" rel="noopener noreferrer" target="_blank">{{ source.name }}</a>
+                    } @else {
+                      {{ source.name }}
+                    }
+                  </li>
                 }
               </ul>
             }
