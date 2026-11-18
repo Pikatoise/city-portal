@@ -40,6 +40,15 @@ export const routes: Routes = [
         loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
       },
       {
+        path: 'staff/suggestions/moderation',
+        data: { moderation: true },
+        loadComponent: () => import('./staff/suggestion-queue').then((m) => m.SuggestionQueue),
+      },
+      {
+        path: 'staff/suggestions',
+        loadComponent: () => import('./staff/suggestion-queue').then((m) => m.SuggestionQueue),
+      },
+      {
         path: 'staff/reviews',
         loadComponent: () =>
           import('./editorial/review-workspace/review-workspace').then((m) => m.ReviewWorkspace),

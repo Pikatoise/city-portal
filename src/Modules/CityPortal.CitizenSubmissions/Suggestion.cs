@@ -12,6 +12,8 @@ internal sealed class Suggestion
 
     public DateTimeOffset? FirstClaimedAtUtc { get; set; }
 
+    public Guid? AssigneeId { get; set; }
+
     public int Version { get; set; } = 1;
 
     public required string Title { get; set; }

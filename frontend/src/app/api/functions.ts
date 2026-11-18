@@ -125,6 +125,16 @@ export type { ListPublicTaxonomy$Params as ListPublicTaxonomy$Params } from './f
 export { listPublicTaxonomy as listPublicTaxonomy } from './fn/news/list-public-taxonomy';
 export type { GetPublicArticle$Params as GetPublicArticle$Params } from './fn/news/get-public-article';
 export { getPublicArticle as getPublicArticle } from './fn/news/get-public-article';
+export type { ListAuthorSuggestions$Params as ListAuthorSuggestions$Params } from './fn/staff-suggestions/list-author-suggestions';
+export { listAuthorSuggestions as listAuthorSuggestions } from './fn/staff-suggestions/list-author-suggestions';
+export type { ListModerationSuggestions$Params as ListModerationSuggestions$Params } from './fn/staff-suggestions/list-moderation-suggestions';
+export { listModerationSuggestions as listModerationSuggestions } from './fn/staff-suggestions/list-moderation-suggestions';
+export type { ClaimSuggestion$Params as ClaimSuggestion$Params } from './fn/staff-suggestions/claim-suggestion';
+export { claimSuggestion as claimSuggestion } from './fn/staff-suggestions/claim-suggestion';
+export type { ReturnSuggestion$Params as ReturnSuggestion$Params } from './fn/staff-suggestions/return-suggestion';
+export { returnSuggestion as returnSuggestion } from './fn/staff-suggestions/return-suggestion';
+export type { DeleteSuggestion$Params as DeleteSuggestion$Params } from './fn/staff-suggestions/delete-suggestion';
+export { deleteSuggestion as deleteSuggestion } from './fn/staff-suggestions/delete-suggestion';
 export type { ListMySuggestions$Params as ListMySuggestions$Params } from './fn/suggestions/list-my-suggestions';
 export { listMySuggestions as listMySuggestions } from './fn/suggestions/list-my-suggestions';
 export type { CreateSuggestion$Params as CreateSuggestion$Params } from './fn/suggestions/create-suggestion';

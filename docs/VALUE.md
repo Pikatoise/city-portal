@@ -135,10 +135,12 @@ Registered residents can submit informal, unedited topics and materials, includi
 
 - Suggestions enter a shared queue accessible to all authors, not the editors' review queue.
 - An author can take a suggestion into work, assigning it to themselves, or return it to the queue.
+- All authors can read available suggestions without contact details. Once assigned, only the assigned author can read it in the author workspace and see the contact details. The resident still sees their own suggestion. Removing the Author role returns active assignments to the queue without restoring resident editing.
 - The author can create a linked article, which follows the editorial workflow.
 - Title and description are required. Event date, location, contact details, and media are optional. Submitting places the suggestion directly in the author queue.
 - Residents can edit until the first author takes the suggestion into work. Returning it to the queue does not restore editing.
 - The Author role does not grant rejection or deletion rights. Moderators and administrators can delete suggestions manually.
+- Moderators and administrators can read suggestions in the moderation workspace without contact details. Manual deletion requires a reason. The audit record retains the suggestion ID, acting account, time, and reason without a copy of the suggestion.
 - Suggestion records are fully deleted after 72 hours from creation, without retaining an archived copy. Articles already created from them and materials transferred into those articles survive; article history retains that the topic came from a resident.
 
 Residents can track suggestions in their accounts while those suggestions exist.

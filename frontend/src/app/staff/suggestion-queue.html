@@ -1,0 +1,88 @@
+<section class="account-panel" aria-labelledby="queue-title">
+  <p><a routerLink="/account">Личный кабинет</a></p>
+  <h1 id="queue-title">{{ moderation ? 'Модерация предложений' : 'Предложения жителей' }}</h1>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  <div class="queue-actions">
+    @if (!moderation) {
+      <button
+        type="button"
+        [disabled]="busy()"
+        [attr.aria-pressed]="!mine()"
+        (click)="load(1, false)"
+      >
+        Свободные
+      </button>
+      <button
+        type="button"
+        [disabled]="busy()"
+        [attr.aria-pressed]="mine()"
+        (click)="load(1, true)"
+      >
+        Мои назначения
+      </button>
+    }
+    <button type="button" [disabled]="busy()" (click)="load(page())">Обновить</button>
+  </div>
+  @if (busy() && !loaded()) {
+    <p role="status">Загружаем предложения…</p>
+  }
+  @if (loaded() && items().length === 0) {
+    <p>Здесь пока нет предложений.</p>
+  }
+  @for (item of items(); track item.id) {
+    <article class="queue-card">
+      <h2>{{ item.title }}</h2>
+      <p class="description">{{ item.description }}</p>
+      @if (item.eventDate || item.location) {
+        <p>{{ item.eventDate }} {{ item.location }}</p>
+      }
+      @if (item.contact) {
+        <p>Контакты: {{ item.contact }}</p>
+      }
+      @if (moderation) {
+        <p>{{ item.assigned ? 'В работе' : 'В очереди' }}</p>
+      }
+      <p>Доступно до {{ clock.format(item.expiresAtUtc) }}.</p>
+      @if (moderation && deleting() === item.id) {
+        <form (ngSubmit)="change(item)" #deletionForm="ngForm">
+          <label [for]="'reason-' + item.id">Причина удаления</label>
+          <textarea
+            [id]="'reason-' + item.id"
+            name="reason"
+            [(ngModel)]="reason"
+            [disabled]="busy()"
+            required
+            maxlength="1000"
+            rows="3"
+          ></textarea>
+          <p>Причина останется в журнале. Не указывайте личные данные.</p>
+          <div class="queue-actions">
+            <button type="submit" [disabled]="busy() || deletionForm.invalid">
+              Удалить предложение
+            </button>
+            <button type="button" [disabled]="busy()" (click)="cancelDelete()">Отмена</button>
+          </div>
+        </form>
+      } @else if (moderation) {
+        <button type="button" [disabled]="busy()" (click)="prepareDelete(item.id)">Удалить</button>
+      } @else {
+        <button type="button" [disabled]="busy()" (click)="change(item)">
+          {{ mine() ? 'Вернуть в очередь' : 'Взять в работу' }}
+        </button>
+      }
+    </article>
+  }
+  <div class="queue-actions">
+    @if (page() > 1) {
+      <button type="button" [disabled]="busy()" (click)="load(page() - 1)">Назад</button>
+    }
+    @if (hasMore()) {
+      <button type="button" [disabled]="busy()" (click)="load(page() + 1)">Дальше</button>
+    }
+  </div>
+</section>

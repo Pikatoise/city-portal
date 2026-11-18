@@ -29,6 +29,9 @@ namespace CityPortal.CitizenSubmissions.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AssigneeId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Contact")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -69,9 +72,33 @@ namespace CityPortal.CitizenSubmissions.Migrations
 
                     b.HasIndex("ExpiresAtUtc");
 
+                    b.HasIndex("AssigneeId", "ExpiresAtUtc", "Id");
+
                     b.HasIndex("ResidentId", "CreatedAtUtc", "Id");
 
                     b.ToTable("Suggestions", "citizen_submissions");
+                });
+
+            modelBuilder.Entity("CityPortal.CitizenSubmissions.SuggestionDeletion", b =>
+                {
+                    b.Property<Guid>("SuggestionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("SuggestionId");
+
+                    b.ToTable("Deletions", "citizen_submissions");
                 });
 #pragma warning restore 612, 618
         }

@@ -82,19 +82,43 @@ permanently closes resident editing, including after a return to the queue.
 
 - Attachments: permitted image formats, count and size limits, and access before
   and after assignment.
-- Staff access: what other authors can see after assignment, who can read
-  contact details, what happens when an assignee loses the Author role, and
-  what reason or audit data staff deletion requires.
 - Conversion: how many articles a suggestion can produce, which fields and
   selected media are copied, and the state and actions available after conversion.
 - Resident feedback: status labels and which events need account or Email
   notifications.
 
+## Author queue and manual deletion
+
+The owner confirmed these access and deletion rules.
+
+- Show authors an available queue and a separate list of their own assignments.
+  The queue contains the title, description, event date and location. The
+  assigned author can see the full card and its contact details. Other authors
+  lose access when the assignment starts. The resident keeps access to their
+  own suggestion until it is deleted or expires.
+- Claim and return require the current version. A claim sets the assignee and
+  records the first claim time if absent. Return clears the assignee and keeps
+  the first claim time. Both increment the version. Existing unexpired records
+  enter the available queue when the assignment migration is applied.
+- If the Author role is removed, release active assignments and increment
+  their versions within the Identity role change transaction. Use the existing
+  role-change observer and authorization scope so a concurrent claim cannot
+  create an assignment after role removal commits.
+- Moderators and administrators have a separate list and can view current
+  cards without contact details. Manual deletion requires the current version
+  and a reason of up to 1,000 characters. Delete the suggestion and record its ID, the acting account,
+  time and reason together. The record holds no copy of the suggestion.
+- Queue, assignments and moderation lists show up to 20 items per page, with
+  the earliest expiry first. Staff endpoints are under `/api/staff/suggestions`.
+- Verify concurrent claim, edit versus claim, access before and after
+  assignment, role removal versus claim, manual deletion versus competing
+  writes, and expiry while the Worker is stopped.
+
 ## Implementation status
 
 The owner confirmed the submission and editing rules and manual deletion by
-Moderator as well as Administrator. The resident text workflow and expiry
-cleanup are implemented. Image attachments, author assignment, manual deletion,
+Moderator as well as Administrator. The resident text workflow, expiry cleanup,
+author assignment and manual deletion are implemented. Image attachments,
 conversion, and notification decisions remain open for the following slices.
 
 The resident integration test uses PostgreSQL and the real HTTP account
@@ -102,3 +126,10 @@ endpoints. It verifies repeat migration, Email confirmation, CSRF, ownership,
 text validation, competing edits, the first-claim lock, the exact 72-hour
 visibility boundary, and physical deletion by the job. Quartz restart and
 interactive browser acceptance remain part of stage verification.
+
+The staff integration test verifies competing claims, contact visibility,
+return without restoring resident editing, and release during a role removal
+racing another claim. It checks both staff roles can delete, stale versions
+and blank reasons are rejected, and the audit entry survives the physical
+deletion of the suggestion. An Angular regression verifies that a forbidden
+refresh removes previously displayed contacts from the workspace.

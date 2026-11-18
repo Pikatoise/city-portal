@@ -29,6 +29,10 @@ const roleLabels: Record<string, string> = {
       @if (profile(); as account) {
         @if (account.roles.includes('Author')) {
           <p><a routerLink="/account/articles">Мои статьи</a></p>
+          <p><a routerLink="/staff/suggestions">Предложения жителей</a></p>
+        }
+        @if (account.roles.includes('Moderator') || account.roles.includes('Administrator')) {
+          <p><a routerLink="/staff/suggestions/moderation">Модерация предложений</a></p>
         }
         @if (account.roles.includes('Editor') || account.roles.includes('Administrator')) {
           <p><a routerLink="/staff/reviews">Редакция</a></p>

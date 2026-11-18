@@ -140,6 +140,10 @@ Implement the shared author queue and assignment process from VALUE.md, separate
 
 Fully delete suggestion records after 72 hours from creation without an archived copy. Quartz.NET schedules cleanup. Expired suggestions must not remain accessible while physical cleanup is pending. Articles and materials transferred into them survive independently; article history retains that the topic came from a resident. References must tolerate deletion of the original suggestion.
 
+Citizen Submissions joins removal of the Author role in the Identity transaction
+to release active assignments. Manual deletion and its audit record commit
+together. The audit record has no suggestion content or resident contact field.
+
 Any future clarification communication requires a scoped product agreement rather than introducing general-purpose messaging.
 
 ### Classifieds and Moderation
