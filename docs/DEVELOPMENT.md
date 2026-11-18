@@ -1,8 +1,7 @@
 # Local Development
 
-This guide covers installation, local development, and operational checks for
-the completed account, administration, and durable Email workflows. Contracts
-and the owner acceptance record are in [STAGE_1.md](stages/STAGE_1.md).
+This guide covers installation, local development, and operational checks.
+See the [delivery plan](CORE.md#delivery-order) for stage contracts and acceptance.
 
 ## Local Review Stand
 
@@ -217,7 +216,12 @@ Changing `.env` later does not change an existing database user's password.
 The local PostgreSQL connection disables GSS encryption because this development
 stack uses password authentication without Kerberos.
 
-Set separate random `MEDIA_ACCESS_KEY` and `MEDIA_SECRET_KEY` values too. Media uses a private RustFS bucket; see [MEDIA.md](MEDIA.md) for processing, access, and recovery contracts.
+Set separate random `MEDIA_ACCESS_KEY` and `MEDIA_SECRET_KEY` values in the
+ignored `.env` file. [Compose](../compose.yaml) pins the local RustFS image,
+persists objects in `media-data`, and binds port 9000 to loopback. It supplies
+API and Worker with the Media endpoint, bucket and credentials. For external
+storage, provision a private bucket and use HTTPS. Allow HTTP only for trusted
+local development.
 
 ## Build, Migrate, and Start
 
@@ -234,11 +238,9 @@ The migration command applies module-owned migrations explicitly. Normal API and
 Worker startup never applies migrations. Run the migration command once before
 starting the application and again when a change introduces migrations.
 
-News drafting adds an owned `news` schema/migration and a readiness check. Apply
-the explicit migration command when upgrading an existing Stage 1/Media database
-before starting the updated API/Worker. Confirmed authors use `/account/articles`;
-editors/administrators manage categories and tags at `/staff/taxonomy`. The current
-drafting boundary and remaining editorial/public workflows are in [NEWS.md](NEWS.md).
+The explicit migration command applies the News and Media schemas and
+initializes configured Media storage. Readiness checks the News schema and,
+when Media is configured, the Media schema and bucket access.
 
 The site is at `https://localhost:8443`. Caddy routes `/api/` to the API and `/`
 to the Angular Node server, keeping browser requests on one HTTPS origin. Local
@@ -416,14 +418,23 @@ the acceptance evidence and remaining deployment checks.
 - [Mailpit configuration](https://mailpit.axllent.org/docs/configuration/).
 - [Npgsql GSS encryption configuration](https://www.npgsql.org/doc/security.html).
 - [curl certificate and revocation options](https://curl.se/docs/manpage.html).
-# Editorial Review
+## Editorial, Media and Suggestion Workspaces
 
-Production author drafts, submissions, recall, approved Save, and publication run at `/account/articles`. The editor queue and retained review/history UI run at `/staff/reviews`; Administrator has effective editorial permissions. Run the explicit migration command before API/Worker startup when upgrading to the EditorialReview News migration. Role changes release News assignments within the same database transaction; do not replace administration operations with direct role-table edits in production.
+| Route | Workspace |
+| --- | --- |
+| `/account/articles` | Author drafts, submissions and publication. |
+| `/account/media` | Author uploads and shared templates. |
+| `/staff/reviews` | Editorial queue, assigned reviews and history. |
+| `/staff/taxonomy` | Category and tag management. |
+| `/staff/publications`, `/staff/articles/{id}` | Homepage curation and published article corrections. |
+| `/staff/media` | Template moderation and removal requests. |
+| `/account/suggestions` | Resident submission, attachments and status. |
+| `/staff/suggestions` | Available proposals with photos and the author's own assignments. |
+| `/staff/suggestions/moderation` | Suggestion moderation and reasoned deletion. |
 
-Published corrections/withdrawal, public article SSR, discovery and editorial
-homepage curation are implemented. See [NEWS.md](NEWS.md) for their contracts
-and [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17) for technical verification
-and completed owner review.
+Change staff roles through the administration API or workspace so review and
+suggestion releases commit with the role change. For a local check, follow
+the [suggestion review scenario](stages/STAGE_3.md#local-review-scenario).
 
 ## Stage 2 Upgrade and Recovery
 
@@ -436,9 +447,10 @@ API/Worker startup still never migrates. Repeat the explicit migration command,
 then start API and Worker and verify readiness/publication visibility.
 
 Keep PostgreSQL, processed objects, Data Protection keys and private deployment
-configuration as one recovery set. Export objects using authenticated S3
-operations with full listing pagination; a live object-store directory copy is
-not a portable backup. Restrict backup access like production credentials and
+configuration as one recovery set. Take a custom-format PostgreSQL dump and
+export objects using authenticated S3 operations with full listing pagination.
+A live object-store directory copy cannot serve as a portable backup.
+Restrict backup access like production credentials and
 keep it outside source control. Keep writers stopped until all parts are
 captured, or use a separately designed consistent snapshot scheme.
 
@@ -446,8 +458,9 @@ Restore into a new database, private bucket and key directory/volume. Configure
 the restored API/Worker for these resources and a separate broker vhost. Restore
 keys before protected-payload delivery. Apply explicit migrations, start the
 application, and verify public/private images, retained history, SMTP decryption
-and pending work. Keep the original environment until recovery is reviewed.
-The combined automated regression and its limits are in stages/STAGE_2.md.
+and pending work. Confirm the Worker resumes Processing rows from staged payloads
+and retries Deleting rows. Keep the original environment until recovery is
+reviewed. See the [combined recovery check](stages/STAGE_2.md#combined-recovery).
 
 After a Release API build and production frontend build, reproduce the isolated
 capacity baseline with `python scripts/check-news-capacity.py`. This creates a

@@ -1,10 +1,5 @@
 # CityPortal UI Style
 
-Stage 2 is owner-accepted as of 2026-11-17. The isolated fixture prototype was
-removed after acceptance; its visual decisions are implemented in production.
-Prototype file names and review limitations below describe historical work,
-which remains available in Git history.
-
 ## Direction and Scope
 
 Use calm editorial minimalism based on the owner-reviewed news homepage and article page. The content and images carry the hierarchy. Keep the established palette, fonts, orange logo dot, fluid public-page layout, and agreed navigation. Do not add fonts, decorative gradients, shadows, or boxed news cards. The existing lead-story image gradient is retained to make overlaid text readable.
@@ -71,16 +66,17 @@ parameters hold taxonomy, attribution, sources and optional SEO. Preview offers
 desktop/mobile widths without publication. Native decision/image dialogs retain
 focus containment, Escape and focus return.
 
-The completed prototype was removed after acceptance. Stage verification and its
-limits are recorded in [STAGE_2.md](stages/STAGE_2.md).
-
-## Production Review and First Publication
+## Editorial Review and Publication
 
 The production author workspace now uses real submission/recall, required resubmission notes, explicit approved Save returning to review, separate publication, and paginated retained snapshots. Its five existing sections remain. Submitted/rejected/published content is read-only; approved content disables autosave and explains explicit Save behavior. Unsaved changes and version conflicts preserve the local form.
 
-The production reviewer route `/staff/reviews` uses shared tokens and controls for shared/personal queues, claim/release/takeover, required feedback, final rejection, approval, separate publication, and retained history. Returned content shows the preceding submitted snapshot and explains that current corrections are author-only. Queue/history pagination is bounded. Full snapshots retain taxonomy, cover/gallery/body images, contextual text, sources, and SEO. Failed protected image reads use placeholders.
+The reviewer workspace uses shared controls and focuses the submitted preview
+after a claim or takeover. The preview displays the body and its photos,
+the cover, the gallery, sources, and SEO. Failed image reads show placeholders.
+After a return, the workspace shows the preceding submitted snapshot and
+explains who can see the author's current edits.
 
-## Production Public News: Issue 13
+## Public News
 
 The production homepage and detailed list now use actual publication data and the shared visual language. Homepage gutters are 8vw (5vw on mobile), category/search controls use header gutters, and the fluid article reader retains its additional desktop article inset without a fixed width cap. Featured images use safe Media URLs; no-cover and unavailable-image states are explicit. The carousel retains 380ms settling and pointer/arrow alternatives, one active accessible slide and one-line current-author/date credit. Category scrolling is interruptible by wheel, touch or keyboard input and cleans up animation frames/listeners on destruction.
 

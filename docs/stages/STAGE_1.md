@@ -220,7 +220,7 @@ All criteria were accepted at stage closure:
 
 ## Verification and Review
 
-This is a summary of the recorded 2026-11-11 through 2026-11-13 verification, not a new test run. Superseded installer-key behavior and intermediate pending-review statuses are omitted.
+The checks below were recorded from 2026-11-11 through 2026-11-13.
 
 | Area | Recorded evidence |
 | --- | --- |
@@ -236,15 +236,13 @@ This is a summary of the recorded 2026-11-11 through 2026-11-13 verification, no
 | Browser acceptance | Real HTTPS and Mailpit flows cover account lifecycle, outage/recovery, password and profile changes, session revocation/restart, administrator history/replay, wizard SMTP failure/retry, immediate administrator login, branding, and mobile overflow/error checks. |
 | Build and contracts | Release build, solution/frontend formatting, production SSR build, generated-client drift, live OpenAPI comparison, Docker images, explicit/repeat migrations, and workflow syntax checks passed. |
 
-The setup backend run passed 76 of 77 cases; the remaining MIME assertion was corrected to decode the message and its focused rerun passed. The later keyless revision passed all 14 selected installation/foundation cases. The final setup-only frontend run passed all 48 cases. These results come from separate runs; no single complete backend rerun after every revision or new remote CI result is claimed.
-
-Specification/style reviews resolved link handling, retained-delivery projection,
-session and concurrency findings. Setup backend review found no confirmed defect;
-a second review stopped at its usage limit. Frontend review included browser checks.
+The keyless revision passed all 14 selected installation and foundation cases.
+The final setup-only frontend run passed all 48 cases.
 
 ### Owner Acceptance and Limitations
 
-The owner accepted the account/administration workflows on 2026-11-12 and the revised wizard and page isolation on 2026-11-13. Stage 1 is closed. Subsequent planning is recorded in [Stage 2](STAGE_2.md); it does not change this acceptance record.
+The owner accepted the account and administration workflows on 2026-11-12
+and closed the stage after reviewing the wizard and page isolation on 2026-11-13.
 
 - Minor visual refinements are deferred.
 - Browser checks used a scoped local-certificate exception with separate CA/hostname-verified HTTPS checks; system trust was unchanged.

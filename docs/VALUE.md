@@ -66,7 +66,7 @@ The category/search bar also includes an All News button that opens the complete
 
 Navigation includes Home, News, Classifieds, Submit News, User Account, Login and Registration, About, Contacts, and Terms and Rules.
 
-The Stage 2 homepage presents editorial selections, a five-item latest-news block, and two category blocks of five stories each. Editors and administrators select up to five featured articles for the large card. Show one at a time, with previous/next arrows only when more than one is selected. Keep first-publication order, newest first, and immediately remove withdrawn articles. Three small cards alongside start the latest-news block; the next two stories continue below as wide rows. Category blocks follow as wide rows, newest first. Stories may repeat across blocks. Each block ends with a link to the detailed news list; category links preselect that category. Transport and Culture are prototype examples. Editors and administrators choose the two production homepage categories and their order. Recent advertisements and access to story suggestions and advertisement creation arrive with their owning stages.
+The homepage presents editorial selections, a five-item latest-news block, and two category blocks of five stories each. Editors and administrators select up to five featured articles for the large card. Show one at a time, with previous/next arrows only when more than one is selected. Keep first-publication order, newest first, and immediately remove withdrawn articles. Three small cards alongside start the latest-news block. The next two stories and the category blocks use wide rows. Stories may repeat across blocks. Each block links to the detailed news list, with its category preselected for category blocks. Editors and administrators choose the two homepage categories and their order. Residents can open the suggestion form from the homepage. Recent advertisements and advertisement creation arrive with Stage 4.
 
 ### News and Article Content
 
@@ -76,7 +76,7 @@ Show the author's current account display name in all articles; account name cha
 
 Without a search query, sort news by first publication time, newest first; later corrections do not move an article to the top. Search covers title, summary, and body, accounts for Russian word forms, and sorts by relevance. Search only current published revisions. Filters include category, one tag, and a first-publication date range, combinable with search. Homepage search opens the detailed news list, which contains all filters and numbered pages of 20 articles. The sticky category bar starts with Latest and scrolls to the latest-news or matching category block on the homepage. Its category entries match the displayed homepage blocks. Homepage blocks have no inline filter row or pagination.
 
-The current URL and previous URLs of a withdrawn article display "Материал снят с публикации" without article content or the withdrawal reason. Never-published content remains unavailable to anonymous readers.
+The current URL of a withdrawn article displays "Материал снят с публикации" without article content or the withdrawal reason. Previous URLs and never-published articles return the standard not-found page.
 
 Show up to five related published articles: first those sharing tags, then others in the same category; within each group, newer first. Exclude the current article and duplicate results.
 
@@ -102,6 +102,8 @@ Before submission, a draft is visible only to its author, including when another
 
 Drafts support server-side autosave and an explicit Save button. Incomplete drafts may omit title, category, or body; required submission fields are checked when sending the article for review. Saving checks the record version to prevent one tab from overwriting another tab's changes.
 
+When a save conflicts with a newer version, pause autosave and let the author copy unsaved edits before reloading. A failed save keeps those edits available for retry. Validation identifies the affected field and explains how to fix it.
+
 Authors can delete their own articles at any stage before first publication, including after submission, return, or final rejection. An article that has ever been published cannot be deleted through this author operation. Deletion removes the article from the author workspace and editorial queues while retaining the full text of every version and the action/review history for editorial access. After deletion, retained versions/history are accessible only to the assigned editor and administrators if the article was submitted. Never-submitted drafts remain closed to editors and administrators after deletion.
 
 Removing the Author role closes the author workspace and its API operations entirely, including access to the account's own unpublished articles and history, unless another current role grants the relevant permission. Article ownership alone does not preserve author access. Public reading remains available.
@@ -114,6 +116,8 @@ Removing the Author role closes the author workspace and its API operations enti
 An author may withdraw a submission for corrections, ending its active review. On resubmission, route it to the previous reviewer if that reviewer still has effective editorial permissions; otherwise use the shared queue. Final rejection closes the article's consideration: the author can retain the text or delete the never-published article, but cannot resubmit that article. Approved but unpublished versions are edited without autosave: an explicit Save validates the required submission fields, invalidates approval, and immediately sends the changed version to review. No separate submission action is needed. Route it to the previous reviewer if effective editorial permissions remain, otherwise to the shared queue.
 
 Submitted articles enter a shared review queue. An editor takes an article from the queue and becomes its assigned reviewer. The assigned editor may release the review back to the shared queue, with the release recorded in history. Another editor may explicitly take over, with the transfer recorded in history. Approval and publication are recorded as separate actions with their responsible users. If a reviewer loses all effective editorial permissions, their assigned reviews return to the shared queue with a history record. Losing Editor alone does not release reviews while Administrator still grants editorial permissions.
+
+Taking over or claiming a review opens a preview of the submitted article with its text and images.
 
 After first submission, article history is accessible to the author, the assigned editor, and administrators, subject to current effective permissions. History is not public or available to all editors merely by role. The assigned editor retains history access after completing the review while they retain effective editorial permissions. Explicit takeover or release to the shared queue revokes the previous editor's access; administrators retain access. Deleted articles follow the archive restrictions above.
 
@@ -136,9 +140,8 @@ Registered residents can submit informal, unedited topics and materials, includi
 - Suggestions enter a shared queue accessible to all authors, not the editors' review queue.
 - Taking a suggestion assigns it to the author and creates an article draft in one operation. Returning it to the queue deletes the unpublished draft through the editorial workflow.
 - All authors can read available suggestions without contact details. Once assigned, only the assigned author can read it in the author workspace and see the contact details. The resident still sees their own suggestion. Removing the Author role returns unpublished assignments to the queue without restoring resident editing.
-- The author can create a linked article, which follows the editorial workflow.
 - Title and description are required. Event date, location, contact details, and media are optional. Submitting places the suggestion directly in the author queue.
-- A suggestion can include up to five JPEG, PNG, or static WebP images of up to 10 MiB each. The resident, assigned author, moderators, and administrators can view its attachments. The free author queue shows text only. An assigned author can copy selected ready images into the article draft.
+- A suggestion can include up to five JPEG, PNG, or static WebP images of up to 10 MiB each. Authors can view attached photos while a suggestion is available in the queue. After assignment, the resident, assigned author, moderators, and administrators can view the attachments. An assigned author can copy selected ready images into the article draft.
 - Residents can edit until the first author takes the suggestion into work. Returning it to the queue does not restore editing.
 - The Author role does not grant rejection or deletion rights. Moderators and administrators can delete unpublished suggestions manually.
 - Moderators and administrators can read suggestions in the moderation workspace without contact details. Manual deletion requires a reason. The audit record retains the suggestion ID, acting account, time, and reason without a copy of the suggestion.
@@ -199,9 +202,9 @@ Role names in the profile use these Russian display labels:
 
 Review outcomes and feedback are delivered to the account and by Email. Profile settings provide separate switches for every notification type and channel. Disabling notifications does not hide decisions or feedback in content records.
 
-Stage 2 notifies the article author of return with feedback, final rejection, approval, publication, direct editorial correction, withdrawal, and closure of a superseded working version. Template submitters receive approval, rejection, archival, block, and unblock notifications. Each type defaults to enabled for both account and Email delivery.
+Article authors receive notices for return with feedback, final rejection, approval, publication, direct editorial correction, withdrawal, and closure of a superseded working version. Template submitters receive approval, rejection, archival, block, and unblock notifications. Each type defaults to enabled for both account and Email delivery.
 
-Notify only affected editors about resubmission to their review, author withdrawal/deletion, and review transfer. Do not broadcast new shared-queue articles to all editors. Template block/unblock notifications also go to authors of affected articles, including drafts.
+Notify only affected editors about resubmission to their review, author withdrawal/deletion, and review transfer. Do not broadcast new shared-queue articles to all editors. Template block/unblock notifications also go once to each author whose current draft or publication uses the image. Historical versions alone do not trigger a notification.
 
 Users may mark account notifications as read and remove them from their own list. Automatically delete these notifications 30 days after creation regardless of read state. Removing a notification does not delete the underlying decision or content history.
 
@@ -221,7 +224,7 @@ Staff work areas support the workflows above, alongside:
 
 Stage 2 uploads support JPEG, PNG, and static WebP; SVG and animation are excluded. Each source file is limited to 10 MiB (10,485,760 bytes) and 40 megapixels (40,000,000 pixels). Each article version may reference at most 20 distinct images across its cover, gallery, and body; repeated use of the same image counts once. Other file types require separate agreement. Draft materials are private; public access follows the owning content's publication rules.
 
-Correct image orientation, remove EXIF and other metadata, and create smaller variants for page delivery. Retain only the processed image and its variants, not the source file.
+Correct image orientation, preserve transparency, remove EXIF and other metadata, and create smaller variants for page delivery. Retain only the processed image and its variants, not the source file.
 
 Authors select their own uploads or approved shared image templates. Any author may submit an image to the template library; moderators or administrators review it before it becomes selectable by all authors. Images from other published articles do not automatically become shared templates. Rejection requires a reason; the author can correct the proposal and resubmit. The file of an approved template cannot be replaced; a new image requires a separate proposal and review.
 

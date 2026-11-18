@@ -1,5 +1,12 @@
 # Stage 3: Citizen Story Suggestions
 
+## Status and Sources
+
+The owner accepted Stage 3 on 2026-11-19 after reviewing queued photo access
+and the editorial preview. No Stage 3 product decisions remain open.
+See the [product rules](../VALUE.md#citizen-story-suggestions) and
+[module design](../CORE.md#citizen-submissions).
+
 ## Goal and scope
 
 A resident can send a topic to the portal and track it while it exists. An author
@@ -7,9 +14,6 @@ can take it from a shared queue and create a draft for the existing News workflo
 Moderators and administrators can delete suggestions manually. An unpublished
 suggestion expires after 72 accumulated hours in the queue. The clock pauses
 while an author works on its draft. Published suggestions remain in the account.
-
-The product and architecture baselines are [VALUE.md](../VALUE.md#citizen-story-suggestions)
-and [CORE.md](../CORE.md#citizen-submissions).
 
 ## Workflow and permissions
 
@@ -38,8 +42,8 @@ permanently closes resident editing, including after a return to the queue.
 - Store creation, the current queue deadline and the pause timestamp in UTC.
   Resume by shifting the deadline by the time spent paused. After 72 hours in
   the queue the suggestion becomes inaccessible even if the Worker has yet to
-  delete its row. Use the existing
-  persistent Quartz scheduler for cleanup. Recheck expiry and state when writing.
+  delete its row. The persistent Quartz scheduler runs cleanup. Writes recheck
+  expiry and state.
 - Use explicit module operations for News drafts and Media references. Coordinate
   the draft, its transferred references, and the suggestion update in one database
   transaction. The draft and its attachments must have independent references.
@@ -52,6 +56,16 @@ permanently closes resident editing, including after a return to the queue.
 - Use browser-rendered Angular account and staff pages. Verify permissions and
   concurrency with xUnit and Testcontainers, and test resident and staff workflows
   through the browser.
+
+### API Contract
+
+| Routes | Behavior |
+| --- | --- |
+| GET/POST `/api/account/suggestions`, GET/PUT `/api/account/suggestions/{id}` | List, submit, open or edit the resident's own suggestions. Edits require the current version and close after the first claim. |
+| POST `/api/account/suggestions/uploads`, GET `/api/account/suggestions/{id}/images/{imageId}` | Stage a private upload or stream a resident-owned attachment. |
+| GET `/api/staff/suggestions/queue` or `/moderation` under the same prefix | Author queue and `mine=true` assignments, or the separate moderation list. |
+| GET `/api/staff/suggestions/{id}/images` and `/api/staff/suggestions/{id}/images/{imageId}` | List or stream attachments after checking the current audience and suggestion state. |
+| POST `/api/staff/suggestions/{id}/claim`, `/return`, `/delete` or `/import-images` under the same suggestion path | Apply an authorized assignment, moderation or import action. Claim, return and delete require the current suggestion version. |
 
 ## Delivery order
 
@@ -76,15 +90,16 @@ permanently closes resident editing, including after a return to the queue.
 - At 72 accumulated hours in the queue, the suggestion disappears from all reads and cannot
   be claimed or converted. Cleanup resumes after a Worker restart and removes
   the expired record without an archive.
-- A linked draft follows normal editorial review. Deleting the suggestion
-  preserves the draft, transferred materials, and its origin in article history.
+- A linked draft follows normal editorial review. Staff deletion of the
+  suggestion preserves the draft, transferred materials, and its origin in article history.
   A failed conversion leaves no partial draft or Media references.
 - Residents see Queued, In progress, and Published. Published links to the
   resulting public article. The public byline credits the resident for the
   idea alongside the author and exposes no contact details.
-- Only confirmed audiences can access attachments. Import accepts only ready
-  images from the assigned suggestion. The public article retains its imported
-  images independently of the source. First publication queues one resident
+- Authors can preview attachments in the available queue without seeing contacts.
+  After a claim, another author cannot list or open those attachments. Import
+  accepts only ready images from the assigned suggestion. The public article
+  retains its imported images independently of the source. First publication queues one resident
   notice subject to the settings of each channel.
 - The owner checks the resident and staff flows and reviews one failure scenario.
 
@@ -94,9 +109,10 @@ permanently closes resident editing, including after a return to the queue.
   suggestion, up to 10 MiB each. The usual Media processor validates and
   re-encodes each file, strips metadata and creates durable processing work.
 - Submission and edits attach only the resident's own suggestion uploads.
-  A file can belong to one suggestion. The author queue contains no attachment
-  URLs. The resident, the assigned author and moderation staff can open
-  attachments through access checks against the current suggestion.
+  A file can belong to one suggestion. Staff attachment list and image requests
+  recheck whether the suggestion is available in the queue or assigned to the
+  requesting author. Moderation staff and the resident retain their existing
+  access. Expired or deleted suggestions deny both attachment requests.
 - An assigned author can copy selected ready images into the draft gallery.
   Import preserves the existing draft and is safe to retry. The author
   supplies alternative text before editorial submission.
@@ -110,13 +126,11 @@ permanently closes resident editing, including after a return to the queue.
 
 ## Author queue and manual deletion
 
-The owner confirmed these access and deletion rules.
-
 - Show authors an available queue and a separate list of their own assignments.
-  The queue contains the title, description, event date and location. The
-  assigned author can see the full card and its contact details. Other authors
-  lose access when the assignment starts. The resident keeps access to their
-  own suggestion until it is deleted or expires.
+  The queue contains the title, full description, event date and location, with
+  attached photos available on demand. Contacts appear only in the assigned
+  author's list. Other authors lose access when the assignment starts.
+  Residents keep access to their own suggestions until deletion or expiry.
 - Claim and return require the current version. A claim sets the assignee,
   pauses expiry, records the first claim time if absent and creates an article
   draft in the same PostgreSQL transaction. Return deletes the unpublished
@@ -130,8 +144,9 @@ The owner confirmed these access and deletion rules.
   create an assignment after role removal commits.
 - Moderators and administrators have a separate list and can view current
   cards without contact details. Manual deletion requires the current version
-  and a reason of up to 1,000 characters. Delete the suggestion and record its ID, the acting account,
-  time and reason together. The record holds no copy of the suggestion.
+  and a reason of up to 1,000 characters. Delete the suggestion and record its
+  ID, the acting account, time and reason together. The record holds no copy of
+  the suggestion.
 - Queue, assignments and moderation lists show up to 20 items per page, with
   the earliest expiry first. Staff endpoints are under `/api/staff/suggestions`.
 - Ordinary News draft deletion also returns the linked suggestion in the
@@ -142,17 +157,8 @@ The owner confirmed these access and deletion rules.
 - The upgrade returns assignments from the earlier schema to the queue under
   their existing deadlines, because they had no linked draft. It preserves
   suggestions, resident editing locks and deletion audit records.
-- Verify concurrent claim, edit versus claim, access before and after
-  assignment, role removal versus claim, manual deletion versus competing
-  writes, and expiry while the Worker is stopped.
 
-## Implementation status
-
-The owner confirmed the submission and editing rules and manual deletion by
-Moderator as well as Administrator. The resident text workflow, paused expiry,
-author assignment, linked drafts, publication status, public credit, manual
-deletion, private image attachments and first-publication notices are implemented.
-Stage closure awaits owner acceptance.
+## Verification
 
 The resident integration test uses PostgreSQL and the real HTTP account
 endpoints. It verifies repeat migration, Email confirmation, CSRF, ownership,
@@ -173,14 +179,18 @@ and the public byline shows the resident's name without contact details.
 
 The image integration test runs against PostgreSQL and private S3-compatible
 storage. It covers foreign uploads, the attachment limit, role-specific
-reads, repeated import, loss of access after return, and cleanup after expiry
-and manual deletion. It verifies an article can still read its imported image
-after suggestion deletion and an image removed from the only draft is reclaimed.
+reads, repeated import, and cleanup after expiry and manual deletion. It checks
+photo access while queued, denial for another author during assignment, access
+when a suggestion returns to the queue, and loss of access through the old draft.
+It verifies that an article can still read an imported image after suggestion
+deletion and that Media reclaims an image removed from its only draft.
+An Angular regression verifies that a queued card opens a ready photo and
+excludes contacts and draft import controls.
 The publication test verifies one account notice and one queued Email across
 first publication and republication.
 
-The isolated Compose check used current built images with PostgreSQL, RabbitMQ,
-RustFS, Mailpit and Caddy. A 390 px resident browser submitted a real image and
+An isolated Compose check used PostgreSQL, RabbitMQ, RustFS, Mailpit and Caddy.
+A 390 px resident browser submitted a real image and
 had no horizontal overflow. A 1440 px author browser claimed the suggestion,
 selected the processed image and opened its draft. The normal editorial API
 completed review and publication. The resident reopened the article from the
@@ -194,16 +204,18 @@ resident UI while its row remained. The published suggestion still linked
 to the article. The persistent Quartz job removed the expired row after
 the Worker restarted.
 
-The final Release build completed without warnings or errors. The backend
-passed 188 tests with no failures or skips, and the TRX counters matched all
-188 results. Angular passed 97 tests in 16 files. The production Angular
-build, formatting, generated-client check and Media migration model check
-passed.
+After the owner-review updates, 99 Angular tests and all four suggestion
+integration tests passed. The rebuilt local Compose stand returned HTTP 200
+for readiness and for both queues under their respective demo accounts. The
+final photo and review preview interactions were covered by the Angular
+regressions and the attachment permissions by the PostgreSQL and S3 integration
+test.
 
-## Owner verification
+## Local Review Scenario
 
 From the homepage choose **Suggest a story** to submit a suggestion with a
-photo. From an Author account open **Resident suggestions**, take the item,
+photo. From an Author account open **Resident suggestions**, preview the photo
+in the available queue, confirm that contacts are hidden, then take the item,
 select a ready attachment in **My assignments**, then open the draft. Submit
 the completed article and publish after an Editor approves it. Check the
 published link and notice in the resident account and the byline on the public

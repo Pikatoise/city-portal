@@ -2,7 +2,7 @@
 
 ## Status and Sources
 
-Stage 2 is complete and owner-accepted as of 2026-11-17. News and Media workflows, public SSR discovery, the author/editor interfaces and the replacement public address contract are delivered. Technical verification, recovery and capacity evidence are recorded below. The owner checked the current interface and functions, reviewed transaction/data flow and failure handling, and explicitly accepted the stage. Issues #7-#14 are complete.
+Stage 2 is complete. See the [owner acceptance and limitations](#final-owner-acceptance-2026-11-17).
 
 [VALUE.md](../VALUE.md) defines product behavior, [CORE.md](../CORE.md) defines architecture, and [STAGE_1.md](STAGE_1.md) records the delivered account and Email contracts. This specification distinguishes owner-approved product behavior from engineering defaults selected under delegated technical decisions. Changes to business behavior still require owner agreement.
 
@@ -32,7 +32,11 @@ Retain the stack and security baseline in CORE.md. Add one News project and one 
 | Identity | Existing accounts, current effective roles, confirmed-Email enforcement, and sessions. |
 | Notifications | Workflow delivery, preferences, attempts, retries, and account notification presentation. Business decisions remain in the owning News or Media module. |
 
-Use S3-compatible object storage for images and PostgreSQL Full-Text Search for basic news search. Select the editor through a small prototype before building the article form. Select a maintained S3-compatible local service and processing library during the Media infrastructure task, checking compatibility, licensing, and security before pinning versions. This is an engineering task. Do not initially cache public article/feed/image responses; database visibility checks preserve immediate withdrawal and blocking. Redis remains selected infrastructure for later justified caching.
+The editor prototype led to Tiptap with a ProseMirror document format.
+[CORE.md](../CORE.md#media-storage-and-processing) records the Media stack and
+[the search section](../CORE.md#data-access-search-and-cache) records the
+PostgreSQL full-text search design. Public article, feed and image responses
+use `no-store` and check current database visibility.
 
 ## Implementation Order
 
@@ -220,18 +224,9 @@ Represent template approval (`Pending`, `Rejected`, `Approved`) separately from 
 
 Save draft working data without snapshotting every keystroke into editorial history. Freeze and retain snapshots at submission and significant decisions/public changes; retain the full content on article deletion and supersession. Preserve all already-retained versions. Never expose current unsent draft edits through review history, media references, notification bodies, or shared queries.
 
-### Prototype and Delivery Checks
-
-The first implementation task prototypes the editor and homepage using the agreed rules. Choose editor/library/storage versions after checking current official documentation, licenses, structured-document round-trip, Angular compatibility, image access, and SSR safety. The editor prototype must cover all required blocks, image captions/alt text, links, validation, and unsafe pasted content. The homepage prototype uses the main featured block and five-item latest/category blocks and a separate detailed list with paging, responsive layout, a one-to-five-story carousel inside the large card, and three general latest-news cards alongside. The owner reviews concrete prototypes; do not restart a technical questionnaire for library/encoding/CSS choices.
-
-Demonstrate backup and restore of PostgreSQL, protected configuration/keys, and processed image objects into an isolated environment. Verify published and private image access, retained history, pending delivery, migration repeatability, and application restart. No production/public deployment is implied.
-
 ## Decisions and Tracking
 
-No Stage 2 product decisions remain open. New business choices require owner agreement.
-The category/search bar includes All News, which opens the unfiltered detailed list.
-Latest/category buttons scroll to homepage blocks; the detailed list hides this bar
-and retains its own filters and site header.
+No Stage 2 product decisions remain open.
 
 Issues #7-#14 are complete in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
 
@@ -249,7 +244,7 @@ Issues #7-#14 are complete in [GitHub Project 3](https://github.com/users/Pikato
 ## Acceptance Criteria
 
 - An author can draft, submit, correct a returned article, obtain approval, and publish through the UI and API. Final rejection prevents resubmission; assignments and takeover preserve history.
-- Autosave and manual Save persist incomplete drafts without requiring submission fields. Stale saves cannot overwrite committed changes. Submission rejects missing required fields. Competing claims on one queued article produce only one assigned reviewer.
+- Autosave and manual Save persist incomplete drafts without requiring submission fields. Stale saves cannot overwrite committed changes. Submission rejects missing required fields. Competing claims on one queued article produce only one assigned reviewer. After a successful claim or takeover, focus the submitted article preview, with its rendered body and images, in the review workspace.
 - Authors can delete their own never-published articles before or after submission, including during review and after rejection; this operation rejects ever-published articles. Removing Author closes author UI/API access, including own unpublished materials and history, unless a current role grants the relevant permission. Releasing a review removes its assignment, restores shared-queue availability, and records the actor in history.
 - New unsent changes after a return are author-only; submitted snapshots/history retain their agreed audience. Resubmission after author withdrawal returns to the previous eligible reviewer or falls back to the shared queue. Saving approved unpublished content explicitly validates fields and atomically saves, invalidates approval, and returns the changed version to the previous eligible reviewer or queue. Autosave is disabled for this operation; invalid input cannot change approval or review state.
 - API authorization rejects unconfirmed or unauthorized actors, stale versions, and invalid state transitions. Revoked permissions cannot bypass the agreed transaction checks.
@@ -277,16 +272,17 @@ Issues #7-#14 are complete in [GitHub Project 3](https://github.com/users/Pikato
 ## Acceptance evidence map
 
 Named backend tests are in `tests/CityPortal.IntegrationTests/`. Module-specific
-frontend mappings are in [NEWS.md](../NEWS.md) and [MEDIA.md](../MEDIA.md).
+implementation details are in [CORE.md](../CORE.md).
 These are recorded runs, not a new execution. Historical alias checks preceded
 the replacement address contract above.
 
 | Criteria | Concrete evidence |
 | --- | --- |
 | Draft, submit, return, resubmit, approve, publish; rejection and history | `Review_ReturnAndResubmit_PreserveSnapshotAndPrivateUnsentChangesAsync`; `Review_RecallFinalRejectionAndRetainedDeletion_EnforceTransitionsAsync`; fresh split-role browser workflow. |
+| Preview immediately after claiming an article | Angular regression opens and focuses the submitted preview and checks the body, cover, inline image and gallery. |
 | Durable incomplete saves, conflicts and single review claim | `Drafts_IncompleteSaveReopenAndCompetingVersions_PreserveOneCommittedRevisionAsync`; `Review_AssignmentRacesTakeoverReleaseAndRoleLoss_EnforceCurrentAccessAsync`. |
 | Never-published deletion, Author removal and review release | `Drafts_PrivateOwnersAndRoleRemoval_DenyOtherAuthorsAndStaffAsync`; `Review_RecallFinalRejectionAndRetainedDeletion_EnforceTransitionsAsync`; assignment-race test above. |
-| Private unsent changes, recall routing, approved Save and disabled autosave | `Review_ReturnAndResubmit_PreserveSnapshotAndPrivateUnsentChangesAsync`; `Review_ApprovedSaveInvalidatesApprovalAndPublicationIsSeparateAsync`; author-workspace frontend regressions in `NEWS.md`. |
+| Private unsent changes, recall routing, approved Save and disabled autosave | `Review_ReturnAndResubmit_PreserveSnapshotAndPrivateUnsentChangesAsync`, `Review_ApprovedSaveInvalidatesApprovalAndPublicationIsSeparateAsync`, and author-workspace frontend regressions. |
 | Current permissions, versions and state transitions | `Review_RoleRemovalVersusApproval_SerializesAuthorizationAndAssignmentAsync`; `Published_CorrectionVersusEditorialRoleRevocation_RechecksCurrentPermissionAsync`; `Published_CorrectionValidationPermissionsAndWithdrawnState_DoNotMutateAsync`. |
 | Effective Administrator editorial permissions and draft privacy | `Drafts_PrivateOwnersAndRoleRemoval_DenyOtherAuthorsAndStaffAsync`; `Published_DirectCorrectionSupersedesWorkingTextAndPreservesCreditAsync`; split-role browser reviewer has Administrator without Editor. |
 | Single working version and transactional reviewer-role loss | `Review_AssignmentRacesTakeoverReleaseAndRoleLoss_EnforceCurrentAccessAsync`; `Review_RoleRemovalVersusApproval_SerializesAuthorizationAndAssignmentAsync`; published-revision concurrency scenarios. |
@@ -298,7 +294,7 @@ the replacement address contract above.
 | Immutable approved templates, archive/block independence, unblock and placeholders | `Templates_ReviewArchiveBlockAndRemoval_PreserveIndependentStatesAsync`; `Published_SharedImageReferencesAndTemplateBlocks_EnforceCurrentVisibilityAsync`; public-article failed-image frontend regressions. |
 | Removal-request archive, restoration, seven-day cleanup and attachment race | `Templates_ReviewArchiveBlockAndRemoval_PreserveIndependentStatesAsync`; `Cleanup_RetainedReferencesAndUnusedUploads_KeepOnlyProtectedObjectsAsync`; `Cleanup_ConcurrentAttachment_WaitsAndPreservesTheWinningReferenceAsync`. |
 | Taxonomy uniqueness and inherited archived associations | `Taxonomy_UniqueArchivedNamesAndExistingAssociations_EnforcePermissionsAndVersionsAsync`. |
-| Text/tag/image boundaries, format/MIME/animation and distinct-image counting | `NewsDocumentTests`, `MediaBoundaryTests`, `MediaProcessorTests`; exact case mapping in `NEWS.md` and `MEDIA.md`. |
+| Text/tag/image boundaries, format/MIME/animation and distinct-image counting | `NewsDocumentTests`, `MediaBoundaryTests`, `MediaProcessorTests`. |
 | Source attribution, contextual alternative text and one flat category | `NewsDocumentTests`; production drafting submission and preview regressions. |
 | SSR, metadata, aliases and publication-safe search/filtering | `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync`; `NewsDiscoveryTests`; fresh HTTP/HTTPS and browser verification. |
 | Current author credit, revision-owned SEO and featured limits/order | `Discovery_RussianSearchFiltersAndReplacement_UseOnlyCurrentPublicationAsync`; `Published_PublicReadsAliasesAndWithdrawal_ExposeOnlyCurrentPublicContentAsync`; `Curation_ConcurrentFeaturedLimitAndWithdrawalPreserveVisibilityAsync`. |
@@ -306,7 +302,7 @@ the replacement address contract above.
 | Atomic decisions/notifications, outages, restart and duplicate delivery | `Review_NotificationFailure_RollsBackDecisionAndRoleReleaseAsync`; `Published_NotificationFailureRollsBackPublicTextHistoryAndMediaAsync`; `TemplateNotifications_QueueFailure_RollsBackDecisionAndHistoryAsync`; `CommittedOutbox_WhenBrokerAndWorkerRecover_DeliversOnceAndSurvivesRestartAsync`. |
 | Independent channel switches and user-owned notification read/delete | `Notifications_OwnershipCsrfAndPreferences_KeepChannelsIndependentAsync`; `WorkflowMail_DisabledAfterQueue_SkipsSmtpAndPreservesAccountNoticeAsync`. |
 | Affected-editor/current-author fanout, privacy and 30-day notification expiry | `TemplateNotifications_DecisionsAndAffectedCurrentAuthors_QueueOnceWithoutPrivateContentAsync`; `Notifications_RollbackDuplicateAndRetention_PreserveDurabilityBoundariesAsync`; `WorkflowMail_SevenDayExpiryAndThirtyDayRetention_RejectReplayAndRemoveReadAndUnreadNoticesAsync`. |
-| Migrations, generated contracts, builds/formatting, real infrastructure and backup/restore | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`; `DiscoveryMigration_ExistingPublishedSearchData_PreservesContentAndUsesMainStorageAsync`; `Recovery_DatabaseObjectsAndKeys_PreserveNewsPrivacyHistoryAndPendingDeliveryAsync`; final command record below. |
+| Migrations, generated contracts, builds/formatting, real infrastructure and backup/restore | `ModuleMigrations_OnEmptyDatabase_CreateOwnedSchemasAndPreserveDataOnRepeatAsync`; `DiscoveryMigration_ExistingPublishedSearchData_PreservesContentAndUsesMainStorageAsync`; `Restore_MetadataAndProcessedObjects_PreservesPrivateReadsAndPendingWorkAsync`; `Recovery_DatabaseObjectsAndKeys_PreserveNewsPrivacyHistoryAndPendingDeliveryAsync`; final command record below. |
 | Owner reviews workflows, data flow and a failure scenario | Owner reviewed and accepted on 2026-11-17; see final acceptance below. |
 
 ## Combined recovery
@@ -361,17 +357,7 @@ revisions and takes normal PostgreSQL DDL/write locks. Allow time and disk space
 for that work and take the consistent backup first. A migration failure rolls
 back; a later explicit run may retry it. No public cache was introduced.
 
-## Final command and capacity results
-
-The issue #14 Release build passed without warnings/errors; its full backend run
-passed 165 tests with zero failures/skips and matching TRX outcomes. It included
-real PostgreSQL, RabbitMQ, RustFS and SMTP, combined recovery, migration upgrades,
-outages, duplicates, rollback and permission races. Focused recovery/upgrade runs
-were separate checks, not additional test totals. Production SSR, 90 frontend tests
-in 14 files, formatting, generated-client/runtime OpenAPI consistency and explicit
-repeat migrations passed. CA/hostname-verified HTTPS metadata returned 200;
-browser certificate exceptions were scoped to isolated automation contexts.
-The later final run is recorded below.
+## Capacity Results
 
 The final capacity run reused the same isolated, migrated 10,000-article fixture
 after warm-up. Each route received 24 warm-up requests at eight readers, then
@@ -420,8 +406,8 @@ publication, private proposals, direct correction/supersession, template placeho
 withdrawal and reviewed republication. A real Worker processed images and sent
 publication notices through SMTP. The reviewer held Administrator without Editor.
 Withdrawal removed public content, private reasons, article metadata and image grants;
-republication retained first-publication time. Earlier 307 alias checks were superseded
-by the replacement address verification, which confirmed 404 for old addresses.
+republication retained first-publication time. Replacement address verification
+confirmed 404 for old addresses.
 Homepage/list/article layouts at 1440px and 390px had no horizontal overflow or
 browser page errors. Completed fixtures, screenshots and logs were removed.
 
@@ -443,7 +429,7 @@ exercise metadata/query volume; processed-object transfer throughput is outside
 this measurement and is covered functionally by recovery/live Media checks.
 No maximum-length-content or multi-hour soak claim is made.
 
-## Final Verification and Maintenance
+## Final Verification
 
 The final 2026-11-17 pre-merge Release run passed 184 backend tests, zero failed
 or skipped; TRX totals and individual outcomes agreed. Frontend passed 96 tests
@@ -457,17 +443,8 @@ and repeat stand startup passed. Replacement-address checks covered transliterat
 collision rollback, concurrent publication/correction, retained local dates and
 interrupted backfill recovery; EF pending-model verification passed.
 
-The completed UI prototype and execution plans were removed. The review stand,
-credentials, stored content, required SDK and dependencies remain. Local setup and
-recovery commands belong in [DEVELOPMENT.md](../DEVELOPMENT.md); module operations
-and document details belong in [MEDIA.md](../MEDIA.md) and [NEWS.md](../NEWS.md).
-Git history retains intermediate delivery, review and cleanup records.
-
-A cleanup incident removed the ignored local SDK/credential directory. Original
-credentials and SDK 10.0.403 were restored; certificate-verified login and exact roles
-passed for all five stand accounts without password/content changes. Persistent
-Compose data and service secrets were unaffected. Remove only exact resolved
-temporary directories; never clean an ignored parent through Git pathspecs.
+Local setup and recovery commands are in [DEVELOPMENT.md](../DEVELOPMENT.md).
+Module design is in [CORE.md](../CORE.md).
 
 ## Final Owner Acceptance: 2026-11-17
 
@@ -479,8 +456,7 @@ through one PostgreSQL transaction, then Outbox/broker/Worker delivery after com
 
 The owner reviewed rollback before commit, durable delivery after broker/SMTP
 outages, exhausted automatic retries, administrator replay and workflow Email
-expiry/retention, and accepted the result. Issues #7-#14 are complete; Stage 2
-is closed. Stage 3 can now be specified separately with the owner.
+expiry and retention. Stage 2 is closed.
 
 Recorded limitations remain: SMTP acceptance followed by a crash before recording
 success can duplicate external Email; exhausted retries require administrator

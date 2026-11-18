@@ -54,9 +54,21 @@ Pin compatible stable Angular and dependency versions when creating the solution
 
 ## Media Storage and Processing
 
-The Media module now uses SkiaSharp 4.156.0, AWSSDK.S3 4.1.0, and private RustFS 1.0.0 for local storage. Processed payloads are staged durably in PostgreSQL before the Worker writes deterministic S3 objects; only Ready images can be attached. Media reconciliation shares the existing persistent Quartz scheduler registration. Details, configuration, authorization boundaries, and recovery evidence are in [MEDIA.md](MEDIA.md).
+Media owns processed-image metadata, usage references, template proposals,
+moderation history, and removal requests. SkiaSharp generates a master and
+three WebP variants with long edges capped at 480, 1280, and 2560 pixels.
+It encodes all four at quality 85 without upscaling. Media atomically stores the
+Processing row and variant payloads in PostgreSQL. The Worker writes deterministic
+keys to private S3-compatible storage through AWSSDK.S3, marks the image Ready and clears
+the staged payloads in one database transaction. Only Ready images can be
+attached. Partial writes retain payloads for retry with a 20-second to
+15-minute backoff. Missing payloads mark the image Failed.
 
-Template decisions atomically enqueue configurable account/Email notifications through explicit Notifications operations on the same database transaction. Notifications owns channel preferences, account notices, durable deduplication receipts, and the existing Wolverine Email Outbox/Inbox delivery pipeline. Media marks image references as current or historical so template block/unblock fanout includes current drafts/publications without notifying authors solely because of retained history. News must maintain that distinction when integrating revision references.
+Reconciliation runs every ten seconds without concurrent execution in the
+existing persistent Quartz scheduler, named `CityPortal.Email`. Cleanup takes
+the same resource lock as attachment, rechecks retention, and marks an image
+Deleting before removing its objects. Failed object deletion keeps the row
+available for retry. See [local storage and recovery](DEVELOPMENT.md#stage-2-upgrade-and-recovery).
 
 ## Frontend and Public Delivery
 
@@ -120,25 +132,38 @@ News owns drafting, taxonomy, independent working/published revisions, immutable
 submitted snapshots and retained history. Identity joins assignment release through
 `IAccountRoleChangeObserver` in the role-change transaction; Administrator preserves
 effective editorial permissions. News, Media references and notifications commit
-atomically. Detailed delivered contracts are in [STAGE_2.md](stages/STAGE_2.md);
-structured-document and UI implementation details are in [NEWS.md](NEWS.md).
+atomically. The editorial state transitions and API contracts are in
+[STAGE_2.md](stages/STAGE_2.md).
 
-Implement the full editorial process and published article corrections during delivery stage 2. Follow VALUE.md for review ownership, returns, final rejection, approval, publication permissions, direct editor corrections, withdrawal, and republication.
+Article revisions store `schemaVersion: 1` and a ProseMirror JSON body edited
+with Tiptap. Title, summary, taxonomy IDs, cover/gallery placements, attribution
+and SEO are separate revision fields. The server validates and renders the
+document using an independent allowlist. Supported nodes are `doc`,
+`paragraph`, `heading` (H2/H3), `text`, `bulletList`, `orderedList`,
+`listItem`, `blockquote`, `hardBreak` and `mediaFigure`. Text and hard
+breaks can carry bold, italic and absolute HTTP/HTTPS link marks. Ordered-list
+starts range from 1 to 1,000,000. Canonicalization strips editor-only link
+attributes. Rendering escapes attributes and sets `rel="noopener noreferrer"`.
+The editor converts pasted rich content to plain text. Images reference Media
+IDs and carry contextual alternative text and captions.
 
-Separate the published revision from unpublished work from the beginning. Preserve article versions and significant action history from the first implementation that allows published content to change. Advanced comparison tools may come later; revision safety and basic history may not.
-
-Store article content as a structured editor document with a limited set of blocks. Images reference Media records. Validate document structure, URLs, and content on the server and sanitize rendered content. Arbitrary HTML is not supported. Choose the concrete editor through a small prototype before implementing the article form.
+The body is limited to 2 MiB of UTF-8 JSON, 2,000 blocks, 20,000 nodes and 24
+levels. A complete save request is limited to 4 MiB. The server checks the
+structure and any supplied fields on draft save, then enforces required fields
+on submission and when saving an approved version.
 
 Scheduled publication remains deferred scope even though scheduling infrastructure is available earlier. When introduced, define durable scheduling, concurrency, and restart recovery behavior.
 
 ### Citizen Submissions
 
 The [Stage 3 specification](stages/STAGE_3.md) records the resident submission
-contract, implementation progress, and remaining decisions.
+contract and owner acceptance.
 
-Implement the shared author queue and assignment process from VALUE.md, separately from editorial article review. Taking a suggestion creates a linked draft in the same transaction as the assignment. Returning an unpublished suggestion deletes the draft through the News workflow and resumes the queue timer. Manual deletion requires the Moderator or Administrator role.
-
-Fully delete unassigned suggestions after 72 accumulated hours in the queue without an archived copy. Assignment pauses that clock. Published suggestions remain in the resident account. Quartz.NET schedules cleanup. Expired suggestions must not remain accessible while physical cleanup is pending. Articles and materials transferred into them survive independently; article history retains that the topic came from a resident. References must tolerate deletion of the original suggestion.
+Taking a suggestion creates its News draft in the same transaction as the
+assignment. Returning it deletes the unpublished draft through News and resumes
+the queue timer. Reads exclude expired suggestions immediately, and the
+persistent Quartz job deletes their rows. News retains its own article,
+origin history and Media references when staff delete the source suggestion.
 
 Citizen Submissions joins removal of the Author role in the Identity transaction
 to release unpublished assignments. Manual deletion and its audit record commit
@@ -172,6 +197,15 @@ Notifications owns channel settings and delivery attempts. Owning business modul
 
 Specify notification events and defaults per workflow. Do not log passwords, authentication cookies, or recovery and confirmation links in ordinary application logs.
 
+Template decisions commit with their audit records, notification deduplication
+receipts, account notices and Email Outbox work in one PostgreSQL transaction.
+News preserves current working and publication references separately from
+retained history so Media can select affected authors when recording a template
+block or unblock. Notification content excludes private titles, template names
+and decision reasons. Delivery and replay recheck the Email preference and
+the original event deadline. Retention clears protected payloads for expired
+unsent work and leaves deduplication receipts intact.
+
 ## Background Processing and Integrations
 
 Use Wolverine with RabbitMQ and EF Core Transactional Outbox/Inbox integration. Save outgoing messages in the same PostgreSQL transaction as the business change. Worker infrastructure relays committed messages and executes handlers using shared module logic; it does not call the application's own HTTP API just to invoke business operations.
@@ -188,15 +222,27 @@ Email is introduced with accounts and each workflow's notifications. Telegram, w
 
 ## Media and Upload Security
 
-Use S3-compatible object storage for files and the Media module for metadata, ownership, and usage links. Uploaded files remain private until validated. Check actual format, file size, and image dimensions; generate storage keys on the server rather than trusting user filenames.
+Validate the decoded format against the declared MIME type and check dimensions,
+file size and animation, including animated containers with one frame. Enforce
+the [upload limits](stages/STAGE_2.md#engineering-defaults) and CSRF checks before
+processing. Acquire one upload slot per process before multipart model binding.
+The 11 MiB request limit bounds in-memory buffering. Generate keys on the server
+and retain only processed output.
 
-Stage 2 image formats and limits are specified in [STAGE_2.md](stages/STAGE_2.md#content-and-state-contracts). Processing corrects orientation, removes metadata, and produces page variants; original uploads are not retained. Media also owns author-submitted shared image templates and their moderation by Moderator or Administrator users. Authors may reuse approved templates, not arbitrary uploads from other authors. Template rejection requires a reason and permits author correction/resubmission; approved files are immutable. Moderator/Administrator template operations include archival preventing new selections and reasoned blocking that denies public delivery even when published content references the image. Preserve referenced files; blocked images render as placeholders in articles. Moderator/Administrator users can reverse erroneous blocks with a reason and audit record; restored delivery still requires current publication visibility.
+Keep buckets and objects private. The API checks the authorized audience or
+current publication reference and template block on every image response. Serve
+images with `no-store` and `nosniff`, with range and conditional responses
+disabled. Preserve these access checks when considering caching or signed
+delivery. Suggestion images stay outside editorial libraries. The suggestion
+module rechecks the queue or assignment state for each attachment list and
+image request. Imported images receive independent article references.
 
-Keep draft materials private. Public image access requires use in currently published content and no applicable template block; withdrawal closes access if no other current publication references the image. Retained private/history references prevent deletion without granting public access. Approved-template previews are available to authors; approval alone does not grant anonymous access. Template review permission for Administrator does not imply a general grant of every Moderator permission. Other file types require separate agreement.
-
-Stage 2 starts with private object buckets and API-streamed image reads that recheck current visibility and template blocks. Do not expose direct object URLs or shared-cache public article/feed/image responses initially. Preserve this access contract when considering later caching or signed delivery.
-
-Materials transferred from suggestions into articles need independent retained references. Clean up never-attached uploads seven days after creation; protect article, template-proposal, draft, revision, and history references. Coordinate reference attachment with cleanup and reconcile partial object-storage failures without deleting referenced files. Improved media capabilities can follow later, but basic upload security, sanitization, authorization, XSS prevention, rate limiting, and anti-spam controls apply from the first relevant release.
+News updates Media references in the same authorized transaction as the article
+change. When a new revision inherits an archived template, News passes the
+validated preceding revision ID from the same article. Direct corrections use
+the editing actor for upload selection and preserve the original author on the
+references. Cleanup follows the [product retention rules](VALUE.md#editorial-and-administrative-workspace)
+and the [suggestion attachment rules](stages/STAGE_3.md#attachments-and-notifications).
 
 ## Data Access, Search, and Cache
 
@@ -209,6 +255,13 @@ limitations are in [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance
 cache or new search engine was added.
 
 Use efficient PostgreSQL queries, suitable indexes, pagination, and bounded reads. Start with PostgreSQL Full-Text Search over published content. Use ordinary query filters for category, district, price, and related attributes. Draft content must not enter public search.
+
+News search builds a generated Russian `tsvector` on revisions and weights
+title A, summary B and body C. GIN indexes support search and tags. Public
+discovery joins the current `PublishedRevisionId` and checks article visibility
+on every query. Author names are fetched through one bounded Identity batch
+operation. SSR public API calls omit credentials and bypass browser and
+transfer caches. API and SSR responses use `no-store`.
 
 Use Redis for caching. Specify scope, TTL, invalidation, and failure behavior per feature, covering publication, revision replacement, withdrawal, blocking, and expiration. PostgreSQL remains the source of truth. Cache hits must not bypass authorization or current visibility checks. Immediate account blocking also applies to cached catalogs and direct listing pages.
 
@@ -246,7 +299,7 @@ Deliver functional stages in this order:
 | --- | --- |
 | 1 (complete) | Accounts, roles, Email, first-run installation, and the Identity/Notifications foundation. |
 | 2 (complete) | Complete news workflow, including published corrections, revision history, Media, public SSR pages, and basic news search. |
-| 3 | Citizen suggestions, assignment, conversion into articles, and 72-hour deletion. |
+| 3 (complete) | Citizen suggestions, assignment, conversion into articles, and 72-hour deletion. |
 | 4 | Classifieds, moderation, reports, account and listing blocking, and lifecycle management. |
 | 5 | Comments and their moderation. |
 | 6 | Telegram, weather, and RSS integrations. |
@@ -267,8 +320,8 @@ Document each delivery stage in `docs/stages/STAGE_X.md`, using the stage number
 
 During implementation, update affected specifications whenever requirements, contracts, or decisions change. Product changes belong in VALUE.md, architecture and delivery changes belong here, and stage details belong in the relevant stage specifications. Keep these sources and GitHub tracking consistent. New business rules and features still require owner confirmation.
 
-[Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) was owner-accepted on
-2026-11-13; [Stage 2: News and Media](stages/STAGE_2.md) on 2026-11-17.
+The owner accepted [Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) on
+2026-11-13, [Stage 2: News and Media](stages/STAGE_2.md) on 2026-11-17, and
+[Stage 3: Citizen Story Suggestions](stages/STAGE_3.md) on 2026-11-19.
 Their specifications retain delivered contracts, verification and limitations.
-Stage 2 issues #7-#14 are complete. [Stage 3: Citizen Story Suggestions](stages/STAGE_3.md)
-records the confirmed scope and the decisions to agree before implementation.
+Stage 2 issues #7-#14 are complete.
