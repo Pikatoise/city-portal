@@ -8,6 +8,8 @@ import { createSuggestion } from '../api/fn/suggestions/create-suggestion';
 import { getMySuggestion } from '../api/fn/suggestions/get-my-suggestion';
 import { listMySuggestions } from '../api/fn/suggestions/list-my-suggestions';
 import { updateMySuggestion } from '../api/fn/suggestions/update-my-suggestion';
+import { uploadSuggestionImage } from '../api/fn/suggestions/upload-suggestion-image';
+import { ImageResponse } from '../api/models/image-response';
 import { SuggestionResponse } from '../api/models/suggestion-response';
 import { CityClock } from '../staff/city-clock';
 import { AccountApi, errorMessage } from './account-api';
@@ -23,6 +25,7 @@ export class Suggestions implements OnInit {
   private readonly account = inject(AccountApi);
   protected readonly clock = inject(CityClock);
   protected readonly items = signal<SuggestionResponse[]>([]);
+  protected readonly images = signal<ImageResponse[]>([]);
   protected readonly selected = signal<SuggestionResponse | null>(null);
   protected readonly confirmed = signal(false);
   protected readonly signedOut = signal(false);
@@ -59,6 +62,7 @@ export class Suggestions implements OnInit {
     await this.run(async () => {
       const { body } = await firstValueFrom(getMySuggestion(this.http, '', { id }));
       this.selected.set(body);
+      this.images.set(body.images);
       this.items.update((items) => items.map((item) => (item.id === body.id ? body : item)));
       this.title = body.title;
       this.description = body.description;
@@ -70,6 +74,7 @@ export class Suggestions implements OnInit {
 
   protected reset(): void {
     this.selected.set(null);
+    this.images.set([]);
     this.title = '';
     this.description = '';
     this.eventDate = '';
@@ -77,6 +82,40 @@ export class Suggestions implements OnInit {
     this.contact = '';
     this.error.set('');
     this.notice.set('');
+  }
+
+  protected async upload(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = [...(input.files ?? [])];
+    input.value = '';
+    if (!files.length) return;
+    if (
+      files.length + this.images().length > 5 ||
+      files.some((file) => file.size > 10 * 1024 * 1024)
+    ) {
+      this.error.set('Выберите до пяти изображений размером до 10 МиБ каждое.');
+      return;
+    }
+    await this.run(async () => {
+      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
+      for (const file of files) {
+        const { body } = await firstValueFrom(
+          uploadSuggestionImage(this.http, '', { body: { file }, 'X-CSRF-TOKEN': csrf.token }),
+        );
+        this.images.update((items) => [...items, body]);
+      }
+    });
+  }
+
+  protected removeImage(id: string): void {
+    this.images.update((images) => images.filter((image) => image.id !== id));
+  }
+
+  protected imageUrl(id: string): string | undefined {
+    const selected = this.selected();
+    return selected?.images.some((image) => image.id === id && image.state === 'Ready')
+      ? `/api/account/suggestions/${selected.id}/images/${id}`
+      : undefined;
   }
 
   protected async save(): Promise<void> {
@@ -95,6 +134,7 @@ export class Suggestions implements OnInit {
         eventDate: this.eventDate || null,
         location: this.location.trim() || null,
         contact: this.contact.trim() || null,
+        imageIds: this.images().map((image) => image.id),
       };
       const current = this.selected();
       if (current) {

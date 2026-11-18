@@ -5,6 +5,7 @@ using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
+using CityPortal.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -240,6 +241,15 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         article = await ActAsync(editor, article, "claim");
         article = await ActAsync(editor, article, "approve");
         article = await ActAsync(author, article, "publish");
+        AccountNotificationResponse notification = Assert.Single((await resident.GetFromJsonAsync<AccountNotificationPage>("/api/account/notifications"))!.Items);
+        Assert.Equal("suggestion.published", notification.Type);
+        Assert.DoesNotContain(contact, notification.Message);
+        AccountResponse recipient = (await resident.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+        await using var deliveryDb = new NpgsqlConnection(database);
+        await deliveryDb.OpenAsync();
+        await using var delivery = new NpgsqlCommand("SELECT count(*) FROM notifications.\"EmailDeliveries\" WHERE \"AccountId\" = @id AND \"NotificationType\" = 'suggestion.published'", deliveryDb);
+        delivery.Parameters.AddWithValue("id", recipient.Id);
+        Assert.Equal(1L, await delivery.ExecuteScalarAsync());
 
         time.Advance(TimeSpan.FromDays(8));
         await ExpireAsync(factory);
@@ -265,6 +275,12 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         SuggestionResponse withdrawn = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
         Assert.Equal("Published", withdrawn.Status);
         Assert.Null(withdrawn.PublicArticleUrl);
+        article = (await author.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{article.Id}"))!;
+        article = await ActAsync(author, article, "submit", "Rechecked the facts.");
+        article = await ActAsync(editor, article, "approve");
+        await ActAsync(author, article, "publish");
+        Assert.Single((await resident.GetFromJsonAsync<AccountNotificationPage>("/api/account/notifications"))!.Items);
+        Assert.Equal(1L, await delivery.ExecuteScalarAsync());
     }
 
     private static async Task ExpireAsync(ApiFactory factory)
@@ -280,7 +296,7 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
     private static async Task<ArticleResponse> ActAsync(HttpClient client, string path, long version, string? reason) =>
         await ReadAsync<ArticleResponse>(await client.PostAsJsonAsync(path, new { version, reason }));
 
-    private static async Task<T> ReadAsync<T>(HttpResponseMessage response) where T : class
+    internal static async Task<T> ReadAsync<T>(HttpResponseMessage response) where T : class
     {
         using (response)
         {
@@ -292,7 +308,7 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
     private static async Task<StaffSuggestionPage> QueueAsync(HttpClient client, bool mine = false) =>
         (await client.GetFromJsonAsync<StaffSuggestionPage>($"{_staff}/queue?mine={mine}"))!;
 
-    private static async Task<HttpClient> LoginAsync(ApiFactory factory, string database, string name, bool confirmed, string? role = null)
+    internal static async Task<HttpClient> LoginAsync(ApiFactory factory, string database, string name, bool confirmed, string? role = null)
     {
         const string password = "1234567!";
         string email = $"{name}@suggestion.test";

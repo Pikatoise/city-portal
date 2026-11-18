@@ -9,6 +9,7 @@ public static class WorkflowNotificationTypes
         ["article.rejected"] = "Статья отклонена. Причина доступна в истории статьи.",
         ["article.approved"] = "Статья одобрена и готова к публикации.",
         ["article.published"] = "Статья опубликована.",
+        ["suggestion.published"] = "Статья по вашему предложению опубликована.",
         ["article.corrected"] = "Редактор исправил опубликованную статью.",
         ["article.withdrawn"] = "Статья снята с публикации.",
         ["article.superseded"] = "Рабочая версия закрыта после редакторского исправления.",

@@ -111,8 +111,34 @@ public sealed class ArticleOperations
             return [];
         return await _context.Articles.AsNoTracking().Where(item => ids.Contains(item.Id) && item.IdeaContributorId != null && item.DeletedAtUtc == null)
             .Select(item => new SuggestionArticleStatus(item.Id, item.FirstPublishedAtUtc != null,
-                item.PublicationState == "Published" ? item.PublicAddress : null))
+                item.PublicationState == "Published" ? item.PublicAddress : null,
+                item.FirstPublishedAtUtc == null && _context.Revisions.Any(revision => revision.Id == item.WorkingRevisionId && revision.State == "Draft" && !revision.Retained)))
             .ToDictionaryAsync(item => item.ArticleId, cancellationToken);
+    }
+
+    public async Task ImportSuggestionImagesAsync(Guid articleId, Guid authorId, Guid suggestionId, Guid[] ids, DbConnection connection,
+        DbTransaction transaction, CancellationToken cancellationToken)
+    {
+        await using NewsDbContext context = await NewsDatabase.JoinAsync(connection, transaction, cancellationToken);
+        NewsArticle? article = await context.Articles.FromSqlInterpolated($"SELECT * FROM news.\"Articles\" WHERE \"Id\" = {articleId} FOR UPDATE")
+            .SingleOrDefaultAsync(cancellationToken);
+        if (article is null || article.AuthorId != authorId || article.IdeaContributorId is null || article.DeletedAtUtc.HasValue)
+            throw NewsDatabase.Missing();
+        ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId, cancellationToken);
+        if (revision.State != "Draft" || revision.Retained || article.FirstPublishedAtUtc.HasValue)
+            throw NewsDatabase.Conflict();
+        ArticleContent content = JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson)!;
+        ValidatedArticleContent original = ArticleDocuments.Validate(content);
+        ArticleImage[] additions = ids.Where(id => !original.ImageIds.Contains(id)).Select(id => new ArticleImage(id, "")).ToArray();
+        if (additions.Length == 0)
+            return;
+        ValidatedArticleContent updated = ArticleDocuments.Validate(content with { Gallery = [.. content.Gallery, .. additions] });
+        await _media.ReplaceAsync(connection, transaction, revision.Id, authorId, null, false, false,
+            updated.ImageIds, cancellationToken, suggestionId: suggestionId);
+        Apply(revision, updated);
+        article.Version++;
+        article.UpdatedAtUtc = _time.GetUtcNow();
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ArticleResponse> SaveAsync(Guid actorId, Guid sessionId, Guid id, long version, ArticleContent content, CancellationToken cancellationToken)

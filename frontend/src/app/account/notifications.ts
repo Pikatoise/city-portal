@@ -31,6 +31,7 @@ export class Notifications implements OnInit {
     'article.rejected': 'Окончательное отклонение статьи',
     'article.approved': 'Одобрение статьи',
     'article.published': 'Публикация статьи',
+    'suggestion.published': 'Публикация статьи по вашему предложению',
     'article.corrected': 'Редакторское исправление',
     'article.withdrawn': 'Снятие статьи с публикации',
     'article.superseded': 'Закрытие рабочей версии',

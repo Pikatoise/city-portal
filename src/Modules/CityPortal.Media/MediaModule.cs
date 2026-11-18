@@ -17,6 +17,7 @@ public static class MediaModule
         services.AddSingleton<MediaImageProcessor>();
         services.AddSingleton<MediaObjectStore>();
         services.AddScoped<MediaReferences>();
+        services.AddScoped(provider => new SuggestionImages(provider.GetRequiredService<MediaDbContext>(), provider.GetRequiredService<MediaObjectStore>));
         services.AddScoped(provider => new MediaOperations(provider.GetRequiredService<MediaDbContext>(), provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<MediaImageProcessor>(), provider.GetRequiredService<MediaObjectStore>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new TemplateNotifications(provider.GetRequiredService<MediaDbContext>(), provider.GetRequiredService<WorkflowNotificationQueue>(), provider.GetRequiredService<AccountOperations>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped(provider => new TemplateOperations(provider.GetRequiredService<MediaDbContext>(), provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<TemplateNotifications>()));

@@ -30,7 +30,8 @@ public sealed class WorkflowNotificationTests : IClassFixture<RegistrationFixtur
         {
             Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/account/notifications")).StatusCode);
             NotificationPreferenceResponse[] defaults = (await owner.GetFromJsonAsync<NotificationPreferenceResponse[]>("/api/account/notification-preferences"))!;
-            Assert.Equal(18, defaults.Length);
+            Assert.Equal(19, defaults.Length);
+            Assert.Contains(defaults, item => item.Type == "suggestion.published");
             Assert.All(defaults, item => { Assert.True(item.Account); Assert.True(item.Email); });
             Assert.DoesNotContain(defaults, item => item.Type is "confirmation" or "recovery");
             var preference = new NotificationPreferenceResponse("template.approved", true, false);

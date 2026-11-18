@@ -82,15 +82,31 @@ permanently closes resident editing, including after a return to the queue.
 - Residents see Queued, In progress, and Published. Published links to the
   resulting public article. The public byline credits the resident for the
   idea alongside the author and exposes no contact details.
+- Only confirmed audiences can access attachments. Import accepts only ready
+  images from the assigned suggestion. The public article retains its imported
+  images independently of the source. First publication queues one resident
+  notice subject to the settings of each channel.
 - The owner checks the resident and staff flows and reviews one failure scenario.
 
-## Open decisions
+## Attachments and notifications
 
-- Attachments: permitted image formats, count and size limits, and access before
-  and after assignment.
-- Article materials: how and when the author selects optional suggestion
-  images for the draft created when claiming.
-- Resident feedback: which events need account or Email notifications.
+- A resident can stage up to five JPEG, PNG or static WebP images per
+  suggestion, up to 10 MiB each. The usual Media processor validates and
+  re-encodes each file, strips metadata and creates durable processing work.
+- Submission and edits attach only the resident's own suggestion uploads.
+  A file can belong to one suggestion. The author queue contains no attachment
+  URLs. The resident, the assigned author and moderation staff can open
+  attachments through access checks against the current suggestion.
+- An assigned author can copy selected ready images into the draft gallery.
+  Import preserves the existing draft and is safe to retry. The author
+  supplies alternative text before editorial submission.
+- Expiry or manual deletion removes the private attachment references in
+  the same transaction. Media reclaims unreferenced images and preserves
+  independent article references. Returning a draft removes the former
+  author's image access through that deleted draft.
+- The first publication queues a resident notice for the account and Email
+  channels using normal preferences. Publication and notification work share
+  a transaction. The notice contains no contact details or private link.
 
 ## Author queue and manual deletion
 
@@ -134,15 +150,14 @@ The owner confirmed these access and deletion rules.
 
 The owner confirmed the submission and editing rules and manual deletion by
 Moderator as well as Administrator. The resident text workflow, paused expiry,
-author assignment, linked drafts, publication status, public credit, and manual
-deletion are implemented. Image attachments and resident notifications still
-require the decisions above.
+author assignment, linked drafts, publication status, public credit, manual
+deletion, private image attachments and first-publication notices are implemented.
+Stage closure awaits owner acceptance.
 
 The resident integration test uses PostgreSQL and the real HTTP account
 endpoints. It verifies repeat migration, Email confirmation, CSRF, ownership,
 text validation, competing edits, the first-claim lock, the exact 72-hour
-visibility boundary, and physical deletion by the job. Quartz restart and
-interactive browser acceptance remain part of stage verification.
+visibility boundary, and physical deletion by the job.
 
 The staff integration test verifies competing claims, contact visibility,
 return without restoring resident editing, and release during a role removal
@@ -155,3 +170,43 @@ The publication workflow test uses the production review endpoints. It verifies
 that cleanup skips paused suggestions, return deletes the draft and resumes the
 remaining time, publication retains the suggestion beyond its original deadline,
 and the public byline shows the resident's name without contact details.
+
+The image integration test runs against PostgreSQL and private S3-compatible
+storage. It covers foreign uploads, the attachment limit, role-specific
+reads, repeated import, loss of access after return, and cleanup after expiry
+and manual deletion. It verifies an article can still read its imported image
+after suggestion deletion and an image removed from the only draft is reclaimed.
+The publication test verifies one account notice and one queued Email across
+first publication and republication.
+
+The isolated Compose check used current built images with PostgreSQL, RabbitMQ,
+RustFS, Mailpit and Caddy. A 390 px resident browser submitted a real image and
+had no horizontal overflow. A 1440 px author browser claimed the suggestion,
+selected the processed image and opened its draft. The normal editorial API
+completed review and publication. The resident reopened the article from the
+account and saw the author and idea credit. The imported image loaded as public
+WebP. The account notice appeared and Mailpit received the Email. The portal's
+HTTPS hostname and local CA were verified separately from the isolated browser
+contexts. The live OpenAPI document matched the client snapshot.
+
+With the Worker stopped, an expired queued suggestion disappeared from the
+resident UI while its row remained. The published suggestion still linked
+to the article. The persistent Quartz job removed the expired row after
+the Worker restarted.
+
+The final Release build completed without warnings or errors. The backend
+passed 188 tests with no failures or skips, and the TRX counters matched all
+188 results. Angular passed 97 tests in 16 files. The production Angular
+build, formatting, generated-client check and Media migration model check
+passed.
+
+## Owner verification
+
+From the homepage choose **Suggest a story** to submit a suggestion with a
+photo. From an Author account open **Resident suggestions**, take the item,
+select a ready attachment in **My assignments**, then open the draft. Submit
+the completed article and publish after an Editor approves it. Check the
+published link and notice in the resident account and the byline on the public
+article. To review the failure path, try claiming one queued suggestion with
+two different authors or return an unpublished suggestion and verify that its
+old draft is gone and its remaining queue time resumes.

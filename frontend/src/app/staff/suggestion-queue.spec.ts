@@ -30,6 +30,7 @@ it('clears remaining assigned contacts when refresh after a return is forbidden'
     assigned: true,
     articleId: 'article',
     canReturn: true,
+    canImportImages: true,
     published: false,
     expiresAtUtc: '2026-11-21T18:00:00Z',
     version: 2,
@@ -59,7 +60,9 @@ it('clears remaining assigned contacts when refresh after a return is forbidden'
     expect(panel.textContent).toContain('private@example.test');
   });
 
-  panel.querySelector('article button')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  [...panel.querySelectorAll('article button')]
+    .find((button) => button.textContent?.includes('вернуть в очередь'))!
+    .dispatchEvent(new MouseEvent('click', { bubbles: true }));
   http.expectOne('/api/auth/csrf').flush({ token: 'csrf' });
   await vi.waitFor(() =>
     http

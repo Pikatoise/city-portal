@@ -65,7 +65,9 @@ public sealed class MediaMaintenance
     public async Task CleanupAsync(CancellationToken cancellationToken)
     {
         DateTimeOffset cutoff = _time.GetUtcNow().AddDays(-7);
-        Guid[] candidates = await _context.Images.AsNoTracking().Where(image => image.State == "Deleting" || !image.EverAttached && image.CreatedAtUtc <= cutoff)
+        Guid[] candidates = await _context.Images.AsNoTracking().Where(image => image.State == "Deleting"
+            || (!image.EverAttached || image.ForSuggestion && !_context.References.Any(item => item.ImageId == image.Id))
+            && image.CreatedAtUtc <= cutoff && !_context.SuggestionImages.Any(item => item.ImageId == image.Id))
             .OrderBy(image => image.CreatedAtUtc).Select(image => image.Id).Take(50).ToArrayAsync(cancellationToken);
         foreach (Guid id in candidates)
         {
@@ -73,7 +75,9 @@ public sealed class MediaMaintenance
             await using (IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken))
             {
                 MediaImage? image = (await _context.Images.FromSqlInterpolated($"SELECT * FROM media.\"Images\" WHERE \"Id\" = {id} FOR UPDATE").ToListAsync(cancellationToken)).SingleOrDefault();
-                if (image is null || image.EverAttached || image.CreatedAtUtc > cutoff || await _context.References.AnyAsync(reference => reference.ImageId == id, cancellationToken)
+                if (image is null || image.EverAttached && !image.ForSuggestion || image.State != "Deleting" && image.CreatedAtUtc > cutoff
+                    || await _context.SuggestionImages.AnyAsync(reference => reference.ImageId == id, cancellationToken)
+                    || await _context.References.AnyAsync(reference => reference.ImageId == id, cancellationToken)
                     || await _context.Events.AnyAsync(entry => entry.ImageId == id, cancellationToken))
                     continue;
                 image.State = "Deleting";

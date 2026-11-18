@@ -154,6 +154,7 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         NewsArticle article = await LockAsync(context, id, version, scope.Actor, action, cancellationToken);
         ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
         Guid? previousReviewer = article.ReviewerId;
+        Guid? firstPublicationRecipient = action == "publish" && article.FirstPublishedAtUtc is null ? article.IdeaContributorId : null;
         if (action is "submit" or "recall" && article.AuthorId != actorId)
             throw NewsDatabase.Missing();
         switch (action)
@@ -226,7 +227,8 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         ArticleRevision snapshot = action == "withdraw"
             ? await context.Revisions.SingleAsync(item => item.Id == article.PublishedRevisionId, cancellationToken)
             : action == "submit" ? working : revision;
-        await RecordAsync(context, article, snapshot, actorId, action, reason, scope.Connection, scope.Transaction, previousReviewer, cancellationToken);
+        await RecordAsync(context, article, snapshot, actorId, action, reason, scope.Connection, scope.Transaction, previousReviewer,
+            cancellationToken, firstPublicationRecipient);
         await RefreshMediaAsync(context, article, scope.Connection, scope.Transaction, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
@@ -306,17 +308,21 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
             bool submitted = revision.SubmittedAtUtc.HasValue || article.DeletedAtUtc.HasValue && article.LastSubmittedRevisionId.HasValue;
             bool current = !article.DeletedAtUtc.HasValue && (revision.Id == article.WorkingRevisionId || revision.Id == article.PublishedRevisionId);
             await _media.ReplaceAsync(connection, transaction, revision.Id, article.AuthorId, submitted ? article.ReviewerId : null, submitted,
-                current && article.PublicationState == "Published" && revision.Id == article.PublishedRevisionId, images, cancellationToken, isCurrent: current);
+                current && article.PublicationState == "Published" && revision.Id == article.PublishedRevisionId, images, cancellationToken,
+                isCurrent: current, authorVisible: article.IdeaContributorId is null || article.DeletedAtUtc is null);
         }
     }
 
-    private async Task RecordAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, Guid actorId, string action, string reason, DbConnection connection, DbTransaction transaction, Guid? previousReviewer, CancellationToken cancellationToken)
+    private async Task RecordAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, Guid actorId, string action, string reason,
+        DbConnection connection, DbTransaction transaction, Guid? previousReviewer, CancellationToken cancellationToken, Guid? firstPublicationRecipient = null)
     {
         var entry = new ArticleHistory { Id = Guid.NewGuid(), ArticleId = article.Id, RevisionId = revision.Id, ActorId = actorId, Action = action, Reason = reason, ReviewerId = action is "release" or "roles-released" ? previousReviewer : article.ReviewerId, Version = article.Version, CreatedAtUtc = _time.GetUtcNow() };
         context.History.Add(entry);
         string? authorType = action switch { "return" => "article.returned", "reject" => "article.rejected", "approve" => "article.approved", "publish" => "article.published", "withdraw" => "article.withdrawn", "correct" => "article.corrected", "supersede" => "article.superseded", _ => null };
         if (authorType is not null)
             await NotifyAsync(entry, authorType, [article.AuthorId], connection, transaction, cancellationToken);
+        if (firstPublicationRecipient is Guid residentId)
+            await NotifyAsync(entry, "suggestion.published", [residentId], connection, transaction, cancellationToken);
         string? editorType = action switch { "submit" => "review.resubmitted", "recall" => "review.withdrawn", "delete" => "review.deleted", "takeover" or "release" or "roles-released" => "review.transferred", _ => null };
         if (editorType is not null)
         {

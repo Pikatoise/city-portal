@@ -13,5 +13,6 @@ internal sealed class MediaImage
     public DateTimeOffset NextAttemptAtUtc { get; set; }
     public int Attempts { get; set; }
     public bool EverAttached { get; set; }
+    public bool ForSuggestion { get; set; }
     public string? ErrorCode { get; set; }
 }

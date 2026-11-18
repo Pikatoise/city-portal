@@ -8,6 +8,7 @@
 export interface StaffSuggestionResponse {
   articleId: (string | null);
   assigned: boolean;
+  canImportImages: boolean;
   canReturn: boolean;
   contact: (string | null);
   description: string;

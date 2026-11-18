@@ -1,4 +1,5 @@
 using CityPortal.Identity;
+using CityPortal.Media;
 using CityPortal.News;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -11,12 +12,14 @@ public sealed class SuggestionOperations
     private readonly SuggestionsDbContext _context;
     private readonly TimeProvider _time;
     private readonly ArticleOperations _articles;
+    private readonly SuggestionImages _images;
 
-    internal SuggestionOperations(SuggestionsDbContext context, TimeProvider time, ArticleOperations articles)
+    internal SuggestionOperations(SuggestionsDbContext context, TimeProvider time, ArticleOperations articles, SuggestionImages images)
     {
         _context = context;
         _time = time;
         _articles = articles;
+        _images = images;
     }
 
     public async Task<SuggestionPage> ListAsync(Guid residentId, int page, CancellationToken cancellationToken)
@@ -34,7 +37,15 @@ public sealed class SuggestionOperations
         Suggestion? item = await Active(residentId).AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken);
         if (item is null)
             throw Missing();
-        return (await ProjectAsync([item], cancellationToken))[0];
+        SuggestionResponse response = (await ProjectAsync([item], cancellationToken))[0];
+        return response with { Images = await _images.ReadAsync(id, cancellationToken) };
+    }
+
+    public async Task<Stream> OpenImageAsync(Guid residentId, Guid suggestionId, Guid imageId, CancellationToken cancellationToken)
+    {
+        if (!await Active(residentId).AnyAsync(item => item.Id == suggestionId, cancellationToken))
+            throw Missing();
+        return await _images.OpenAsync(suggestionId, imageId, cancellationToken);
     }
 
     public async Task<SuggestionResponse> CreateAsync(Guid residentId, SuggestionInput input, CancellationToken cancellationToken)
@@ -52,9 +63,14 @@ public sealed class SuggestionOperations
             CreatedAtUtc = now,
             ExpiresAtUtc = now.AddHours(72)
         };
+        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         _context.Suggestions.Add(item);
         await _context.SaveChangesAsync(cancellationToken);
-        return ToResponse(item, null);
+        ImageResponse[] attached = input.ImageIds?.Length > 0
+            ? await _images.ReplaceAsync(item.Id, residentId, input.ImageIds, _context.Database.GetDbConnection(), transaction.GetDbTransaction(), cancellationToken)
+            : [];
+        await transaction.CommitAsync(cancellationToken);
+        return ToResponse(item, null) with { Images = attached };
     }
 
     public async Task<SuggestionResponse> UpdateAsync(Guid residentId, Guid id, UpdateSuggestionRequest request, CancellationToken cancellationToken)
@@ -70,12 +86,20 @@ public sealed class SuggestionOperations
                 .SetProperty(item => item.Description, description).SetProperty(item => item.EventDate, details.EventDate)
                 .SetProperty(item => item.Location, location).SetProperty(item => item.Contact, contact)
                 .SetProperty(item => item.Version, item => item.Version + 1), cancellationToken);
-        SuggestionResponse current = await GetAsync(residentId, id, cancellationToken);
         if (updated == 0)
+        {
+            if (!await Active(residentId).AnyAsync(item => item.Id == id, cancellationToken))
+                throw Missing();
             throw new AccountOperationException(409, "suggestion_conflict", "The suggestion changed or can no longer be edited.");
+        }
+
+        Suggestion item = await Active(residentId).AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken) ?? throw Missing();
+        ImageResponse[] attached = details.ImageIds is null
+            ? await _images.ReadAsync(id, cancellationToken)
+            : await _images.ReplaceAsync(id, residentId, details.ImageIds, _context.Database.GetDbConnection(), transaction.GetDbTransaction(), cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
-        return current;
+        return ToResponse(item, null) with { Images = attached };
     }
 
     private IQueryable<Suggestion> Active(Guid residentId)
@@ -94,7 +118,7 @@ public sealed class SuggestionOperations
     private static SuggestionResponse ToResponse(Suggestion item, SuggestionArticleStatus? article) =>
         new(item.Id, item.Title, item.Description, item.EventDate, item.Location, item.Contact, item.CreatedAtUtc,
             item.PausedAtUtc is null ? item.ExpiresAtUtc : null, item.FirstClaimedAtUtc == null, item.Version,
-            article?.HasBeenPublished == true ? "Published" : item.PausedAtUtc.HasValue ? "InProgress" : "Queued", article?.PublicUrl);
+            article?.HasBeenPublished == true ? "Published" : item.PausedAtUtc.HasValue ? "InProgress" : "Queued", article?.PublicUrl, []);
 
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

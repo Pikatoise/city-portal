@@ -53,6 +53,53 @@
       @if (item.articleId; as articleId) {
         <p><a routerLink="/account/articles" [queryParams]="{ articleId }">Открыть статью</a></p>
       }
+      @if (moderation || mine()) {
+        <button type="button" [disabled]="busy()" (click)="loadImages(item.id)">
+          {{ imageSuggestion() === item.id ? 'Обновить вложения' : 'Показать вложения' }}
+        </button>
+        @if (imageSuggestion() === item.id) {
+          <ul class="suggestion-images">
+            @for (image of images(); track image.id) {
+              <li>
+                @if (image.state === 'Ready') {
+                  <img
+                    [src]="'/api/staff/suggestions/' + item.id + '/images/' + image.id"
+                    [alt]="image.name"
+                    loading="lazy"
+                  />
+                  @if (item.canImportImages && !moderation) {
+                    <label>
+                      <input
+                        type="checkbox"
+                        [disabled]="busy()"
+                        [checked]="selectedImages().includes(image.id)"
+                        (change)="selectImage(image.id, $any($event.target).checked)"
+                      />
+                      {{ image.name }}
+                    </label>
+                  }
+                } @else {
+                  <span
+                    >{{ image.name }}
+                    {{ image.state === 'Processing' ? 'обрабатывается' : 'недоступно' }}</span
+                  >
+                }
+              </li>
+            } @empty {
+              <li>Вложений нет.</li>
+            }
+          </ul>
+          @if (item.canImportImages && !moderation) {
+            <button
+              type="button"
+              [disabled]="busy() || !selectedImages().length"
+              (click)="importImages(item.id)"
+            >
+              Добавить выбранные в черновик
+            </button>
+          }
+        }
+      }
       @if (moderation && deleting() === item.id) {
         <form (ngSubmit)="change(item)" #deletionForm="ngForm">
           <label [for]="'reason-' + item.id">Причина удаления</label>

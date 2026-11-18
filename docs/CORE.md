@@ -144,6 +144,12 @@ Citizen Submissions joins removal of the Author role in the Identity transaction
 to release unpublished assignments. Manual deletion and its audit record commit
 together. The audit record has no suggestion content or resident contact field.
 
+Media owns private suggestion uploads and attachment references. Expiry and
+manual deletion remove those references within the suggestion transaction.
+Imported images use independent News revision references. News queues the
+resident's first-publication notice through Notifications in the publication
+transaction.
+
 Any future clarification communication requires a scoped product agreement rather than introducing general-purpose messaging.
 
 ### Classifieds and Moderation

@@ -1,6 +1,8 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
+using CityPortal.Media;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +20,33 @@ public sealed class SuggestionsController : ControllerBase
     public SuggestionsController(SuggestionOperations suggestions)
     {
         _suggestions = suggestions;
+    }
+
+    [HttpPost("uploads", Name = "uploadSuggestionImage")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(11 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 11 * 1024 * 1024, MemoryBufferThreshold = 11 * 1024 * 1024)]
+    [ProducesResponseType<ImageResponse>(202)]
+    public async Task<ActionResult<ImageResponse>> UploadAsync([FromServices] MediaOperations media, [Required] IFormFile file,
+        [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken)
+    {
+        if (file.Length > MediaImageProcessor.MaximumBytes)
+            return Problem(statusCode: 413, title: "Images must not exceed 10 MiB.");
+        await using Stream input = file.OpenReadStream();
+        var sessionId = Guid.Parse(User.FindFirstValue("session")!);
+        return Accepted(await media.UploadSuggestionAsync(ResidentId(requireConfirmation: true), sessionId, file.FileName,
+            file.ContentType, input, cancellationToken));
+    }
+
+    [HttpGet("{id:guid}/images/{imageId:guid}", Name = "openMySuggestionImage")]
+    [Produces("image/webp")]
+    [ProducesResponseType(typeof(byte[]), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> OpenImageAsync(Guid id, Guid imageId, CancellationToken cancellationToken)
+    {
+        Stream image = await _suggestions.OpenImageAsync(ResidentId(), id, imageId, cancellationToken);
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(image, "image/webp");
     }
 
     [HttpGet(Name = "listMySuggestions")]

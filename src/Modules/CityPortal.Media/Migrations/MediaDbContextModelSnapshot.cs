@@ -62,6 +62,11 @@ namespace CityPortal.Media.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("AuthorVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("Public")
                         .HasColumnType("boolean");
 
@@ -148,6 +153,9 @@ namespace CityPortal.Media.Migrations
                     b.Property<bool>("EverAttached")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("ForSuggestion")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Height")
                         .HasColumnType("integer");
 
@@ -181,6 +189,21 @@ namespace CityPortal.Media.Migrations
                     b.HasIndex("State", "NextAttemptAtUtc");
 
                     b.ToTable("Images", "media");
+                });
+
+            modelBuilder.Entity("CityPortal.Media.SuggestionImageReference", b =>
+                {
+                    b.Property<Guid>("ImageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SuggestionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ImageId");
+
+                    b.HasIndex("SuggestionId");
+
+                    b.ToTable("SuggestionImages", "media");
                 });
 
             modelBuilder.Entity("CityPortal.Media.TemplateEvent", b =>
@@ -304,6 +327,15 @@ namespace CityPortal.Media.Migrations
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CityPortal.Media.SuggestionImageReference", b =>
+                {
+                    b.HasOne("CityPortal.Media.MediaImage", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -7,9 +7,12 @@ import { errorMessage } from '../account/account-api';
 import { getCsrf } from '../api/fn/auth/get-csrf';
 import { claimSuggestion } from '../api/fn/staff-suggestions/claim-suggestion';
 import { deleteSuggestion } from '../api/fn/staff-suggestions/delete-suggestion';
+import { importSuggestionImages } from '../api/fn/staff-suggestions/import-suggestion-images';
 import { listAuthorSuggestions } from '../api/fn/staff-suggestions/list-author-suggestions';
 import { listModerationSuggestions } from '../api/fn/staff-suggestions/list-moderation-suggestions';
+import { listStaffSuggestionImages } from '../api/fn/staff-suggestions/list-staff-suggestion-images';
 import { returnSuggestion } from '../api/fn/staff-suggestions/return-suggestion';
+import { ImageResponse } from '../api/models/image-response';
 import { StaffSuggestionResponse } from '../api/models/staff-suggestion-response';
 import { CityClock } from './city-clock';
 
@@ -28,6 +31,9 @@ export class SuggestionQueue implements OnInit {
   protected readonly hasMore = signal(false);
   protected readonly items = signal<StaffSuggestionResponse[]>([]);
   protected readonly deleting = signal<string | null>(null);
+  protected readonly imageSuggestion = signal<string | null>(null);
+  protected readonly images = signal<ImageResponse[]>([]);
+  protected readonly selectedImages = signal<string[]>([]);
   protected readonly busy = signal(false);
   protected readonly loaded = signal(false);
   protected readonly error = signal('');
@@ -55,6 +61,44 @@ export class SuggestionQueue implements OnInit {
   protected cancelDelete(): void {
     this.deleting.set(null);
     this.reason = '';
+  }
+
+  protected async loadImages(id: string): Promise<void> {
+    await this.run(async () => {
+      this.clearImages();
+      const { body } = await firstValueFrom(listStaffSuggestionImages(this.http, '', { id }));
+      this.imageSuggestion.set(id);
+      this.images.set(body);
+    });
+  }
+
+  protected selectImage(id: string, selected: boolean): void {
+    this.selectedImages.update((items) =>
+      selected ? [...items, id] : items.filter((item) => item !== id),
+    );
+  }
+
+  protected async importImages(id: string): Promise<void> {
+    await this.run(async () => {
+      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
+      await firstValueFrom(
+        importSuggestionImages(this.http, '', {
+          id,
+          body: { imageIds: this.selectedImages() },
+          'X-CSRF-TOKEN': csrf.token,
+        }),
+      );
+      this.selectedImages.set([]);
+      this.notice.set(
+        'Изображения добавлены. Перед отправкой статьи заполните их альтернативный текст.',
+      );
+    });
+  }
+
+  private clearImages(): void {
+    this.imageSuggestion.set(null);
+    this.images.set([]);
+    this.selectedImages.set([]);
   }
 
   protected async change(item: StaffSuggestionResponse): Promise<void> {
@@ -111,6 +155,7 @@ export class SuggestionQueue implements OnInit {
     this.page.set(page);
     this.hasMore.set(body.hasMore);
     this.loaded.set(true);
+    this.clearImages();
   }
 
   private async run(operation: () => Promise<void>): Promise<void> {
@@ -126,6 +171,7 @@ export class SuggestionQueue implements OnInit {
         this.items.set([]);
         this.loaded.set(false);
         this.cancelDelete();
+        this.clearImages();
       }
       this.error.set(
         status === 401

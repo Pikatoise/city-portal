@@ -12,6 +12,12 @@ Issue #10 implements the production author workspace at `/account/articles` and 
 
 Issue #11 adds production submission, assignment/decisions, first publication, history, and News notifications. Issue #12 adds published proposals, direct corrections/supersession, withdrawal/republication, and basic public article SSR with current/historical URL visibility. Issue #13 delivers production SSR discovery, Russian search, related/featured content, ordered homepage categories and curation UI. Stage 2 was owner-accepted on 2026-11-17.
 
+[Stage 3](stages/STAGE_3.md) uses the same editorial workflow for articles
+created by claiming resident suggestions. News retains the idea contributor
+and records the origin in article history. The public article credits the
+contributor by display name. On first publication, News queues the resident
+notice in the same transaction as publication.
+
 ## Persistence and Permissions
 
 `CityPortal.News` owns the `news` schema, `NewsDbContext`, and explicit migrations. API/Worker readiness requires the News migration; normal startup never migrates. Upgrade existing installations using the explicit migration command in DEVELOPMENT.md.

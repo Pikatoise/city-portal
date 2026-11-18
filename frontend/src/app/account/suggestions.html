@@ -46,11 +46,47 @@
           <label for="suggestion-contact">Контакты для связи</label>
           <input id="suggestion-contact" name="contact" [(ngModel)]="contact" maxlength="300" />
         </div>
+        @if (selected()?.canEdit !== false) {
+          <div class="field">
+            <label for="suggestion-images">Изображения</label>
+            <input
+              id="suggestion-images"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              [disabled]="images().length >= 5"
+              (change)="upload($event)"
+            />
+            <p class="field-hint">До пяти файлов JPEG, PNG или WebP по 10 МиБ.</p>
+          </div>
+        }
         <button type="submit" [disabled]="form.invalid">
           {{ selected() ? 'Сохранить' : 'Отправить' }}
         </button>
       </fieldset>
     </form>
+    @if (images().length) {
+      <ul class="suggestion-images">
+        @for (image of images(); track image.id) {
+          <li>
+            @if (imageUrl(image.id); as url) {
+              <img [src]="url" [alt]="image.name" loading="lazy" />
+            }
+            <span>{{ image.name }}</span>
+            @if (image.state === 'Processing') {
+              <span>Обрабатывается</span>
+            } @else if (image.state === 'Failed') {
+              <span>Изображение недоступно</span>
+            }
+            @if (selected()?.canEdit !== false) {
+              <button type="button" [disabled]="busy()" (click)="removeImage(image.id)">
+                Убрать
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    }
     @if (selected()) {
       <button type="button" (click)="reset()" [disabled]="busy()">Новое предложение</button>
     }

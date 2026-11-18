@@ -19,6 +19,9 @@ public sealed record SuggestionInput : IValidatableObject
     [StringLength(300)]
     public string? Contact { get; init; }
 
+    [MaxLength(5)]
+    public Guid[]? ImageIds { get; init; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         foreach ((string field, string? value) in new (string, string?)[]

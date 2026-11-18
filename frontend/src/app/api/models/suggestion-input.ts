@@ -9,6 +9,7 @@ export interface SuggestionInput {
   contact?: (string | null);
   description: string;
   eventDate?: (string | null);
+  imageIds?: (Array<string> | null);
   location?: (string | null);
   title: string;
 }

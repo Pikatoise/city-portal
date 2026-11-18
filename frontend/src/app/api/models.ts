@@ -29,6 +29,7 @@ export type { ForgotPasswordRequest } from './models/forgot-password-request';
 export type { HomepageSelectionResponse } from './models/homepage-selection-response';
 export type { IFormFile } from './models/i-form-file';
 export type { ImageResponse } from './models/image-response';
+export type { ImportSuggestionImagesRequest } from './models/import-suggestion-images-request';
 export type { InstallationStatusResponse } from './models/installation-status-response';
 export type { InstallSiteRequest } from './models/install-site-request';
 export type { JsonElement } from './models/json-element';

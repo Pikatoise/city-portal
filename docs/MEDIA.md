@@ -13,18 +13,24 @@ The pinned implementation uses SkiaSharp/Linux native assets 4.156.0 ([MIT licen
 
 ## Processing and Recovery
 
-1. Authenticate and recheck confirmed Author access. Enforce CSRF and persistent attempt limits before processing. Rejected attempts count. A process-local upload slot is acquired before model binding; competing work receives 429 with Retry-After. Multipart buffering stays in memory within an 11 MiB request bound.
+1. Authenticate and recheck the confirmed account and its role. Editorial uploads require Author. Private suggestion uploads use the regular account route and the [Stage 3 rules](stages/STAGE_3.md#attachments-and-notifications). Both routes enforce CSRF and persistent attempt limits before processing. Rejected attempts count. A process-local upload slot is acquired before model binding; competing work receives 429 with Retry-After. Multipart buffering stays in memory within an 11 MiB request bound.
 2. Validate actual JPEG/PNG/static WebP, matching MIME, byte/pixel limits, and animation including animated single-frame containers. Correct orientation, preserve transparency, and re-encode without source metadata. Do not persist the original upload.
 3. Atomically create a Processing image and four processed WebP payloads in PostgreSQL: master, 480, 1280, and 2560 maximum long edges without upscaling, quality 85. These processed payloads make object-store retry durable without a database/S3 distributed transaction.
 4. The Worker writes deterministic server-generated keys, then atomically marks Ready and clears database payloads. Failed writes retain Processing/payloads and back off from 20 seconds to 15 minutes. Partial objects never become selectable. Missing payloads mark Failed.
 5. Persistent Quartz reconciliation runs every ten seconds without concurrent execution. It joins the existing Worker scheduler registration; the legacy name `CityPortal.Email` is preserved for compatibility. Registering that named scheduler twice is prohibited.
-6. Cleanup locks never-attached images at least seven days old using the same lock as reference attachment. Recheck retention, commit Deleting, delete objects, then remove metadata. Storage failures retain Deleting for retry. Any previous article/template attachment excludes the image from this cleanup, including retained history.
+6. Cleanup locks abandoned uploads at least seven days old using the same lock as reference attachment. Recheck retention, commit Deleting, delete objects, then remove metadata. Storage failures retain Deleting for retry. Prior editorial or template attachment retains ordinary Media. For suggestion uploads, the current suggestion and retained article reference rows determine retention. Detaching the last reference from a suggestion can queue immediate object cleanup.
 
 Streams and native buffers are disposed on success, failure, or cancellation. Decode concurrency is one per process; native-memory use at the 40 MP ceiling was not measured.
 
 ## Authorization and Integration
 
 Buckets/objects remain private; no public policies or presigned links are issued. Keep an externally provisioned bucket private. Every image response checks current visibility/block state, uses no-store/nosniff, and disables range/conditional delivery bypasses. Previously downloaded bytes cannot be revoked.
+
+Suggestion uploads have their own Media reference and are excluded from
+editorial libraries and template selection. The suggestion module checks its
+current audience before loading the file. A successful import grants access
+through independent article revision references, and returning a suggestion
+removes author access through the deleted draft.
 
 Template approval grants author preview/library access, not anonymous access. Public delivery requires a current published reference and no template block for the image. Staff cannot inspect unrelated private uploads; assigned editors see submitted-reference images only. Administrator does not bypass unsent-draft privacy. Template moderators can inspect proposal history and its retained images. Other authors receive neither moderation history nor private decision reasons in library DTOs.
 

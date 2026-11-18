@@ -2791,6 +2791,136 @@
         }
       }
     },
+    "/api/staff/suggestions/{id}/images": {
+      "get": {
+        "tags": [
+          "StaffSuggestions"
+        ],
+        "operationId": "listStaffSuggestionImages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/suggestions/{id}/images/{imageId}": {
+      "get": {
+        "tags": [
+          "StaffSuggestions"
+        ],
+        "operationId": "openStaffSuggestionImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/suggestions/{id}/import-images": {
+      "post": {
+        "tags": [
+          "StaffSuggestions"
+        ],
+        "operationId": "importSuggestionImages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportSuggestionImagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/staff/suggestions/{id}/claim": {
       "post": {
         "tags": [
@@ -2946,6 +3076,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/suggestions/uploads": {
+      "post": {
+        "tags": [
+          "Suggestions"
+        ],
+        "operationId": "uploadSuggestionImage",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/suggestions/{id}/images/{imageId}": {
+      "get": {
+        "tags": [
+          "Suggestions"
+        ],
+        "operationId": "openMySuggestionImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -4099,6 +4329,24 @@
           }
         },
         "description": "Authorized image status without storage credentials or object keys."
+      },
+      "ImportSuggestionImagesRequest": {
+        "required": [
+          "imageIds"
+        ],
+        "type": "object",
+        "properties": {
+          "imageIds": {
+            "maxItems": 5,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "description": "Images selected from the assigned suggestion for the current article draft."
       },
       "InstallationStatusResponse": {
         "required": [
@@ -5272,7 +5520,8 @@
           "version",
           "articleId",
           "canReturn",
-          "published"
+          "published",
+          "canImportImages"
         ],
         "type": "object",
         "properties": {
@@ -5335,6 +5584,9 @@
           },
           "published": {
             "type": "boolean"
+          },
+          "canImportImages": {
+            "type": "boolean"
           }
         },
         "description": "A suggestion visible to an author or moderator under the current assignment rules."
@@ -5378,6 +5630,17 @@
               "null",
               "string"
             ]
+          },
+          "imageIds": {
+            "maxItems": 5,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "description": "A resident's text, event details, and optional contact information."
@@ -5414,7 +5677,8 @@
           "canEdit",
           "version",
           "status",
-          "publicArticleUrl"
+          "publicArticleUrl",
+          "images"
         ],
         "type": "object",
         "properties": {
@@ -5477,6 +5741,12 @@
               "null",
               "string"
             ]
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageResponse"
+            }
           }
         },
         "description": "A private view of a resident's suggestion."

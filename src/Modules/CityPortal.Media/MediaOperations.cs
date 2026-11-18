@@ -20,16 +20,24 @@ public sealed class MediaOperations
         _time = time;
     }
 
-    public async Task<ImageResponse> UploadAsync(Guid actorId, Guid sessionId, string name, string contentType, Stream input, CancellationToken cancellationToken)
+    public Task<ImageResponse> UploadAsync(Guid actorId, Guid sessionId, string name, string contentType, Stream input, CancellationToken cancellationToken) =>
+        UploadAsync(actorId, sessionId, name, contentType, input, forSuggestion: false, cancellationToken);
+
+    public Task<ImageResponse> UploadSuggestionAsync(Guid actorId, Guid sessionId, string name, string contentType, Stream input, CancellationToken cancellationToken) =>
+        UploadAsync(actorId, sessionId, name, contentType, input, forSuggestion: true, cancellationToken);
+
+    private async Task<ImageResponse> UploadAsync(Guid actorId, Guid sessionId, string name, string contentType, Stream input,
+        bool forSuggestion, CancellationToken cancellationToken)
     {
-        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken);
+        string[] roles = forSuggestion ? ["RegularUser"] : ["Author"];
+        await _authorization.RequireAsync(actorId, sessionId, roles, cancellationToken);
         string filename = Path.GetFileName(name.Replace('\\', '/')).Trim();
-        if (filename.Length is < 1 or > 200)
+        if (filename.Length is < 1 or > 200 || filename.Contains('\0'))
             throw new AccountOperationException(400, "image_name", "The file name must contain 1 to 200 characters.");
         IReadOnlyList<ProcessedImage> outputs = await _processor.ProcessAsync(input, contentType, cancellationToken);
-        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, ["Author"], cancellationToken);
+        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, roles, cancellationToken);
         await using MediaDbContext context = await MediaDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
-        var image = new MediaImage { Id = Guid.NewGuid(), OwnerId = actorId, Name = filename, Width = outputs[0].Width, Height = outputs[0].Height, CreatedAtUtc = _time.GetUtcNow(), NextAttemptAtUtc = _time.GetUtcNow() };
+        var image = new MediaImage { Id = Guid.NewGuid(), OwnerId = actorId, Name = filename, Width = outputs[0].Width, Height = outputs[0].Height, CreatedAtUtc = _time.GetUtcNow(), NextAttemptAtUtc = _time.GetUtcNow(), ForSuggestion = forSuggestion };
         context.Images.Add(image);
         context.Outputs.AddRange(outputs.Select(output => new ImageOutput { ImageId = image.Id, Variant = output.Variant, Width = output.Width, Height = output.Height, PendingBytes = output.Bytes }));
         await context.SaveChangesAsync(cancellationToken);
@@ -41,7 +49,7 @@ public sealed class MediaOperations
     {
         await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken);
         MediaDatabase.Page(page, pageSize);
-        IQueryable<MediaImage> query = _context.Images.AsNoTracking().Where(image => image.OwnerId == actorId && image.State != "Deleting");
+        IQueryable<MediaImage> query = _context.Images.AsNoTracking().Where(image => image.OwnerId == actorId && !image.ForSuggestion && image.State != "Deleting");
         int total = await query.CountAsync(cancellationToken);
         MediaImage[] images = await query.OrderByDescending(image => image.CreatedAtUtc).ThenBy(image => image.Id).Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync(cancellationToken);
         return new MediaPage<ImageResponse>(images.Select(Response).ToArray(), total, page, pageSize);
@@ -87,15 +95,16 @@ public sealed class MediaOperations
     {
         bool author = actor.Roles.Contains("Author");
         bool administrator = actor.Roles.Contains("Administrator");
-        if (author && image.OwnerId == actor.Id)
+        if (author && image.OwnerId == actor.Id && !image.ForSuggestion)
             return true;
         if ((administrator || actor.Roles.Contains("Moderator")) && await _context.Events.AnyAsync(entry => entry.ImageId == image.Id, cancellationToken))
             return true;
         if (author && await _context.Templates.AnyAsync(template => template.ImageId == image.Id && template.Approval == "Approved" && !template.Archived && !template.Blocked, cancellationToken))
             return true;
         return await _context.References.AnyAsync(reference => reference.ImageId == image.Id &&
-            (author && reference.AuthorId == actor.Id || reference.Submitted && (administrator || actor.Roles.Contains("Editor") && reference.ReviewerId == actor.Id)), cancellationToken);
+            (author && reference.AuthorId == actor.Id && reference.AuthorVisible
+                || reference.Submitted && (administrator || actor.Roles.Contains("Editor") && reference.ReviewerId == actor.Id)), cancellationToken);
     }
 
-    private static ImageResponse Response(MediaImage image) => new(image.Id, image.Name, image.State, image.Width, image.Height, image.Version, image.CreatedAtUtc, image.ErrorCode);
+    internal static ImageResponse Response(MediaImage image) => new(image.Id, image.Name, image.State, image.Width, image.Height, image.Version, image.CreatedAtUtc, image.ErrorCode);
 }

@@ -9,6 +9,7 @@ internal sealed class MediaDbContext : DbContext
     public DbSet<MediaImage> Images => Set<MediaImage>();
     public DbSet<ImageOutput> Outputs => Set<ImageOutput>();
     public DbSet<ImageReference> References => Set<ImageReference>();
+    public DbSet<SuggestionImageReference> SuggestionImages => Set<SuggestionImageReference>();
     public DbSet<ImageTemplate> Templates => Set<ImageTemplate>();
     public DbSet<TemplateEvent> Events => Set<TemplateEvent>();
     public DbSet<TemplateRemovalRequest> RemovalRequests => Set<TemplateRemovalRequest>();
@@ -28,8 +29,12 @@ internal sealed class MediaDbContext : DbContext
         model.Entity<ImageOutput>().HasOne<MediaImage>().WithMany().HasForeignKey(x => x.ImageId);
         model.Entity<ImageReference>().HasKey(x => new { x.RevisionId, x.ImageId });
         model.Entity<ImageReference>().Property(x => x.Current).HasDefaultValue(true);
+        model.Entity<ImageReference>().Property(x => x.AuthorVisible).HasDefaultValue(true);
         model.Entity<ImageReference>().HasIndex(x => new { x.ImageId, x.Public });
         model.Entity<ImageReference>().HasOne<MediaImage>().WithMany().HasForeignKey(x => x.ImageId);
+        model.Entity<SuggestionImageReference>().HasKey(item => item.ImageId);
+        model.Entity<SuggestionImageReference>().HasIndex(item => item.SuggestionId);
+        model.Entity<SuggestionImageReference>().HasOne<MediaImage>().WithMany().HasForeignKey(item => item.ImageId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<ImageTemplate>().Property(x => x.Name).HasMaxLength(200);
         model.Entity<ImageTemplate>().Property(x => x.Approval).HasMaxLength(20);
         model.Entity<ImageTemplate>().Property(x => x.Reason).HasMaxLength(2000);

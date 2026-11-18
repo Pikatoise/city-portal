@@ -138,6 +138,7 @@ Registered residents can submit informal, unedited topics and materials, includi
 - All authors can read available suggestions without contact details. Once assigned, only the assigned author can read it in the author workspace and see the contact details. The resident still sees their own suggestion. Removing the Author role returns unpublished assignments to the queue without restoring resident editing.
 - The author can create a linked article, which follows the editorial workflow.
 - Title and description are required. Event date, location, contact details, and media are optional. Submitting places the suggestion directly in the author queue.
+- A suggestion can include up to five JPEG, PNG, or static WebP images of up to 10 MiB each. The resident, assigned author, moderators, and administrators can view its attachments. The free author queue shows text only. An assigned author can copy selected ready images into the article draft.
 - Residents can edit until the first author takes the suggestion into work. Returning it to the queue does not restore editing.
 - The Author role does not grant rejection or deletion rights. Moderators and administrators can delete unpublished suggestions manually.
 - Moderators and administrators can read suggestions in the moderation workspace without contact details. Manual deletion requires a reason. The audit record retains the suggestion ID, acting account, time, and reason without a copy of the suggestion.
@@ -150,6 +151,9 @@ Published means the resulting article has passed editorial review and has
 been published. The resident can follow a link from the suggestion when the
 article is publicly available. The public byline credits the resident for the
 idea alongside the article author.
+
+The resident receives an account and Email notice on first publication, subject
+to the existing channel preferences. Republication does not repeat that notice.
 
 ### Classified Advertisements
 

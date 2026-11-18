@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using CityPortal.CitizenSubmissions;
+using CityPortal.Media;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,31 @@ public sealed class StaffSuggestionsController : ControllerBase
     [HttpGet("moderation", Name = "listModerationSuggestions")]
     public Task<StaffSuggestionPage> ModerationAsync(CancellationToken cancellationToken, int page = 1) =>
         _operations.ListAsync(ActorId, SessionId, moderation: true, mine: false, page, cancellationToken);
+
+    [HttpGet("{id:guid}/images", Name = "listStaffSuggestionImages")]
+    public Task<ImageResponse[]> ImagesAsync(Guid id, CancellationToken cancellationToken) =>
+        _operations.ImagesAsync(ActorId, SessionId, id, cancellationToken);
+
+    [HttpGet("{id:guid}/images/{imageId:guid}", Name = "openStaffSuggestionImage")]
+    [Produces("image/webp")]
+    [ProducesResponseType(typeof(byte[]), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> OpenImageAsync(Guid id, Guid imageId, CancellationToken cancellationToken)
+    {
+        Stream image = await _operations.OpenImageAsync(ActorId, SessionId, id, imageId, cancellationToken);
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(image, "image/webp");
+    }
+
+    [HttpPost("{id:guid}/import-images", Name = "importSuggestionImages")]
+    [RequestSizeLimit(8192)]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> ImportImagesAsync(Guid id, ImportSuggestionImagesRequest request,
+        [FromHeader(Name = "X-CSRF-TOKEN")] string csrf, CancellationToken cancellationToken)
+    {
+        await _operations.ImportImagesAsync(ActorId, SessionId, id, request.ImageIds, cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("{id:guid}/claim", Name = "claimSuggestion")]
     [RequestSizeLimit(8192)]

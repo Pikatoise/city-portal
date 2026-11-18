@@ -204,7 +204,7 @@ public sealed class TemplateOperations
     private static async Task<MediaImage> RequireOwnImageAsync(MediaDbContext context, Guid actorId, Guid imageId, CancellationToken cancellationToken)
     {
         MediaImage image = await MediaDatabase.LockImageAsync(context, imageId, cancellationToken);
-        if (image.OwnerId != actorId)
+        if (image.OwnerId != actorId || image.ForSuggestion)
             throw MediaDatabase.Missing();
         if (image.State != "Ready")
             throw MediaDatabase.Conflict();

@@ -1,5 +1,6 @@
 using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
+using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
 using DotNet.Testcontainers.Containers;
@@ -52,6 +53,7 @@ public sealed class RegistrationFixture : IAsyncLifetime
         var factory = new ApiFactory("Development", databaseSettings.ConnectionString, _broker.GetConnectionString(), time, settings);
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
+        await factory.Services.MigrateMediaAsync(CancellationToken.None);
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
         await factory.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();

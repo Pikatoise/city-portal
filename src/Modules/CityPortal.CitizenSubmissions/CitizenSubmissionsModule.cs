@@ -1,4 +1,5 @@
 using CityPortal.Identity;
+using CityPortal.Media;
 using CityPortal.News;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,12 +14,13 @@ public static class CitizenSubmissionsModule
         services.AddDbContext<SuggestionsDbContext>(options => options.UseNpgsql(connectionString,
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "citizen_submissions")));
         services.AddScoped(provider => new SuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
-            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>()));
+            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>(), provider.GetRequiredService<SuggestionImages>()));
         services.AddScoped(provider => new StaffSuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
-            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>()));
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>(), provider.GetRequiredService<SuggestionImages>()));
         services.AddScoped<IArticleDraftDeletionObserver, SuggestionDraftDeletion>();
         services.AddScoped<IAccountRoleChangeObserver>(provider => provider.GetRequiredService<StaffSuggestionOperations>());
-        services.AddScoped(provider => new SuggestionExpiryJob(provider.GetRequiredService<SuggestionsDbContext>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped(provider => new SuggestionExpiryJob(provider.GetRequiredService<SuggestionsDbContext>(),
+            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<SuggestionImages>()));
         services.AddHealthChecks().AddDbContextCheck<SuggestionsDbContext>("suggestions-database", tags: ["ready"],
             customTestQuery: async (context, token) => await context.Database.CanConnectAsync(token) && !(await context.Database.GetPendingMigrationsAsync(token)).Any());
         return services;
