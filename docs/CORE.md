@@ -133,7 +133,10 @@ Scheduled publication remains deferred scope even though scheduling infrastructu
 
 ### Citizen Submissions
 
-Implement the shared author queue and assignment process from VALUE.md, separately from editorial article review. Authors may take a suggestion, return it to the queue, and create a linked article. They cannot reject or delete suggestions; manual deletion belongs to administrators. Creating an article does not publish it.
+The [Stage 3 specification](stages/STAGE_3.md) records the resident submission
+contract, implementation progress, and remaining decisions.
+
+Implement the shared author queue and assignment process from VALUE.md, separately from editorial article review. Authors may take a suggestion, return it to the queue, and create a linked article. Manual deletion requires the Moderator or Administrator role. Creating an article does not publish it.
 
 Fully delete suggestion records after 72 hours from creation without an archived copy. Quartz.NET schedules cleanup. Expired suggestions must not remain accessible while physical cleanup is pending. Articles and materials transferred into them survive independently; article history retains that the topic came from a resident. References must tolerate deletion of the original suggestion.
 
@@ -257,5 +260,5 @@ During implementation, update affected specifications whenever requirements, con
 [Stage 1: Accounts, Roles, and Email](stages/STAGE_1.md) was owner-accepted on
 2026-11-13; [Stage 2: News and Media](stages/STAGE_2.md) on 2026-11-17.
 Their specifications retain delivered contracts, verification and limitations.
-Stage 2 issues #7-#14 are complete. Stage 3 is next; agree its workflows with the
-owner before implementation.
+Stage 2 issues #7-#14 are complete. [Stage 3: Citizen Story Suggestions](stages/STAGE_3.md)
+records the confirmed scope and the decisions to agree before implementation.

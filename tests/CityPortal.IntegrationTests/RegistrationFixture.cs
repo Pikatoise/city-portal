@@ -1,3 +1,4 @@
+using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -52,6 +53,7 @@ public sealed class RegistrationFixture : IAsyncLifetime
         await factory.Services.MigrateIdentityAsync(CancellationToken.None);
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
+        await factory.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();
         if (installed)
         {

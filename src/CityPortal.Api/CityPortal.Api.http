@@ -48,6 +48,26 @@ X-CSRF-TOKEN: {{csrfToken}}
 
 { "currentPassword": "Current1!", "newPassword": "Replacement1!", "version": 3 }
 
+### List the signed-in resident's suggestions
+GET {{baseUrl}}/api/account/suggestions?page=1
+
+### Submit a suggestion with a confirmed session
+POST {{baseUrl}}/api/account/suggestions
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "title": "River cleanup", "description": "Volunteers are needed.", "eventDate": "2026-11-21" }
+
+### Read a suggestion using the Location returned by creation
+GET {{baseUrl}}/api/account/suggestions/{{suggestionId}}
+
+### Replace suggestion details before the first claim
+PUT {{baseUrl}}/api/account/suggestions/{{suggestionId}}
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{ "details": { "title": "River cleanup", "description": "Meet at the bridge.", "eventDate": "2026-11-21" }, "version": 1 }
+
 ### Administrator account search; confirmed Administrator session required
 GET {{baseUrl}}/api/admin/accounts?query=resident&role=Author&page=1&pageSize=20
 

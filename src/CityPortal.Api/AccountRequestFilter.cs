@@ -37,6 +37,8 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         }
         if (path == "/api/installation/complete")
             await accounts.EnforceIpLimitAsync(ip, "installation", 10, TimeSpan.FromMinutes(10), http.RequestAborted);
+        if (http.Request.Path.StartsWithSegments("/api/account/suggestions", StringComparison.OrdinalIgnoreCase))
+            await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "suggestion-mutation", 20, TimeSpan.FromMinutes(1), http.RequestAborted);
         if (path == "/api/auth/register")
             await accounts.EnforceIpLimitAsync(ip, "registration", 5, TimeSpan.FromHours(1), http.RequestAborted);
         if (path == "/api/auth/login")

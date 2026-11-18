@@ -1,3 +1,4 @@
+using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
@@ -24,11 +25,16 @@ internal static class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddJsonConsole();
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
+        builder.Services.AddCitizenSubmissionsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: true);
         string keysPath = builder.Configuration["Security:DataProtectionKeysPath"]
             ?? throw new InvalidOperationException("Security:DataProtectionKeysPath must be configured.");
         builder.Services.AddDataProtection().SetApplicationName("CityPortal").PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-        builder.Services.AddAccountMailWorker(builder.Configuration, database, quartz => MediaModule.ConfigureMediaJobs(quartz, builder.Configuration));
+        builder.Services.AddAccountMailWorker(builder.Configuration, database, quartz =>
+        {
+            MediaModule.ConfigureMediaJobs(quartz, builder.Configuration);
+            CitizenSubmissionsModule.ConfigureSuggestionJobs(quartz);
+        });
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("CityPortal.Worker"))
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation())

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
@@ -34,6 +35,7 @@ public partial class Program
             timeZoneId = ianaId;
         builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId));
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
+        builder.Services.AddCitizenSubmissionsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
@@ -95,10 +97,11 @@ public partial class Program
             await app.Services.MigrateNotificationsAsync(CancellationToken.None);
             await app.Services.MigrateMediaAsync(CancellationToken.None);
             await app.Services.MigrateNewsAsync(CancellationToken.None);
+            await app.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();
-            app.Logger.LogInformation("Applied Identity, Notifications, Media, and News database migrations.");
+            app.Logger.LogInformation("Applied module database migrations.");
             return;
         }
 

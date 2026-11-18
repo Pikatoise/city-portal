@@ -1,4 +1,5 @@
 using System.Net;
+using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -77,6 +78,7 @@ public sealed class InfrastructureFoundationTests
 
         await factory.Services.MigrateAccountMailMessagingAsync();
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
+        await factory.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
 
         using HttpResponseMessage initialReadiness = await client.GetAsync("/health/ready", CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, initialReadiness.StatusCode);

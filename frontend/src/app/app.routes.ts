@@ -45,6 +45,10 @@ export const routes: Routes = [
           import('./editorial/review-workspace/review-workspace').then((m) => m.ReviewWorkspace),
       },
       {
+        path: 'account/suggestions',
+        loadComponent: () => import('./account/suggestions').then((m) => m.Suggestions),
+      },
+      {
         path: 'account/notifications',
         loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
       },

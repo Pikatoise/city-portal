@@ -125,5 +125,13 @@ export type { ListPublicTaxonomy$Params as ListPublicTaxonomy$Params } from './f
 export { listPublicTaxonomy as listPublicTaxonomy } from './fn/news/list-public-taxonomy';
 export type { GetPublicArticle$Params as GetPublicArticle$Params } from './fn/news/get-public-article';
 export { getPublicArticle as getPublicArticle } from './fn/news/get-public-article';
+export type { ListMySuggestions$Params as ListMySuggestions$Params } from './fn/suggestions/list-my-suggestions';
+export { listMySuggestions as listMySuggestions } from './fn/suggestions/list-my-suggestions';
+export type { CreateSuggestion$Params as CreateSuggestion$Params } from './fn/suggestions/create-suggestion';
+export { createSuggestion as createSuggestion } from './fn/suggestions/create-suggestion';
+export type { GetMySuggestion$Params as GetMySuggestion$Params } from './fn/suggestions/get-my-suggestion';
+export { getMySuggestion as getMySuggestion } from './fn/suggestions/get-my-suggestion';
+export type { UpdateMySuggestion$Params as UpdateMySuggestion$Params } from './fn/suggestions/update-my-suggestion';
+export { updateMySuggestion as updateMySuggestion } from './fn/suggestions/update-my-suggestion';
 export type { GetSystemInfo$Params as GetSystemInfo$Params } from './fn/system/get-system-info';
 export { getSystemInfo as getSystemInfo } from './fn/system/get-system-info';

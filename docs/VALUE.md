@@ -30,7 +30,7 @@ Later settings editing, branding, SEO, and integration fields arrive with their 
 | Regular user | Personal content and account management. |
 | Author | Prepare articles and work with citizen suggestions. |
 | Editor | Review and publish articles, correct published content, and curate news. |
-| Moderator | Review shared image templates, moderate advertisements and comments, handle reports, and restrict ordinary users. |
+| Moderator | Review shared image templates, delete citizen story suggestions, moderate advertisements and comments, handle reports, and restrict ordinary users. |
 | Administrator | Manage accounts, roles, portal settings, integrations, and administrative operations. |
 
 Accounts are unified and may hold multiple roles. Access depends on role, ownership, and content state.
@@ -136,8 +136,9 @@ Registered residents can submit informal, unedited topics and materials, includi
 - Suggestions enter a shared queue accessible to all authors, not the editors' review queue.
 - An author can take a suggestion into work, assigning it to themselves, or return it to the queue.
 - The author can create a linked article, which follows the editorial workflow.
-- Once taken into work, the resident cannot change the materials.
-- Authors cannot reject or delete suggestions. Only an administrator can delete one manually.
+- Title and description are required. Event date, location, contact details, and media are optional. Submitting places the suggestion directly in the author queue.
+- Residents can edit until the first author takes the suggestion into work. Returning it to the queue does not restore editing.
+- The Author role does not grant rejection or deletion rights. Moderators and administrators can delete suggestions manually.
 - Suggestion records are fully deleted after 72 hours from creation, without retaining an archived copy. Articles already created from them and materials transferred into those articles survive; article history retains that the topic came from a resident.
 
 Residents can track suggestions in their accounts while those suggestions exist.

@@ -1,0 +1,84 @@
+<section class="account-panel" aria-labelledby="suggestions-title">
+  <p><a routerLink="/account">Личный кабинет</a></p>
+  <h1 id="suggestions-title">Мои предложения новостей</h1>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (signedOut()) {
+    <p><a routerLink="/account/login">Войти</a></p>
+  } @else if (loaded()) {
+    <h2>{{ selected() ? 'Предложение' : 'Предложить новость' }}</h2>
+    @if (!confirmed()) {
+      <p>Чтобы отправить предложение, подтвердите Email в личном кабинете.</p>
+    }
+    <form (ngSubmit)="save()" #form="ngForm">
+      <fieldset [disabled]="busy() || !confirmed() || selected()?.canEdit === false">
+        <div class="field">
+          <label for="suggestion-title">Заголовок</label>
+          <input id="suggestion-title" name="title" [(ngModel)]="title" required maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="suggestion-description">Описание</label>
+          <textarea
+            id="suggestion-description"
+            name="description"
+            [(ngModel)]="description"
+            required
+            maxlength="10000"
+            rows="6"
+          ></textarea>
+        </div>
+        <div class="field">
+          <label for="suggestion-date">Дата события</label>
+          <input id="suggestion-date" name="eventDate" type="date" [(ngModel)]="eventDate" />
+        </div>
+        <div class="field">
+          <label for="suggestion-location">Место события</label>
+          <input id="suggestion-location" name="location" [(ngModel)]="location" maxlength="300" />
+        </div>
+        <div class="field">
+          <label for="suggestion-contact">Контакты для связи</label>
+          <input id="suggestion-contact" name="contact" [(ngModel)]="contact" maxlength="300" />
+        </div>
+        <button type="submit" [disabled]="form.invalid">
+          {{ selected() ? 'Сохранить' : 'Отправить' }}
+        </button>
+      </fieldset>
+    </form>
+    @if (selected()) {
+      <button type="button" (click)="reset()" [disabled]="busy()">Новое предложение</button>
+    }
+
+    <h2>Отправленные предложения</h2>
+    @if (items().length === 0) {
+      <p>На этой странице нет предложений.</p>
+    } @else {
+      <ul>
+        @for (item of items(); track item.id) {
+          <li>
+            <button type="button" (click)="open(item.id)" [disabled]="busy()">
+              {{ item.title }}
+            </button>
+            <p>
+              {{ item.canEdit ? 'В очереди' : 'Редактирование закрыто' }}. Доступно до
+              {{ clock.format(item.expiresAtUtc) }}.
+            </p>
+          </li>
+        }
+      </ul>
+    }
+    @if (page() > 1) {
+      <button type="button" [disabled]="busy()" (click)="load(page() - 1)">Назад</button>
+    }
+    @if (hasMore()) {
+      <button type="button" [disabled]="busy()" (click)="load(page() + 1)">Дальше</button>
+    }
+  } @else if (busy()) {
+    <p role="status">Загружаем предложения…</p>
+  } @else {
+    <button type="button" (click)="load()">Повторить</button>
+  }
+</section>
