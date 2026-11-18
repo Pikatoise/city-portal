@@ -33,8 +33,11 @@ public sealed class PublicArticleOperations
             .Where(item => item.ArticleId == id && item.RevisionId == row.Revision.Id && (item.Action == "publish" || item.Action == "correct"))
             .Select(item => (DateTimeOffset?)item.CreatedAtUtc).MaxAsync(cancellationToken);
         string name = await _accounts.GetPublicDisplayNameAsync(row.Article.AuthorId, cancellationToken) ?? "";
+        string? contributor = row.Article.IdeaContributorId is Guid residentId
+            ? await _accounts.GetPublicDisplayNameAsync(residentId, cancellationToken)
+            : null;
         return new PublicArticleResponse(id, row.Article.PublicAddress!,
             JsonSerializer.Deserialize<ArticleContent>(row.Revision.ContentJson)!, row.Revision.PreviewHtml, name, row.Article.FirstPublishedAtUtc!.Value,
-            publishedAt ?? row.Article.FirstPublishedAtUtc.Value);
+            publishedAt ?? row.Article.FirstPublishedAtUtc.Value, contributor);
     }
 }

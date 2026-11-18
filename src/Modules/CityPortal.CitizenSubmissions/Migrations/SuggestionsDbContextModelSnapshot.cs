@@ -29,6 +29,9 @@ namespace CityPortal.CitizenSubmissions.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ArticleId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("AssigneeId")
                         .HasColumnType("uuid");
 
@@ -57,6 +60,9 @@ namespace CityPortal.CitizenSubmissions.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<DateTimeOffset?>("PausedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("ResidentId")
                         .HasColumnType("uuid");
 
@@ -69,6 +75,9 @@ namespace CityPortal.CitizenSubmissions.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ArticleId")
+                        .IsUnique();
 
                     b.HasIndex("ExpiresAtUtc");
 

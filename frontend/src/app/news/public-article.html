@@ -75,7 +75,12 @@
                 }
               }
             </nav>
-            <p>{{ article.authorDisplayName }}</p>
+            <p>
+              {{ article.authorDisplayName }}
+              @if (article.ideaContributorDisplayName; as resident) {
+                <span> · Идею предложил: {{ resident }}</span>
+              }
+            </p>
             <p>
               Опубликовано
               <time [attr.datetime]="article.firstPublishedAtUtc">{{

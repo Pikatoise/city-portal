@@ -82,7 +82,7 @@ export class SuggestionQueue implements OnInit {
           ? 'Предложение удалено.'
           : this.mine()
             ? 'Предложение возвращено в очередь.'
-            : 'Предложение взято в работу. Контакты доступны в разделе «Мои назначения».',
+            : 'Черновик создан. Он доступен в разделе «Мои назначения».',
       );
       this.items.update((items) => items.filter((entry) => entry.id !== item.id));
       this.cancelDelete();

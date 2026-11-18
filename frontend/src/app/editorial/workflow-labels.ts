@@ -13,6 +13,7 @@ export const articleState = (state: string): string =>
 export const reviewAction = (action: string): string =>
   ({
     Created: 'Создан черновик',
+    CreatedFromSuggestion: 'Черновик создан по предложению жителя',
     Deleted: 'Статья удалена',
     submit: 'Отправлено на проверку',
     recall: 'Отозвано автором',

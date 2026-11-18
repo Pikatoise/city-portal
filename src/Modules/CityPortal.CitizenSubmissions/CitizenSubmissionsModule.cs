@@ -1,4 +1,5 @@
 using CityPortal.Identity;
+using CityPortal.News;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
@@ -11,9 +12,11 @@ public static class CitizenSubmissionsModule
     {
         services.AddDbContext<SuggestionsDbContext>(options => options.UseNpgsql(connectionString,
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "citizen_submissions")));
-        services.AddScoped(provider => new SuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped(provider => new SuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
+            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>()));
         services.AddScoped(provider => new StaffSuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
-            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>()));
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>()));
+        services.AddScoped<IArticleDraftDeletionObserver, SuggestionDraftDeletion>();
         services.AddScoped<IAccountRoleChangeObserver>(provider => provider.GetRequiredService<StaffSuggestionOperations>());
         services.AddScoped(provider => new SuggestionExpiryJob(provider.GetRequiredService<SuggestionsDbContext>(), provider.GetRequiredService<TimeProvider>()));
         services.AddHealthChecks().AddDbContextCheck<SuggestionsDbContext>("suggestions-database", tags: ["ready"],

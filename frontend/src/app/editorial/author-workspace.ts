@@ -273,7 +273,11 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
         this.tags.set(tags);
         if (this.correctionMode)
           this.accept(await this.api.publication(this.route.snapshot.paramMap.get('id')!));
-        else await this.load();
+        else {
+          await this.load();
+          const articleId = this.route.snapshot.queryParamMap?.get('articleId');
+          if (articleId) this.accept(await this.api.get(articleId));
+        }
       } else
         this.error.set(
           this.correctionMode

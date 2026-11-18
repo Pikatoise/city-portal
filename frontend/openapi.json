@@ -4739,6 +4739,12 @@
           "updatedAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "ideaContributorDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "description": "Only the current publication, with no private revision identifiers or workflow state."
@@ -5263,7 +5269,10 @@
           "contact",
           "assigned",
           "expiresAtUtc",
-          "version"
+          "version",
+          "articleId",
+          "canReturn",
+          "published"
         ],
         "type": "object",
         "properties": {
@@ -5300,7 +5309,10 @@
             "type": "boolean"
           },
           "expiresAtUtc": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "version": {
@@ -5310,6 +5322,19 @@
               "string"
             ],
             "format": "int32"
+          },
+          "articleId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "canReturn": {
+            "type": "boolean"
+          },
+          "published": {
+            "type": "boolean"
           }
         },
         "description": "A suggestion visible to an author or moderator under the current assignment rules."
@@ -5387,7 +5412,9 @@
           "createdAtUtc",
           "expiresAtUtc",
           "canEdit",
-          "version"
+          "version",
+          "status",
+          "publicArticleUrl"
         ],
         "type": "object",
         "properties": {
@@ -5425,7 +5452,10 @@
             "format": "date-time"
           },
           "expiresAtUtc": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "canEdit": {
@@ -5438,6 +5468,15 @@
               "string"
             ],
             "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "publicArticleUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "description": "A private view of a resident's suggestion."

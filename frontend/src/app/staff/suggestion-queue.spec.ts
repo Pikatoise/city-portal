@@ -28,6 +28,9 @@ it('clears remaining assigned contacts when refresh after a return is forbidden'
     location: null,
     contact: 'private@example.test',
     assigned: true,
+    articleId: 'article',
+    canReturn: true,
+    published: false,
     expiresAtUtc: '2026-11-21T18:00:00Z',
     version: 2,
   };

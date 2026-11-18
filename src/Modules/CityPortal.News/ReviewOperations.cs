@@ -265,10 +265,11 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         return ArticleOperations.Response(article, submitted);
     }
 
-    internal async Task DeleteAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, AuthorizedAccountScope scope, CancellationToken cancellationToken)
+    internal async Task DeleteAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, Guid actorId,
+        DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken)
     {
-        await RecordAsync(context, article, revision, scope.Actor.Id, "delete", "", scope.Connection, scope.Transaction, article.ReviewerId, cancellationToken);
-        await RefreshMediaAsync(context, article, scope.Connection, scope.Transaction, cancellationToken);
+        await RecordAsync(context, article, revision, actorId, "delete", "", connection, transaction, article.ReviewerId, cancellationToken);
+        await RefreshMediaAsync(context, article, connection, transaction, cancellationToken);
     }
 
     private async Task SubmitAsync(NewsDbContext context, NewsArticle article, ArticleRevision previous, ValidatedArticleContent content, AuthorizedAccountScope scope, CancellationToken cancellationToken)

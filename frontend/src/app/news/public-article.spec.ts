@@ -17,6 +17,7 @@ const publication: PublicArticleResponse = {
   id: 'article-id',
   canonicalUrl: '/news/published-title-15-11-2026-abcdef',
   authorDisplayName: 'Current author',
+  ideaContributorDisplayName: 'Idea contributor',
   firstPublishedAtUtc: '2026-11-15T10:00:00Z',
   updatedAtUtc: '2026-11-16T10:00:00Z',
   content: { title: 'Published title', summary: 'Public summary', seoTitle: 'Public SEO' },
@@ -63,6 +64,10 @@ describe('Public article visibility', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Published title');
     expect(fixture.nativeElement.textContent).toContain('Local 2026-11-15');
+    const byline = [...(fixture.nativeElement as HTMLElement).querySelectorAll('p')].find((line) =>
+      line.textContent?.includes('Current author'),
+    );
+    expect(byline?.textContent).toContain('Идею предложил: Idea contributor');
     expect(TestBed.inject(Title).getTitle()).toBe('Public SEO');
     expect(document.querySelector('link[rel=canonical]')?.getAttribute('href')).toBe(
       publication.canonicalUrl,
@@ -81,6 +86,7 @@ describe('Public article visibility', () => {
     expect(fixture.nativeElement.textContent).toContain('Материал снят с публикации');
     expect(fixture.nativeElement.textContent).not.toContain('Published title');
     expect(fixture.nativeElement.textContent).not.toContain('Current author');
+    expect(fixture.nativeElement.textContent).not.toContain('Idea contributor');
     expect(TestBed.inject(Title).getTitle()).toBe('Portal');
     expect(TestBed.inject(Meta).getTag('name="description"')).toBeNull();
     expect(document.querySelector('link[rel=canonical]')).toBeNull();

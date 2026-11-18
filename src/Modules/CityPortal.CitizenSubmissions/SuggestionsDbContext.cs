@@ -20,6 +20,7 @@ internal sealed class SuggestionsDbContext : DbContext
             item.HasIndex(value => value.ExpiresAtUtc);
             item.HasIndex(value => new { value.ResidentId, value.CreatedAtUtc, value.Id });
             item.HasIndex(value => new { value.AssigneeId, value.ExpiresAtUtc, value.Id });
+            item.HasIndex(value => value.ArticleId).IsUnique();
             item.Property(value => value.Title).HasMaxLength(200);
             item.Property(value => value.Description).HasMaxLength(10000);
             item.Property(value => value.Location).HasMaxLength(300);

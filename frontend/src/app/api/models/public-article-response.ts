@@ -12,6 +12,7 @@ export interface PublicArticleResponse {
   content: ArticleContent;
   firstPublishedAtUtc: string;
   id: string;
+  ideaContributorDisplayName?: (string | null);
   previewHtml: string;
   updatedAtUtc: string;
 }

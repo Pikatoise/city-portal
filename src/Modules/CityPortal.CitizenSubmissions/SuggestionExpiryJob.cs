@@ -18,6 +18,6 @@ public sealed class SuggestionExpiryJob : IJob
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _time.GetUtcNow();
-        await _context.Suggestions.Where(item => item.ExpiresAtUtc <= now).ExecuteDeleteAsync(cancellationToken);
+        await _context.Suggestions.Where(item => item.PausedAtUtc == null && item.ExpiresAtUtc <= now).ExecuteDeleteAsync(cancellationToken);
     }
 }

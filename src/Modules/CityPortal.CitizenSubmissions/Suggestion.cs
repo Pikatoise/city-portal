@@ -8,11 +8,15 @@ internal sealed class Suggestion
 
     public DateTimeOffset CreatedAtUtc { get; init; }
 
-    public DateTimeOffset ExpiresAtUtc { get; init; }
+    public DateTimeOffset ExpiresAtUtc { get; set; }
 
     public DateTimeOffset? FirstClaimedAtUtc { get; set; }
 
     public Guid? AssigneeId { get; set; }
+
+    public Guid? ArticleId { get; set; }
+
+    public DateTimeOffset? PausedAtUtc { get; set; }
 
     public int Version { get; set; } = 1;
 

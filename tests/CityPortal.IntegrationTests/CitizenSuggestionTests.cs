@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
+using CityPortal.Media;
+using CityPortal.News;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -29,6 +31,8 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         using HttpClient resident = await LoginAsync(factory, database, "resident", confirmed: true);
         using HttpClient other = await LoginAsync(factory, database, "neighbour", confirmed: true);
         using HttpClient unconfirmed = await LoginAsync(factory, database, "unconfirmed", confirmed: false);
+        using HttpClient author = await LoginAsync(factory, database, "author", confirmed: true, role: "Author");
+        using HttpClient moderator = await LoginAsync(factory, database, "moderator", confirmed: true, role: "Moderator");
         using HttpClient anonymous = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
         var input = new SuggestionInput { Title = " River cleanup ", Description = "Volunteers are needed.", Contact = "resident@example.test", EventDate = new DateOnly(2026, 11, 20) };
 
@@ -75,6 +79,13 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         Assert.Equal(HttpStatusCode.NotFound, (await resident.GetAsync(itemPath)).StatusCode);
         Assert.Empty((await resident.GetFromJsonAsync<SuggestionPage>(_path))!.Items);
         Assert.Equal(HttpStatusCode.NotFound, (await resident.PutAsJsonAsync(itemPath, change with { Version = saved.Version })).StatusCode);
+        Assert.Empty((await QueueAsync(author)).Items);
+        Assert.Empty((await moderator.GetFromJsonAsync<StaffSuggestionPage>($"{_staff}/moderation"))!.Items);
+        Assert.Equal(HttpStatusCode.NotFound, (await author.PostAsJsonAsync($"{_staff}/{suggestion.Id}/claim", new { saved.Version })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await moderator.PostAsJsonAsync($"{_staff}/{suggestion.Id}/delete",
+            new { saved.Version, reason = "Expired suggestion" })).StatusCode);
+        await using var beforeCleanup = new NpgsqlCommand("SELECT count(*) FROM citizen_submissions.\"Suggestions\"", connection);
+        Assert.Equal(1L, await beforeCleanup.ExecuteScalarAsync());
 
         await using AsyncServiceScope cleanup = factory.Services.CreateAsyncScope();
         // The job uses the application time and cancellation token only.
@@ -88,6 +99,7 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
     {
         (ApiFactory factory, string database) = await _fixture.CreateAsync();
         await using ApiFactory lifetime = factory;
+        await factory.Services.MigrateMediaAsync(CancellationToken.None);
         using HttpClient resident = await LoginAsync(factory, database, "resident", confirmed: true);
         using HttpClient first = await LoginAsync(factory, database, "authorone", confirmed: true, role: "Author");
         using HttpClient second = await LoginAsync(factory, database, "authortwo", confirmed: true, role: "Author");
@@ -167,6 +179,114 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         Assert.Equal(HttpStatusCode.NoContent, (await administrator.PostAsJsonAsync($"{_staff}/{secondItem.Id}/delete",
             new { secondAvailable.Version, reason = "Duplicate" })).StatusCode);
         Assert.Empty((await QueueAsync(other)).Items);
+    }
+
+    [Fact]
+    public async Task AssignedSuggestion_PausesExpiryAndSurvivesPublicationAsync()
+    {
+        var time = new AdjustableTimeProvider();
+        (ApiFactory factory, string database) = await _fixture.CreateAsync(time);
+        await using ApiFactory lifetime = factory;
+        await factory.Services.MigrateMediaAsync(CancellationToken.None);
+        using HttpClient resident = await LoginAsync(factory, database, "Resident", confirmed: true);
+        using HttpClient author = await LoginAsync(factory, database, "Author", confirmed: true, role: "Author");
+        using HttpClient editor = await LoginAsync(factory, database, "Editor", confirmed: true, role: "Editor");
+        using HttpClient moderator = await LoginAsync(factory, database, "Moderator", confirmed: true, role: "Moderator");
+        using HttpClient publicClient = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
+        const string contact = "private@example.test";
+        var input = new SuggestionInput { Title = "River cleanup", Description = "First line\nSecond line", Contact = contact };
+        SuggestionResponse created = await ReadAsync<SuggestionResponse>(await resident.PostAsJsonAsync(_path, input));
+        string residentPath = $"{_path}/{created.Id}";
+        string claimPath = $"{_staff}/{created.Id}/claim";
+        string returnPath = $"{_staff}/{created.Id}/return";
+        Assert.Equal("Queued", created.Status);
+        SuggestionResponse persisted = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+
+        time.Advance(TimeSpan.FromHours(20));
+        using HttpResponseMessage firstClaim = await author.PostAsJsonAsync(claimPath, new { created.Version });
+        firstClaim.EnsureSuccessStatusCode();
+        StaffSuggestionResponse first = Assert.Single((await QueueAsync(author, mine: true)).Items);
+        ArticleResponse firstDraft = (await author.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{first.ArticleId}"))!;
+        Assert.Equal(input.Title, firstDraft.Content.Title);
+        Assert.Contains("First line<br>Second line", firstDraft.PreviewHtml);
+        Assert.DoesNotContain(contact, firstDraft.Content.Body.GetRawText());
+        Assert.Null(first.ExpiresAtUtc);
+
+        time.Advance(TimeSpan.FromHours(80));
+        await ExpireAsync(factory);
+        SuggestionResponse assigned = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("InProgress", assigned.Status);
+        Assert.Null(assigned.ExpiresAtUtc);
+        Assert.Null(assigned.PublicArticleUrl);
+        using HttpResponseMessage returned = await author.PostAsJsonAsync(returnPath, new { first.Version });
+        returned.EnsureSuccessStatusCode();
+        using HttpResponseMessage deleted = await author.GetAsync($"/api/editorial/articles/{firstDraft.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, deleted.StatusCode);
+        SuggestionResponse queued = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("Queued", queued.Status);
+        Assert.False(queued.CanEdit);
+        Assert.Equal(persisted.ExpiresAtUtc?.AddHours(80), queued.ExpiresAtUtc);
+
+        time.Advance(TimeSpan.FromHours(30));
+        using HttpResponseMessage secondClaim = await author.PostAsJsonAsync(claimPath, new { queued.Version });
+        secondClaim.EnsureSuccessStatusCode();
+        StaffSuggestionResponse second = Assert.Single((await QueueAsync(author, mine: true)).Items);
+        ArticleResponse article = (await author.GetFromJsonAsync<ArticleResponse>($"/api/editorial/articles/{second.ArticleId}"))!;
+        Assert.NotEqual(firstDraft.Id, article.Id);
+        TaxonomyResponse category = await ReadAsync<TaxonomyResponse>(await editor.PostAsJsonAsync("/api/editorial/categories", new { name = "Community" }));
+        ArticleContent complete = article.Content with { Summary = "Volunteers clean the river.", CategoryId = category.Id };
+        article = await ReadAsync<ArticleResponse>(await author.PatchAsJsonAsync($"/api/editorial/articles/{article.Id}", new { article.Version, content = complete }));
+        article = await ActAsync(author, article, "submit");
+        article = await ActAsync(editor, article, "claim");
+        article = await ActAsync(editor, article, "approve");
+        article = await ActAsync(author, article, "publish");
+
+        time.Advance(TimeSpan.FromDays(8));
+        await ExpireAsync(factory);
+        SuggestionResponse published = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("Published", published.Status);
+        Assert.Null(published.ExpiresAtUtc);
+        Assert.Equal(article.PublicAddress, published.PublicArticleUrl);
+        string url = Assert.IsType<string>(published.PublicArticleUrl);
+        PublicArticleResponse publicArticle = (await publicClient.GetFromJsonAsync<PublicArticleResponse>("/api/news/articles/by-address/" + url["/news/".Length..]))!;
+        Assert.Equal("Author", publicArticle.AuthorDisplayName);
+        Assert.Equal("Resident", publicArticle.IdeaContributorDisplayName);
+        Assert.DoesNotContain(contact, publicArticle.Content.Body.GetRawText());
+        using HttpResponseMessage cannotReturn = await author.PostAsJsonAsync(returnPath, new { second.Version });
+        Assert.Equal(HttpStatusCode.Conflict, cannotReturn.StatusCode);
+        StaffSuggestionResponse moderation = Assert.Single((await moderator.GetFromJsonAsync<StaffSuggestionPage>($"{_staff}/moderation"))!.Items);
+        Assert.True(moderation.Published);
+        Assert.Null(moderation.ArticleId);
+        using HttpResponseMessage cannotDelete = await moderator.PostAsJsonAsync($"{_staff}/{created.Id}/delete",
+            new { second.Version, reason = "Remove published suggestion" });
+        Assert.Equal(HttpStatusCode.Conflict, cannotDelete.StatusCode);
+
+        await ActAsync(editor, article, "withdraw", "Correct a factual error.");
+        SuggestionResponse withdrawn = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("Published", withdrawn.Status);
+        Assert.Null(withdrawn.PublicArticleUrl);
+    }
+
+    private static async Task ExpireAsync(ApiFactory factory)
+    {
+        await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+        // The job uses the application time and cancellation token only.
+        await scope.ServiceProvider.GetRequiredService<SuggestionExpiryJob>().Execute(null!, CancellationToken.None);
+    }
+
+    private static Task<ArticleResponse> ActAsync(HttpClient client, ArticleResponse article, string action, string? reason = null) =>
+        ActAsync(client, $"/api/editorial/articles/{article.Id}/{action}", article.Version, reason);
+
+    private static async Task<ArticleResponse> ActAsync(HttpClient client, string path, long version, string? reason) =>
+        await ReadAsync<ArticleResponse>(await client.PostAsJsonAsync(path, new { version, reason }));
+
+    private static async Task<T> ReadAsync<T>(HttpResponseMessage response) where T : class
+    {
+        using (response)
+        {
+            response.EnsureSuccessStatusCode();
+            return Assert.IsType<T>(await response.Content.ReadFromJsonAsync<T>());
+        }
     }
 
     private static async Task<StaffSuggestionPage> QueueAsync(HttpClient client, bool mine = false) =>

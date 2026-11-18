@@ -136,12 +136,12 @@ Scheduled publication remains deferred scope even though scheduling infrastructu
 The [Stage 3 specification](stages/STAGE_3.md) records the resident submission
 contract, implementation progress, and remaining decisions.
 
-Implement the shared author queue and assignment process from VALUE.md, separately from editorial article review. Authors may take a suggestion, return it to the queue, and create a linked article. Manual deletion requires the Moderator or Administrator role. Creating an article does not publish it.
+Implement the shared author queue and assignment process from VALUE.md, separately from editorial article review. Taking a suggestion creates a linked draft in the same transaction as the assignment. Returning an unpublished suggestion deletes the draft through the News workflow and resumes the queue timer. Manual deletion requires the Moderator or Administrator role.
 
-Fully delete suggestion records after 72 hours from creation without an archived copy. Quartz.NET schedules cleanup. Expired suggestions must not remain accessible while physical cleanup is pending. Articles and materials transferred into them survive independently; article history retains that the topic came from a resident. References must tolerate deletion of the original suggestion.
+Fully delete unassigned suggestions after 72 accumulated hours in the queue without an archived copy. Assignment pauses that clock. Published suggestions remain in the resident account. Quartz.NET schedules cleanup. Expired suggestions must not remain accessible while physical cleanup is pending. Articles and materials transferred into them survive independently; article history retains that the topic came from a resident. References must tolerate deletion of the original suggestion.
 
 Citizen Submissions joins removal of the Author role in the Identity transaction
-to release active assignments. Manual deletion and its audit record commit
+to release unpublished assignments. Manual deletion and its audit record commit
 together. The audit record has no suggestion content or resident contact field.
 
 Any future clarification communication requires a scoped product agreement rather than introducing general-purpose messaging.

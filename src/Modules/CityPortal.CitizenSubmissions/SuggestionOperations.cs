@@ -1,4 +1,5 @@
 using CityPortal.Identity;
+using CityPortal.News;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -9,11 +10,13 @@ public sealed class SuggestionOperations
     private const int _pageSize = 20;
     private readonly SuggestionsDbContext _context;
     private readonly TimeProvider _time;
+    private readonly ArticleOperations _articles;
 
-    internal SuggestionOperations(SuggestionsDbContext context, TimeProvider time)
+    internal SuggestionOperations(SuggestionsDbContext context, TimeProvider time, ArticleOperations articles)
     {
         _context = context;
         _time = time;
+        _articles = articles;
     }
 
     public async Task<SuggestionPage> ListAsync(Guid residentId, int page, CancellationToken cancellationToken)
@@ -23,13 +26,15 @@ public sealed class SuggestionOperations
 
         Suggestion[] rows = await Active(residentId).AsNoTracking().OrderByDescending(item => item.CreatedAtUtc)
             .ThenByDescending(item => item.Id).Skip((page - 1) * _pageSize).Take(_pageSize + 1).ToArrayAsync(cancellationToken);
-        return new SuggestionPage(rows.Take(_pageSize).Select(ToResponse).ToArray(), rows.Length > _pageSize);
+        return new SuggestionPage(await ProjectAsync(rows.Take(_pageSize).ToArray(), cancellationToken), rows.Length > _pageSize);
     }
 
     public async Task<SuggestionResponse> GetAsync(Guid residentId, Guid id, CancellationToken cancellationToken)
     {
         Suggestion? item = await Active(residentId).AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken);
-        return item is null ? throw Missing() : ToResponse(item);
+        if (item is null)
+            throw Missing();
+        return (await ProjectAsync([item], cancellationToken))[0];
     }
 
     public async Task<SuggestionResponse> CreateAsync(Guid residentId, SuggestionInput input, CancellationToken cancellationToken)
@@ -49,7 +54,7 @@ public sealed class SuggestionOperations
         };
         _context.Suggestions.Add(item);
         await _context.SaveChangesAsync(cancellationToken);
-        return ToResponse(item);
+        return ToResponse(item, null);
     }
 
     public async Task<SuggestionResponse> UpdateAsync(Guid residentId, Guid id, UpdateSuggestionRequest request, CancellationToken cancellationToken)
@@ -76,11 +81,20 @@ public sealed class SuggestionOperations
     private IQueryable<Suggestion> Active(Guid residentId)
     {
         DateTimeOffset now = _time.GetUtcNow();
-        return _context.Suggestions.Where(item => item.ResidentId == residentId && item.ExpiresAtUtc > now);
+        return SuggestionDatabase.Active(_context, now).Where(item => item.ResidentId == residentId);
     }
 
-    private static SuggestionResponse ToResponse(Suggestion item) => new(item.Id, item.Title, item.Description, item.EventDate,
-        item.Location, item.Contact, item.CreatedAtUtc, item.ExpiresAtUtc, item.FirstClaimedAtUtc == null, item.Version);
+    private async Task<SuggestionResponse[]> ProjectAsync(Suggestion[] items, CancellationToken cancellationToken)
+    {
+        Guid[] ids = items.Where(item => item.ArticleId.HasValue).Select(item => item.ArticleId.GetValueOrDefault()).ToArray();
+        Dictionary<Guid, SuggestionArticleStatus> articles = await _articles.FindSuggestionArticlesAsync(ids, cancellationToken);
+        return items.Select(item => ToResponse(item, articles.GetValueOrDefault(item.ArticleId.GetValueOrDefault()))).ToArray();
+    }
+
+    private static SuggestionResponse ToResponse(Suggestion item, SuggestionArticleStatus? article) =>
+        new(item.Id, item.Title, item.Description, item.EventDate, item.Location, item.Contact, item.CreatedAtUtc,
+            item.PausedAtUtc is null ? item.ExpiresAtUtc : null, item.FirstClaimedAtUtc == null, item.Version,
+            article?.HasBeenPublished == true ? "Published" : item.PausedAtUtc.HasValue ? "InProgress" : "Queued", article?.PublicUrl);
 
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

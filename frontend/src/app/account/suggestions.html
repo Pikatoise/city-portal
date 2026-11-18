@@ -11,6 +11,9 @@
     <p><a routerLink="/account/login">Войти</a></p>
   } @else if (loaded()) {
     <h2>{{ selected() ? 'Предложение' : 'Предложить новость' }}</h2>
+    @if (!selected()) {
+      <p>Если по предложению выйдет статья, рядом с автором укажем ваше имя из профиля.</p>
+    }
     @if (!confirmed()) {
       <p>Чтобы отправить предложение, подтвердите Email в личном кабинете.</p>
     }
@@ -53,6 +56,7 @@
     }
 
     <h2>Отправленные предложения</h2>
+    <button type="button" [disabled]="busy()" (click)="load(page())">Обновить список</button>
     @if (items().length === 0) {
       <p>На этой странице нет предложений.</p>
     } @else {
@@ -63,9 +67,14 @@
               {{ item.title }}
             </button>
             <p>
-              {{ item.canEdit ? 'В очереди' : 'Редактирование закрыто' }}. Доступно до
-              {{ clock.format(item.expiresAtUtc) }}.
+              {{ statusLabels[item.status] }}.
+              @if (item.expiresAtUtc; as deadline) {
+                В очереди до {{ clock.format(deadline) }}.
+              }
             </p>
+            @if (item.publicArticleUrl; as url) {
+              <a [routerLink]="url">Читать статью</a>
+            }
           </li>
         }
       </ul>

@@ -6,13 +6,16 @@
  * A suggestion visible to an author or moderator under the current assignment rules.
  */
 export interface StaffSuggestionResponse {
+  articleId: (string | null);
   assigned: boolean;
+  canReturn: boolean;
   contact: (string | null);
   description: string;
   eventDate: (string | null);
-  expiresAtUtc: string;
+  expiresAtUtc: (string | null);
   id: string;
   location: (string | null);
+  published: boolean;
   title: string;
   version: (number | string);
 }

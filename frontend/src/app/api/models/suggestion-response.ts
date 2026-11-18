@@ -11,9 +11,11 @@ export interface SuggestionResponse {
   createdAtUtc: string;
   description: string;
   eventDate: (string | null);
-  expiresAtUtc: string;
+  expiresAtUtc: (string | null);
   id: string;
   location: (string | null);
+  publicArticleUrl: (string | null);
+  status: string;
   title: string;
   version: (number | string);
 }

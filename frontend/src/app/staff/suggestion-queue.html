@@ -45,9 +45,14 @@
         <p>Контакты: {{ item.contact }}</p>
       }
       @if (moderation) {
-        <p>{{ item.assigned ? 'В работе' : 'В очереди' }}</p>
+        <p>{{ item.published ? 'Опубликовано' : item.assigned ? 'В работе' : 'В очереди' }}</p>
       }
-      <p>Доступно до {{ clock.format(item.expiresAtUtc) }}.</p>
+      @if (item.expiresAtUtc; as deadline) {
+        <p>В очереди до {{ clock.format(deadline) }}.</p>
+      }
+      @if (item.articleId; as articleId) {
+        <p><a routerLink="/account/articles" [queryParams]="{ articleId }">Открыть статью</a></p>
+      }
       @if (moderation && deleting() === item.id) {
         <form (ngSubmit)="change(item)" #deletionForm="ngForm">
           <label [for]="'reason-' + item.id">Причина удаления</label>
@@ -68,11 +73,11 @@
             <button type="button" [disabled]="busy()" (click)="cancelDelete()">Отмена</button>
           </div>
         </form>
-      } @else if (moderation) {
+      } @else if (moderation && !item.published) {
         <button type="button" [disabled]="busy()" (click)="prepareDelete(item.id)">Удалить</button>
-      } @else {
+      } @else if (!moderation && (!mine() || item.canReturn)) {
         <button type="button" [disabled]="busy()" (click)="change(item)">
-          {{ mine() ? 'Вернуть в очередь' : 'Взять в работу' }}
+          {{ mine() ? 'Удалить черновик и вернуть в очередь' : 'Взять в работу' }}
         </button>
       }
     </article>

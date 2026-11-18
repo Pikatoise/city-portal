@@ -32,6 +32,11 @@ export class Suggestions implements OnInit {
   protected readonly hasMore = signal(false);
   protected readonly error = signal('');
   protected readonly notice = signal('');
+  protected readonly statusLabels: Record<string, string> = {
+    Queued: 'В очереди',
+    InProgress: 'В работе',
+    Published: 'Опубликовано',
+  };
   protected title = '';
   protected description = '';
   protected eventDate = '';
@@ -54,6 +59,7 @@ export class Suggestions implements OnInit {
     await this.run(async () => {
       const { body } = await firstValueFrom(getMySuggestion(this.http, '', { id }));
       this.selected.set(body);
+      this.items.update((items) => items.map((item) => (item.id === body.id ? body : item)));
       this.title = body.title;
       this.description = body.description;
       this.eventDate = body.eventDate ?? '';

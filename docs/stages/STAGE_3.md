@@ -4,8 +4,9 @@
 
 A resident can send a topic to the portal and track it while it exists. An author
 can take it from a shared queue and create a draft for the existing News workflow.
-Moderators and administrators can delete suggestions manually. Suggestions expire
-72 hours after creation.
+Moderators and administrators can delete suggestions manually. An unpublished
+suggestion expires after 72 accumulated hours in the queue. The clock pauses
+while an author works on its draft. Published suggestions remain in the account.
 
 The product and architecture baselines are [VALUE.md](../VALUE.md#citizen-story-suggestions)
 and [CORE.md](../CORE.md#citizen-submissions).
@@ -15,8 +16,8 @@ and [CORE.md](../CORE.md#citizen-submissions).
 | Actor | Confirmed behavior |
 | --- | --- |
 | Resident | A registered user with confirmed Email can submit a title, description, event date and location, media, and contact details when needed. The resident can track their own suggestion while it exists. Once an author takes the suggestion, the resident cannot change its materials. |
-| Author | View the shared author queue, take a suggestion into work, return it to the queue, and create a linked article draft. The Author role grants no rejection or deletion rights. |
-| Moderator or Administrator | Delete a suggestion manually. Other capabilities still depend on the account's roles. |
+| Author | View the shared queue, take a suggestion and create its linked draft in one step, or delete the unpublished draft by returning the suggestion. The Author role grants no rejection or deletion rights over the suggestion itself. |
+| Moderator or Administrator | Delete an unpublished suggestion manually. Published suggestions remain in the resident's account. Other capabilities still depend on the account's roles. |
 | Worker | Delete expired records without keeping an archived copy. |
 
 The author queue is separate from editorial review. Creating a draft starts the
@@ -34,8 +35,10 @@ permanently closes resident editing, including after a return to the queue.
   and suggestion state. ASP.NET Core controllers enforce current Identity
   permissions, ownership, state, and CSRF protection. OpenAPI supplies the
   Angular client contract.
-- Store creation and expiry in UTC. At 72 hours, the suggestion becomes
-  inaccessible even if the Worker has yet to delete its row. Use the existing
+- Store creation, the current queue deadline and the pause timestamp in UTC.
+  Resume by shifting the deadline by the time spent paused. After 72 hours in
+  the queue the suggestion becomes inaccessible even if the Worker has yet to
+  delete its row. Use the existing
   persistent Quartz scheduler for cleanup. Recheck expiry and state when writing.
 - Use explicit module operations for News drafts and Media references. Coordinate
   the draft, its transferred references, and the suggestion update in one database
@@ -70,22 +73,24 @@ permanently closes resident editing, including after a return to the queue.
 - A Moderator without Administrator and an Administrator without Moderator can
   each delete a suggestion. A resident, Editor, or Author without either role
   cannot invoke staff deletion.
-- At the 72-hour boundary, the suggestion disappears from all reads and cannot
+- At 72 accumulated hours in the queue, the suggestion disappears from all reads and cannot
   be claimed or converted. Cleanup resumes after a Worker restart and removes
   the expired record without an archive.
 - A linked draft follows normal editorial review. Deleting the suggestion
   preserves the draft, transferred materials, and its origin in article history.
   A failed conversion leaves no partial draft or Media references.
+- Residents see Queued, In progress, and Published. Published links to the
+  resulting public article. The public byline credits the resident for the
+  idea alongside the author and exposes no contact details.
 - The owner checks the resident and staff flows and reviews one failure scenario.
 
 ## Open decisions
 
 - Attachments: permitted image formats, count and size limits, and access before
   and after assignment.
-- Conversion: how many articles a suggestion can produce, which fields and
-  selected media are copied, and the state and actions available after conversion.
-- Resident feedback: status labels and which events need account or Email
-  notifications.
+- Article materials: how and when the author selects optional suggestion
+  images for the draft created when claiming.
+- Resident feedback: which events need account or Email notifications.
 
 ## Author queue and manual deletion
 
@@ -96,12 +101,15 @@ The owner confirmed these access and deletion rules.
   assigned author can see the full card and its contact details. Other authors
   lose access when the assignment starts. The resident keeps access to their
   own suggestion until it is deleted or expires.
-- Claim and return require the current version. A claim sets the assignee and
-  records the first claim time if absent. Return clears the assignee and keeps
-  the first claim time. Both increment the version. Existing unexpired records
-  enter the available queue when the assignment migration is applied.
-- If the Author role is removed, release active assignments and increment
-  their versions within the Identity role change transaction. Use the existing
+- Claim and return require the current version. A claim sets the assignee,
+  pauses expiry, records the first claim time if absent and creates an article
+  draft in the same PostgreSQL transaction. Return deletes the unpublished
+  draft through News, clears the assignment, keeps the first claim time and
+  resumes expiry. Both increment the version. News owns article history and
+  current publication visibility.
+- If the Author role is removed, release unpublished assignments, delete
+  their drafts and increment suggestion versions within the Identity role
+  change transaction. Published suggestions and articles remain. Use the existing
   role-change observer and authorization scope so a concurrent claim cannot
   create an assignment after role removal commits.
 - Moderators and administrators have a separate list and can view current
@@ -110,6 +118,14 @@ The owner confirmed these access and deletion rules.
   time and reason together. The record holds no copy of the suggestion.
 - Queue, assignments and moderation lists show up to 20 items per page, with
   the earliest expiry first. Staff endpoints are under `/api/staff/suggestions`.
+- Ordinary News draft deletion also returns the linked suggestion in the
+  deletion transaction. News retains its existing audit history rules.
+- The resident can follow the current public address. Withdrawal hides the
+  link and leaves the published suggestion in the account. For the public
+  byline, News resolves the resident's current display name through Identity.
+- The upgrade returns assignments from the earlier schema to the queue under
+  their existing deadlines, because they had no linked draft. It preserves
+  suggestions, resident editing locks and deletion audit records.
 - Verify concurrent claim, edit versus claim, access before and after
   assignment, role removal versus claim, manual deletion versus competing
   writes, and expiry while the Worker is stopped.
@@ -117,9 +133,10 @@ The owner confirmed these access and deletion rules.
 ## Implementation status
 
 The owner confirmed the submission and editing rules and manual deletion by
-Moderator as well as Administrator. The resident text workflow, expiry cleanup,
-author assignment and manual deletion are implemented. Image attachments,
-conversion, and notification decisions remain open for the following slices.
+Moderator as well as Administrator. The resident text workflow, paused expiry,
+author assignment, linked drafts, publication status, public credit, and manual
+deletion are implemented. Image attachments and resident notifications still
+require the decisions above.
 
 The resident integration test uses PostgreSQL and the real HTTP account
 endpoints. It verifies repeat migration, Email confirmation, CSRF, ownership,
@@ -133,3 +150,8 @@ racing another claim. It checks both staff roles can delete, stale versions
 and blank reasons are rejected, and the audit entry survives the physical
 deletion of the suggestion. An Angular regression verifies that a forbidden
 refresh removes previously displayed contacts from the workspace.
+
+The publication workflow test uses the production review endpoints. It verifies
+that cleanup skips paused suggestions, return deletes the draft and resumes the
+remaining time, publication retains the suggestion beyond its original deadline,
+and the public byline shows the resident's name without contact details.

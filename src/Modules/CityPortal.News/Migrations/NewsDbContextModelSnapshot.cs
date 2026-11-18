@@ -242,6 +242,9 @@ namespace CityPortal.News.Migrations
                     b.Property<DateOnly?>("FirstPublishedLocalDate")
                         .HasColumnType("date");
 
+                    b.Property<Guid?>("IdeaContributorId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("LastSubmittedRevisionId")
                         .HasColumnType("uuid");
 
