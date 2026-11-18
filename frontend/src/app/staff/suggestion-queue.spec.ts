@@ -7,6 +7,59 @@ import { StaffSuggestionResponse } from '../api/models/staff-suggestion-response
 import { CityClock } from './city-clock';
 import { SuggestionQueue } from './suggestion-queue';
 
+it('shows a ready photo in the available queue without contacts or draft import', async () => {
+  TestBed.configureTestingModule({
+    providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideRouter([]),
+      { provide: CityClock, useValue: { format: (value: string) => value } },
+    ],
+  });
+  const http = TestBed.inject(HttpTestingController);
+  const fixture = TestBed.createComponent(SuggestionQueue);
+  const panel: HTMLElement = fixture.nativeElement;
+  const attachmentsPath = '/api/staff/suggestions/park/images';
+  fixture.detectChanges();
+  http
+    .expectOne((request) => request.url === '/api/staff/suggestions/queue')
+    .flush({
+      items: [
+        {
+          id: 'park',
+          title: 'Park cleanup',
+          description: 'Residents will meet near the main entrance.',
+          eventDate: '2026-11-22',
+          location: 'City park',
+          contact: null,
+          canImportImages: false,
+        },
+      ],
+      hasMore: false,
+    });
+  const attachmentsButton = () =>
+    [...panel.querySelectorAll<HTMLButtonElement>('article button')].find(
+      (button) => button.textContent?.trim() === 'Показать вложения',
+    );
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(attachmentsButton()?.disabled).toBe(false);
+  });
+  attachmentsButton()!.click();
+  http.expectOne(attachmentsPath).flush([{ id: 'photo', name: 'Park entrance', state: 'Ready' }]);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    const photo = panel.querySelector('.suggestion-images img');
+    expect(photo?.getAttribute('src')).toBe(attachmentsPath + '/photo');
+    expect(photo?.closest('a')?.getAttribute('href')).toBe(attachmentsPath + '/photo');
+  });
+  expect(panel.textContent).toContain('Residents will meet near the main entrance.');
+  expect(panel.textContent).toContain('2026-11-22 City park');
+  expect(panel.textContent).not.toContain('Контакты');
+  expect(panel.textContent).not.toContain('Добавить выбранные в черновик');
+  http.verify();
+});
+
 it('clears remaining assigned contacts when refresh after a return is forbidden', async () => {
   TestBed.configureTestingModule({
     providers: [

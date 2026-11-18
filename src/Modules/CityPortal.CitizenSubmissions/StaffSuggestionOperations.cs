@@ -91,7 +91,7 @@ public sealed class StaffSuggestionOperations : IAccountRoleChangeObserver
         AccountResponse actor = await _accounts.RequireAsync(actorId, sessionId, ["Author", "Moderator", "Administrator"], cancellationToken);
         bool moderator = actor.Roles.Any(_moderationRoles.Contains);
         if (!await SuggestionDatabase.Active(_context, _time.GetUtcNow())
-            .AnyAsync(item => item.Id == suggestionId && (moderator || item.AssigneeId == actorId), cancellationToken))
+            .AnyAsync(item => item.Id == suggestionId && (moderator || item.AssigneeId == null || item.AssigneeId == actorId), cancellationToken))
             throw Missing();
     }
 

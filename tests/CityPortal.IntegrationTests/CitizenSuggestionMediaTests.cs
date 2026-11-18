@@ -28,6 +28,7 @@ public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
         using HttpClient resident = await CitizenSuggestionTests.LoginAsync(factory, database, "Resident", confirmed: true);
         using HttpClient otherResident = await CitizenSuggestionTests.LoginAsync(factory, database, "Neighbour", confirmed: true);
         using HttpClient author = await CitizenSuggestionTests.LoginAsync(factory, database, "Author", confirmed: true, role: "Author");
+        using HttpClient otherAuthor = await CitizenSuggestionTests.LoginAsync(factory, database, "OtherAuthor", confirmed: true, role: "Author");
         using HttpClient moderator = await CitizenSuggestionTests.LoginAsync(factory, database, "Moderator", confirmed: true, role: "Moderator");
         ImageResponse selected = await UploadAsync(resident);
         ImageResponse unused = await UploadAsync(resident);
@@ -50,14 +51,20 @@ public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
         string articlePreview = $"/api/media/images/{selected.Id}/1280";
         Assert.Equal(HttpStatusCode.OK, (await resident.GetAsync(residentPreview)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await otherResident.GetAsync(residentPreview)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(staffPreview)).StatusCode);
+        string attachmentsPath = $"{_staffPath}/{suggestion.Id}/images";
+        ImageResponse[] attachments = (await otherAuthor.GetFromJsonAsync<ImageResponse[]>(attachmentsPath))!;
+        Assert.Contains(attachments, image => image.Id == selected.Id && image.State == "Ready");
+        Assert.Equal(HttpStatusCode.OK, (await otherAuthor.GetAsync(staffPreview)).StatusCode);
+        string importPath = $"{_staffPath}/{suggestion.Id}/import-images";
+        Assert.Equal(HttpStatusCode.NotFound, (await otherAuthor.PostAsJsonAsync(importPath, new { imageIds = new[] { selected.Id } })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await moderator.GetAsync(staffPreview)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(articlePreview)).StatusCode);
 
         Assert.Equal(HttpStatusCode.NoContent, (await author.PostAsJsonAsync($"{_staffPath}/{suggestion.Id}/claim", new { suggestion.Version })).StatusCode);
         StaffSuggestionResponse taken = await AssignmentAsync(author);
         Assert.Equal(HttpStatusCode.OK, (await author.GetAsync(staffPreview)).StatusCode);
-        string importPath = $"{_staffPath}/{suggestion.Id}/import-images";
+        Assert.Equal(HttpStatusCode.NotFound, (await otherAuthor.GetAsync(attachmentsPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await otherAuthor.GetAsync(staffPreview)).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await author.PostAsJsonAsync(importPath, new { imageIds = new[] { foreign.Id } })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await author.PostAsJsonAsync(importPath, new { imageIds = new[] { selected.Id } })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await author.PostAsJsonAsync(importPath, new { imageIds = new[] { selected.Id } })).StatusCode);
@@ -67,7 +74,7 @@ public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
         Assert.Equal(HttpStatusCode.OK, (await author.GetAsync(articlePreview)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await author.PostAsJsonAsync($"{_staffPath}/{suggestion.Id}/return", new { taken.Version })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(draftPath)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(staffPreview)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await otherAuthor.GetAsync(staffPreview)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(articlePreview)).StatusCode);
 
         SuggestionResponse queued = (await resident.GetFromJsonAsync<SuggestionResponse>($"{_residentPath}/{suggestion.Id}"))!;
@@ -94,6 +101,7 @@ public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
         expire.Parameters.AddWithValue("id", expiring.Id);
         Assert.Equal(1, await expire.ExecuteNonQueryAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await resident.GetAsync($"{_residentPath}/{expiring.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await otherAuthor.GetAsync($"{_staffPath}/{expiring.Id}/images/{expiringImage.Id}")).StatusCode);
         // Quartz context is not used by the job.
         await scope.ServiceProvider.GetRequiredService<SuggestionExpiryJob>().Execute(null!, CancellationToken.None);
         await maintenance.CleanupAsync(CancellationToken.None);

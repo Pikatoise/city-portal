@@ -85,6 +85,53 @@ describe('Editorial review workspace', () => {
     expect(component.selected()).toBeNull();
     expect(component.history()).toEqual([]);
   });
+  it('opens and focuses the submitted article preview after claiming a review', async () => {
+    api.review.mockResolvedValue({
+      ...review,
+      article: {
+        ...review.article,
+        previewHtml:
+          '<p>Saved snapshot</p><figure><img src="/api/media/images/body/1280" alt="Body photo"></figure>',
+        content: {
+          ...review.article.content,
+          cover: { mediaId: 'cover', alt: 'Cover photo' },
+          gallery: [{ mediaId: 'gallery', alt: 'Gallery photo' }],
+        },
+      },
+    });
+    api.reviews.mockResolvedValue({
+      items: [{ id: 'story', title: 'Queued article', state: 'InReview', version: 6 }],
+      total: 1,
+    });
+    api.act.mockResolvedValue({});
+    const fixture = TestBed.createComponent(ReviewWorkspace);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host: HTMLElement = fixture.nativeElement;
+    const claimButton = () =>
+      [...host.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === 'Взять на проверку',
+      );
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(claimButton()?.disabled).toBe(false);
+    });
+    claimButton()!.click();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(host.querySelector('.review-detail')?.textContent).toContain('Saved snapshot');
+      expect(document.activeElement).toBe(host.querySelector('#selected-title'));
+    });
+    expect(
+      [...host.querySelectorAll('.review-detail img')].map((image) => image.getAttribute('src')),
+    ).toEqual([
+      '/api/media/images/cover/1280',
+      '/api/media/images/body/1280',
+      '/api/media/images/gallery/1280',
+    ]);
+    expect(api.act).toHaveBeenCalledWith('story', 6, 'claim', '');
+    expect(api.review).toHaveBeenCalledWith('story');
+  });
   it('does not fetch the review queue for an author without editorial permissions', async () => {
     account.profile.mockResolvedValue({ id: 'author', roles: ['Author'], emailConfirmed: true });
     const component = TestBed.createComponent(ReviewWorkspace).componentInstance;

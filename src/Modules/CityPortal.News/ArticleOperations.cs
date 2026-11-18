@@ -99,8 +99,16 @@ public sealed class ArticleOperations
         Apply(revision, content);
         context.Articles.Add(article);
         context.Revisions.Add(revision);
-        context.History.Add(new ArticleHistory { Id = Guid.NewGuid(), ArticleId = article.Id, RevisionId = revision.Id,
-            ActorId = actorId, Action = "CreatedFromSuggestion", Version = article.Version, CreatedAtUtc = now });
+        context.History.Add(new ArticleHistory
+        {
+            Id = Guid.NewGuid(),
+            ArticleId = article.Id,
+            RevisionId = revision.Id,
+            ActorId = actorId,
+            Action = "CreatedFromSuggestion",
+            Version = article.Version,
+            CreatedAtUtc = now
+        });
         await context.SaveChangesAsync(cancellationToken);
         return article.Id;
     }

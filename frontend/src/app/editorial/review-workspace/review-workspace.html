@@ -43,7 +43,7 @@
         </div>
         <div class="review-actions">
           @if (canRead(row)) {
-            <button type="button" (click)="open(row.id)" [disabled]="busy()">Открыть</button>
+            <button type="button" (click)="open(row.id)" [disabled]="busy()">Предпросмотр</button>
           }
           @if (row.state === 'InReview') {
             @if (!row.reviewerId) {
@@ -88,8 +88,8 @@
     @if (selected(); as review) {
       <section class="review-detail" aria-labelledby="selected-title">
         <div class="review-actions">
-          <h2 id="selected-title">Отправленная версия</h2>
-          <button type="button" (click)="open(review.article.id)" [disabled]="busy()">
+          <h2 id="selected-title" #previewTitle tabindex="-1">Предпросмотр отправленной версии</h2>
+          <button type="button" (click)="open(review.article.id, false)" [disabled]="busy()">
             Обновить версию
           </button>
         </div>
@@ -112,7 +112,7 @@
             <figcaption>{{ cover.caption }}</figcaption>
           </figure>
         }
-        <div [innerHTML]="review.article.previewHtml"></div>
+        <div class="article-preview-body" [innerHTML]="review.article.previewHtml"></div>
         @for (image of review.article.content.gallery; track $index) {
           <figure>
             <img [src]="'/api/media/images/' + image.mediaId + '/1280'" [alt]="image.alt || ''" />
@@ -226,7 +226,7 @@
                 <figcaption>{{ image.caption }}</figcaption>
               </figure>
             }
-            <div [innerHTML]="entry.revision.previewHtml"></div>
+            <div class="article-preview-body" [innerHTML]="entry.revision.previewHtml"></div>
             @for (image of entry.revision.content.gallery; track $index) {
               <figure>
                 <img

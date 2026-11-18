@@ -1,4 +1,15 @@
-import { Component, OnInit, inject, signal, computed, ElementRef, DestroyRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  DestroyRef,
+  Injector,
+  afterNextRender,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AccountApi, AccountProfile } from '../../account/account-api';
@@ -36,6 +47,8 @@ export class ReviewWorkspace implements OnInit {
   }
   private readonly api = inject(NewsApi);
   private readonly account = inject(AccountApi);
+  private readonly injector = inject(Injector);
+  private readonly previewTitle = viewChild<ElementRef<HTMLHeadingElement>>('previewTitle');
   protected readonly clock = inject(CityClock);
   readonly profile = signal<AccountProfile | null>(null);
   readonly allowed = computed(
@@ -94,13 +107,17 @@ export class ReviewWorkspace implements OnInit {
       this.busy.set(false);
     }
   }
-  async open(id: string): Promise<void> {
+  async open(id: string, focusPreview = true): Promise<void> {
     this.busy.set(true);
     this.error.set('');
     this.snapshot.set(null);
     try {
       this.selected.set(await this.api.review(id));
       this.reason = '';
+      if (focusPreview)
+        afterNextRender(() => this.previewTitle()?.nativeElement.focus(), {
+          injector: this.injector,
+        });
       await this.loadHistory();
     } catch (error) {
       this.selected.set(null);
@@ -137,7 +154,9 @@ export class ReviewWorkspace implements OnInit {
       if (operation === 'release') {
         this.selected.set(null);
         this.history.set([]);
-      } else if (operation !== 'publish' || this.selected()) await this.open(id);
+      } else if (operation !== 'publish' || this.selected()) {
+        await this.open(id, operation === 'claim' || operation === 'takeover');
+      }
       await this.load(this.page());
     } catch (error) {
       this.error.set(newsError(error));

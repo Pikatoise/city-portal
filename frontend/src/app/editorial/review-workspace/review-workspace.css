@@ -31,7 +31,8 @@
   margin-top: 40px;
   overflow-wrap: anywhere;
 }
-.review-detail img {
+.review-detail img,
+:host ::ng-deep .article-preview-body img {
   max-width: 100%;
   max-height: 520px;
   object-fit: contain;
