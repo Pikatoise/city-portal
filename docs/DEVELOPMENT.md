@@ -349,6 +349,13 @@ Use the Compose HTTPS origin for cookie-authentication acceptance checks.
 The generated client workflow and frontend test commands live in the frontend
 package scripts. CI runs backend format/build/tests, frontend build/tests, and
 the Compose image/migration/HTTPS smoke path on Linux.
+The frontend CI job installs locked dependencies with lifecycle scripts disabled.
+SonarCloud's duplication metric skips the generated API client under
+`frontend/src/app/api/`. CI checks that the client matches the OpenAPI snapshot.
+On Windows, a clean install with scripts disabled passed formatting, client
+generation, the production build, and all 99 frontend tests. Local script checks
+confirmed TLS certificate and hostname verification, rejection of redirects
+from the OpenAPI refresh and capacity scripts, and detection of contract drift.
 
 ## Registration and Confirmation Configuration
 

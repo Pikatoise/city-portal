@@ -33,9 +33,10 @@ def main():
     origin = arguments.origin.rstrip("/")
     require(urllib.parse.urlsplit(origin).scheme == "https", "HTTPS origin required.")
     cookies = http.cookiejar.CookieJar()
+    context = ssl.create_default_context(cafile=arguments.ca)
     client = urllib.request.build_opener(
         urllib.request.HTTPCookieProcessor(cookies),
-        urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=arguments.ca)),
+        urllib.request.HTTPSHandler(context=context),
     )
 
     def request(path, expected=200, body=None, csrf=True, method=None):

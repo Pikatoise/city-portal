@@ -37,9 +37,10 @@ def command(args, env, *, data=None, capture=False):
 class Client:
     def __init__(self, origin, ca):
         self.origin = origin
+        context = ssl.create_default_context(cafile=str(ca))
         self.opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
-            urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=str(ca))))
+            urllib.request.HTTPSHandler(context=context))
 
     def call(self, path, body=None, method=None):
         headers = {"Accept": "application/json"}
