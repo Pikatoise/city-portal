@@ -122,6 +122,15 @@ An application service for a specific cross-module scenario coordinates module o
 
 Use optimistic concurrency with an explicit record version. Reject conflicting writes with HTTP 409 Conflict and let the interface load current data; do not silently overwrite another user's changes. Design transaction boundaries and rechecks for concurrent publication, withdrawal, moderation, account blocking, advertisement creation, and renewal.
 
+Writes using `AccountAuthorization` acquire the administration role lock, then
+the actor's normalized Email and account locks, then any workflow resource locks. They
+recheck the session and permissions after acquiring the account locks. A
+private News draft save takes the role lock in shared mode and locks one
+article and its working revision's Media references. Other workflows using
+this lock retain exclusive mode, including role changes and bootstrap. Role
+change observers update dependent modules before commit. See the
+[draft write concurrency verification](stages/STAGE_2.md#draft-write-concurrency).
+
 Record significant editorial, moderation, and administrative actions with the responsible actor. Define the audit schema and retention for each workflow. Business decisions and their reasons remain in the owning module independently of notification delivery.
 
 ## Domain Implementation Requirements
@@ -184,6 +193,14 @@ Implement drafts, review, publication, rejection, blocking, withdrawal, expirati
 Keep the approved revision public while an owner's changed revision awaits moderation. Pending changes must never become public before approval. Moderators make decisions rather than rewriting listings.
 
 Store publication expiry and check it in public queries as well as cleanup jobs. Worker downtime must not extend a listing's public lifetime. Coordinate account blocks with Identity atomically and distinguish account-level hiding from direct listing blocks and owner withdrawal.
+
+The Stage 4 specification must cover both commit orders for account blocking
+versus listing publication or renewal. A committed block prevents a later
+publication or renewal, including publication by staff on the blocked account's
+listing. When publication or renewal commits first, a successful block hides
+the listing in both public catalog and direct reads. A failure to hide the
+listings rolls back the block. Design the lock order around both the acting
+account and the listing owner, and verify these cases with real PostgreSQL.
 
 Implement reports, moderation history, and renewed report handling as defined in VALUE.md. Finalize detailed states and transitions before implementation.
 

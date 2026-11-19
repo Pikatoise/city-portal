@@ -24,13 +24,23 @@ public sealed class AccountAuthorization
         return actor;
     }
 
-    public async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken)
+    public Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken) =>
+        BeginAsync(actorId, sessionId, roles, shareRoleLock: false, cancellationToken);
+
+    /// <summary>Allows concurrent writes that serialize their own resources while excluding role changes.</summary>
+    public Task<AuthorizedAccountScope> BeginSharedAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken) =>
+        BeginAsync(actorId, sessionId, roles, shareRoleLock: true, cancellationToken);
+
+    private async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, bool shareRoleLock, CancellationToken cancellationToken)
     {
         IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             // Match administration's serialization order; recheck the session and roles after waiting.
-            await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"administration:roles"}, 0))", cancellationToken);
+            if (shareRoleLock)
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock_shared(hashtextextended({"administration:roles"}, 0))", cancellationToken);
+            else
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"administration:roles"}, 0))", cancellationToken);
             string? email = await _context.Users.Where(account => account.Id == actorId).Select(account => account.NormalizedEmail).SingleOrDefaultAsync(cancellationToken);
             if (email is not null)
                 await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"email:" + email}, 0))", cancellationToken);

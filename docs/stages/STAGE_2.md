@@ -103,7 +103,7 @@ Allow at most one unfinished working version per article, separate from the curr
 
 Public address contract: use `/news/{transliterated-title}-{dd-MM-yyyy}-{guid-suffix}`, where the suffix is the final six hexadecimal characters of the article GUID. Persist the first-publication date in the city's time zone so later time-zone changes do not change the address. A published title change replaces the public URL; previous URLs no longer resolve. Pending title changes cannot change public addresses. Reject publication when another article already owns the complete URL and ask for a different title. Enforce uniqueness under concurrent publication. Migrate the existing published article to the new address.
 
-The address migration runs immediately after the schema migration in the explicit migration command. If interrupted between those steps, readiness fails and public article/discovery requests and address-changing publication operations return 503 until the command is retried; backfill is transactional and does not recalculate stored dates. Focused integration tests cover transliteration, collision rollback, concurrent HTTP publication and correction, republishing after a time-zone change, and backfill recovery. HTTP writes also acquire the existing shared authorization lock, so those concurrency tests do not independently demonstrate contention on the address-specific lock; the unique database index remains the final uniqueness constraint.
+The address migration runs immediately after the schema migration in the explicit migration command. If interrupted between those steps, readiness fails and public article/discovery requests and address-changing publication operations return 503 until the command is retried; backfill is transactional and does not recalculate stored dates. Focused integration tests cover transliteration, collision rollback, concurrent HTTP publication and correction, republishing after a time-zone change, and backfill recovery. Publication and correction also acquire the role lock in exclusive mode, so those concurrency tests do not independently demonstrate contention on the address-specific lock; the unique database index remains the final uniqueness constraint.
 
 ## Public News and Discovery
 
@@ -181,6 +181,7 @@ Return 201 for new resources, 200 for reads/updated DTOs, 202 for durable accept
 - An upload that has never been attached to an article or template proposal is eligible for automatic cleanup seven days after creation. Draft, retained-version, and history references exclude images from cleanup. Coordinate reference attachment and cleanup so a competing reference cannot lose its file.
 - PostgreSQL and S3 do not share a database transaction. Represent images as Processing/Ready/Failed/Deleting and permit article/template attachment only to Ready images. Use durable idempotent processing/cleanup work and server-generated object keys. A partial upload never becomes selectable. Reconcile stale processing and partially written output objects; mark deletion under the same reference lock used by attachment before deleting objects. Keep referenced masters/variants and retry failed object deletion without removing references.
 - Version checks and coordinated authorization/state rechecks cover competing review actions, publication, editor correction versus author revision, withdrawal, role revocation, article deletion, and media deletion. Coordinate role changes and assignment release through explicit Identity/News operations in one PostgreSQL transaction with shared connection/transaction. Reuse the existing administration serialization order before article/review locks; recheck the actor after waiting. A release records the role-changing actor and affected reviewer. No stale assignment remains actionable for a revoked reviewer. Deletion versus first publication must not permit deleting an article that wins publication.
+- Private draft saves acquire the role lock in shared mode. They retain the actor and article locks, the version check and the sorted Media image lock order for a single working revision. Saving an approved version restarts in an exclusive transaction and rechecks authorization, ownership, version and state before writing. An approved save refreshes references across multiple revisions and retains exclusive coordination with other authorized writers.
 - Public lists, direct URLs, search, SSR, media responses, and caches must enforce current visibility after withdrawal. Start with private S3 buckets, API-streamed image access, and no shared public-response cache. Do not issue anonymous object URLs or long-lived signed links bypassing current visibility/block checks. Return no-store on gated image/article responses and shared-cache exclusions for staff pages; in-flight/already-downloaded bytes cannot be recalled. Verify subsequent-request denial and concurrent visibility changes before considering caching.
 
 ## Notifications
@@ -465,3 +466,62 @@ are not a production SLA; cold/tail latency limitations remain documented.
 The address concurrency tests do not independently isolate contention on the
 address-specific lock. No production deployment or new CI/test run is implied
 by this acceptance record.
+
+## Draft write concurrency
+
+The administration advisory lock coordinates setup, bootstrap, role changes
+and writes using `AccountAuthorization`. Those writes take it before the
+normalized Email and actor account locks, recheck the current session and
+role, and then acquire the workflow resource locks. Password and profile changes take Email
+and account locks in that order. Registration and login lock the Email.
+Logout revokes the session record, which subsequent authorization checks
+read. Role changes hold the exclusive lock through their dependent News and
+Citizen Submissions updates. The commit releases transaction locks before
+post-commit notification flushing.
+
+Private draft saves share the administration lock with other draft saves.
+They hold one article row and replace one working revision's Media references,
+with image IDs locked in sorted order. An approved save can refresh multiple
+revisions. It releases the shared transaction before making changes, starts
+an exclusive transaction, and validates the actor, ownership and version again.
+
+### Local comparison
+
+The 2026-11-19 comparison used the same real HTTP handlers in a Release
+ASP.NET Core TestServer, isolated PostgreSQL 18.6 on Docker Desktop/WSL2,
+pooled Npgsql connections and .NET SDK 10.0.403. The host was a Ryzen 5 5500U
+with 12 logical processors. Each run warmed up with 32 saves. Each writer
+repeated a versioned save on its own draft with a short body and no images.
+The same-account case used one author and eight distinct drafts. In the mixed
+case an editor made 16 category changes and an administrator made 16 role
+changes on a separate account while the draft saves ran. The baseline used
+commit `bcac0a6` with temporary measurement instrumentation. The comparison
+run used the shared-lock implementation with the same instrumentation.
+
+| Workload | Saves | Save p50 / p95 before (ms) | Save p50 / p95 after (ms) | Role lock command p50 / p95 before (ms) | Role lock command p50 / p95 after (ms) | Saves/s before / after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| One author, one writer | 24 | 66.59 / 71.18 | 64.64 / 77.91 | 1.82 / 2.09 | 1.69 / 2.13 | 14.9 / 15.2 |
+| Eight distinct authors | 192 | 306.29 / 348.73 | 97.75 / 111.22 | 240.33 / 274.42 | 2.33 / 4.79 | 25.8 / 80.5 |
+| Eight writers on one account | 96 | 268.77 / 275.41 | 252.34 / 282.43 | 210.89 / 219.13 | 1.56 / 2.11 | 29.8 / 31.1 |
+| Eight authors with editorial and role changes | 192 | 317.46 / 343.34 | 135.32 / 173.07 | 264.07 / 289.50 | 47.83 / 81.98 | 25.6 / 59.4 |
+
+The lock-command timer measures acquisition separately from the request and
+includes its SQL round trip. The mixed-workload lock column includes the 16
+editorial commands alongside the 192 draft saves. For the 16 exclusive role
+changes, lock-command p50/p95 was 274.72/293.53 ms before and 84.42/98.65 ms
+after. Their complete request p50/p95 was 331.35/440.96 ms before and
+146.31/273.67 ms after. Same-account requests still serialize on their actor
+locks. These short local runs provide a comparison for these workloads. They
+do not establish production latency or long-running fairness.
+
+The PostgreSQL regression for unrelated authors observed one save waiting
+on an article row. Before the change the second save waited behind it. With
+the shared lock, the second save committed while the first row remained locked.
+The role-revocation regression verified both commit orders. A revocation
+that committed first denied the waiting save. A save that committed first
+updated the draft once, and subsequent requests lost author access.
+
+The full Release .NET run passed 191 tests with zero failures or skips.
+It also exercised last-administrator protection, session revocation,
+approved saves, notification rollback and the Stage 3 role-removal race.
+Solution formatting verification passed.

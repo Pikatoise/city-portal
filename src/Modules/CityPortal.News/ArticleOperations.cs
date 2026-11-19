@@ -152,17 +152,33 @@ public sealed class ArticleOperations
     public async Task<ArticleResponse> SaveAsync(Guid actorId, Guid sessionId, Guid id, long version, ArticleContent content, CancellationToken cancellationToken)
     {
         ValidatedArticleContent validated = ArticleDocuments.Validate(content);
+        ArticleResponse? draft = await TrySaveDraftAsync(actorId, sessionId, id, version, validated, cancellationToken);
+        if (draft is not null)
+            return draft;
+
+        // Approved saves can update references across several revisions. Start a new
+        // exclusive transaction to preserve their lock order and recheck the version.
         await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, ["Author"], cancellationToken);
         await using NewsDbContext context = await NewsDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
         NewsArticle article = await LockOwnAsync(context, id, actorId, version, cancellationToken);
         ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
+        if (revision.State != "Approved")
+            throw NewsDatabase.Conflict();
+        ArticleResponse response = await _reviews.SaveApprovedAsync(context, article, revision, content, scope, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        await _reviews.FlushAfterCommitAsync();
+        return response;
+    }
+
+    private async Task<ArticleResponse?> TrySaveDraftAsync(Guid actorId, Guid sessionId, Guid id, long version, ValidatedArticleContent validated,
+        CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(actorId, sessionId, ["Author"], cancellationToken);
+        await using NewsDbContext context = await NewsDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        NewsArticle article = await LockOwnAsync(context, id, actorId, version, cancellationToken);
+        ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
         if (revision.State == "Approved")
-        {
-            ArticleResponse response = await _reviews.SaveApprovedAsync(context, article, revision, content, scope, cancellationToken);
-            await scope.CommitAsync(cancellationToken);
-            await _reviews.FlushAfterCommitAsync();
-            return response;
-        }
+            return null;
         if (revision.State != "Draft" || revision.Retained)
             throw NewsDatabase.Conflict();
         ArticleContent previous = JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson)!;
