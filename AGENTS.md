@@ -54,6 +54,7 @@ Keep temporary scripts, logs, screenshots, runtime copies and test fixtures only
 for the task that needs them. Before finishing, stop task-owned processes and
 remove those files, disposable databases, broker vhosts and object buckets.
 Record durable verification results in the existing project documentation.
+Remove completed task specs from `docs/temp_tasks/` after recording their results.
 Preserve active stand data, credentials, required SDKs and dependencies. Keep
 diagnostic artifacts only while they are needed to investigate an unresolved failure.
 
