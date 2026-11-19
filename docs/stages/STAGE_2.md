@@ -181,7 +181,7 @@ Return 201 for new resources, 200 for reads/updated DTOs, 202 for durable accept
 - An upload that has never been attached to an article or template proposal is eligible for automatic cleanup seven days after creation. Draft, retained-version, and history references exclude images from cleanup. Coordinate reference attachment and cleanup so a competing reference cannot lose its file.
 - PostgreSQL and S3 do not share a database transaction. Represent images as Processing/Ready/Failed/Deleting and permit article/template attachment only to Ready images. Use durable idempotent processing/cleanup work and server-generated object keys. A partial upload never becomes selectable. Reconcile stale processing and partially written output objects; mark deletion under the same reference lock used by attachment before deleting objects. Keep referenced masters/variants and retry failed object deletion without removing references.
 - Version checks and coordinated authorization/state rechecks cover competing review actions, publication, editor correction versus author revision, withdrawal, role revocation, article deletion, and media deletion. Coordinate role changes and assignment release through explicit Identity/News operations in one PostgreSQL transaction with shared connection/transaction. Reuse the existing administration serialization order before article/review locks; recheck the actor after waiting. A release records the role-changing actor and affected reviewer. No stale assignment remains actionable for a revoked reviewer. Deletion versus first publication must not permit deleting an article that wins publication.
-- Private draft saves acquire the role lock in shared mode. They retain the actor and article locks, the version check and the sorted Media image lock order for a single working revision. Saving an approved version restarts in an exclusive transaction and rechecks authorization, ownership, version and state before writing. An approved save refreshes references across multiple revisions and retains exclusive coordination with other authorized writers.
+- Private draft saves preserve current authorization, version checks and atomic Media reference changes under the [draft save lock policy](../OPTIMIZATIONS.md#draft-write-concurrency). Approved saves retain exclusive authorization coordination.
 - Public lists, direct URLs, search, SSR, media responses, and caches must enforce current visibility after withdrawal. Start with private S3 buckets, API-streamed image access, and no shared public-response cache. Do not issue anonymous object URLs or long-lived signed links bypassing current visibility/block checks. Return no-store on gated image/article responses and shared-cache exclusions for staff pages; in-flight/already-downloaded bytes cannot be recalled. Verify subsequent-request denial and concurrent visibility changes before considering caching.
 
 ## Notifications
@@ -331,76 +331,15 @@ database failure can still produce a duplicate external Email.
 
 ## Measured query changes
 
-The initial capacity check exposed slow broad search and taxonomy reads. The
-`DiscoveryReadPerformance` News migration adds a partial index on the current
-public `PublishedRevisionId` and selects `MAIN` storage for the generated
-search vector. Recomputing existing generated values applies the physical
-storage choice to existing revisions without changing text or article versions.
-The upgrade regression verifies preserved content/search, the physical policy,
-the index and repeat application.
-
-The upgrade regression checks a large vector under the preceding EXTENDED policy
-and verifies its PostgreSQL row version changes during migration. Removing the
-recomputation UPDATE failed the assertion; restoring it passed the focused test.
-Specification and standards reviews resolved their findings. Failed helper commands
-retain stdout/stderr before checking their exit code.
-
-An isolated comparison measured the representative tag-page query at 62.428 ms
-before the index and 4.078 ms after it. A representative broad ranked search
-measured 471.552 ms before the storage change and 20.571 ms after it. These are
-single-query diagnostics, separate from HTTP percentiles.
-
-`SET STORAGE` controls future row storage and does not itself rewrite existing
-values; the migration therefore recomputes generated vectors. See the
-[PostgreSQL 18 ALTER TABLE reference](https://www.postgresql.org/docs/18/sql-altertable.html).
-Apply this migration with application writers stopped: it updates all existing
-revisions and takes normal PostgreSQL DDL/write locks. Allow time and disk space
-for that work and take the consistent backup first. A migration failure rolls
-back; a later explicit run may retry it. No public cache was introduced.
+The [optimization log](../OPTIMIZATIONS.md#news-discovery-queries) records
+the migration and query measurements.
 
 ## Capacity Results
 
-The final capacity run reused the same isolated, migrated 10,000-article fixture
-after warm-up. Each route received 24 warm-up requests at eight readers, then
-80 measured requests at eight readers. All 800 measured requests and 240 warm-up
-requests completed without HTTP errors. Public API and SSR responses carried
-`Cache-Control: no-store`.
+See the [capacity results](../OPTIMIZATIONS.md#capacity-results) for the
+load measurements and their limits.
 
-| Route | Warm p50 ms | Warm p95 ms | Maximum measured ms |
-| --- | ---: | ---: | ---: |
-| Feed | 29.05 | 53.94 | 56.96 |
-| Page 500 | 59.82 | 71.35 | 81.69 |
-| Broad Russian search | 61.20 | 78.49 | 86.68 |
-| Combined category/tag | 17.18 | 19.66 | 29.59 |
-| Homepage API | 75.94 | 81.94 | 99.62 |
-| Public tags, first 100 | 26.79 | 36.50 | 46.74 |
-| Related articles | 28.73 | 35.01 | 47.07 |
-| Homepage SSR | 256.37 | 302.44 | 2305.11 |
-| List SSR | 637.09 | 875.91 | 2957.98 |
-| Article SSR | 571.43 | 743.10 | 785.71 |
-
-The local targets of API p95 <= 500 ms and SSR p95 <= 1,000 ms passed in this
-final run. Latency tails remain: warm-up reached 2,791 ms and measured SSR
-requests reached 2,958 ms. An earlier fresh post-migration run also exceeded
-the tag p95 target (1,195 ms); its repeat on the same fixture measured 36.50 ms.
-These are recorded limitations, not a production latency guarantee or proof of
-steady performance over a long run. The pre-change broad-search p95 was 1,906 ms
-and list/article SSR p95 was 4,624/4,241 ms.
-
-Environment: Windows 11 build 28000, 12 logical CPUs; Docker Desktop 29.9.3 with
-12 CPUs and 7,974,043,648 bytes of VM memory; PostgreSQL 18.6 Alpine x86-64;
-.NET SDK 10.0.403; Node 26.8.1. Host API/SSR processes used Release/production
-builds and loopback HTTP for measurements. HTTPS and browser behavior were
-verified separately. Informational SQL logging remained enabled.
-
-After measurement, API/SSR working sets were approximately 231/281 MiB,
-compared with 178/92 MiB before measurement. These are process snapshots,
-not peak or leak measurements. Representative final EXPLAIN ANALYZE times
-were feed 0.390 ms, search 18.395 ms, image visibility 0.031 ms and tag page
-3.221 ms. The helper saves plans with buffers and full environment/latency/memory
-JSON in ignored `.local/issue14/capacity_<uuid>/` artifacts during measurement.
-Completed local artifacts and disposable fixtures were removed during the
-owner-requested cleanup; this report retains the measured results and limitations.
+## Browser verification
 
 Split-role HTTPS browser checks covered return/private correction/resubmission,
 publication, private proposals, direct correction/supersession, template placeholders,
@@ -412,31 +351,13 @@ confirmed 404 for old addresses.
 Homepage/list/article layouts at 1440px and 390px had no horizontal overflow or
 browser page errors. Completed fixtures, screenshots and logs were removed.
 
-Capacity reproduction after building Release API and production Angular SSR:
-
-```powershell
-python scripts/check-news-capacity.py
-```
-
-The helper requires the local Compose infrastructure and ignored `.env`. Each
-fresh run creates a unique isolated database and broker vhost. It leaves those
-fixtures for inspection and stops its API/SSR processes on exit. `--serve`
-keeps them available for local review; interrupt it to stop. `--reuse` accepts
-only a previously created `.local/issue14/capacity_<uuid>` directory.
-
-The baseline contains 10,000 public articles with roughly 3,800 body characters,
-100,000 image-reference rows, 100 categories and 1,000 tags. Reference rows
-exercise metadata/query volume; processed-object transfer throughput is outside
-this measurement and is covered functionally by recovery/live Media checks.
-No maximum-length-content or multi-hour soak claim is made.
-
 ## Final Verification
 
 The final 2026-11-17 pre-merge Release run passed 184 backend tests, zero failed
 or skipped; TRX totals and individual outcomes agreed. Frontend passed 96 tests
 in 15 files. Solution formatting, frontend formatting, generated-client consistency,
 production SSR build and local Markdown links passed. These final totals supersede
-intermediate counts; recovery/capacity measurements above describe their own runs.
+intermediate counts. Recovery and capacity measurements describe separate runs.
 
 Owner-review fixes added safe marks on hardBreak nodes, specific field validation
 feedback and idempotent initial taxonomy for the local stand. Browser save/submission
@@ -461,67 +382,13 @@ expiry and retention. Stage 2 is closed.
 
 Recorded limitations remain: SMTP acceptance followed by a crash before recording
 success can duplicate external Email; exhausted retries require administrator
-replay while the delivery remains eligible. Local warm capacity measurements
-are not a production SLA; cold/tail latency limitations remain documented.
-The address concurrency tests do not independently isolate contention on the
+replay while the delivery remains eligible. The
+[capacity results](../OPTIMIZATIONS.md#capacity-results) record the local
+measurement limits. The address concurrency tests do not independently isolate contention on the
 address-specific lock. No production deployment or new CI/test run is implied
 by this acceptance record.
 
 ## Draft write concurrency
 
-The administration advisory lock coordinates setup, bootstrap, role changes
-and writes using `AccountAuthorization`. Those writes take it before the
-normalized Email and actor account locks, recheck the current session and
-role, and then acquire the workflow resource locks. Password and profile changes take Email
-and account locks in that order. Registration and login lock the Email.
-Logout revokes the session record, which subsequent authorization checks
-read. Role changes hold the exclusive lock through their dependent News and
-Citizen Submissions updates. The commit releases transaction locks before
-post-commit notification flushing.
-
-Private draft saves share the administration lock with other draft saves.
-They hold one article row and replace one working revision's Media references,
-with image IDs locked in sorted order. An approved save can refresh multiple
-revisions. It releases the shared transaction before making changes, starts
-an exclusive transaction, and validates the actor, ownership and version again.
-
-### Local comparison
-
-The 2026-11-19 comparison used the same real HTTP handlers in a Release
-ASP.NET Core TestServer, isolated PostgreSQL 18.6 on Docker Desktop/WSL2,
-pooled Npgsql connections and .NET SDK 10.0.403. The host was a Ryzen 5 5500U
-with 12 logical processors. Each run warmed up with 32 saves. Each writer
-repeated a versioned save on its own draft with a short body and no images.
-The same-account case used one author and eight distinct drafts. In the mixed
-case an editor made 16 category changes and an administrator made 16 role
-changes on a separate account while the draft saves ran. The baseline used
-commit `bcac0a6` with temporary measurement instrumentation. The comparison
-run used the shared-lock implementation with the same instrumentation.
-
-| Workload | Saves | Save p50 / p95 before (ms) | Save p50 / p95 after (ms) | Role lock command p50 / p95 before (ms) | Role lock command p50 / p95 after (ms) | Saves/s before / after |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| One author, one writer | 24 | 66.59 / 71.18 | 64.64 / 77.91 | 1.82 / 2.09 | 1.69 / 2.13 | 14.9 / 15.2 |
-| Eight distinct authors | 192 | 306.29 / 348.73 | 97.75 / 111.22 | 240.33 / 274.42 | 2.33 / 4.79 | 25.8 / 80.5 |
-| Eight writers on one account | 96 | 268.77 / 275.41 | 252.34 / 282.43 | 210.89 / 219.13 | 1.56 / 2.11 | 29.8 / 31.1 |
-| Eight authors with editorial and role changes | 192 | 317.46 / 343.34 | 135.32 / 173.07 | 264.07 / 289.50 | 47.83 / 81.98 | 25.6 / 59.4 |
-
-The lock-command timer measures acquisition separately from the request and
-includes its SQL round trip. The mixed-workload lock column includes the 16
-editorial commands alongside the 192 draft saves. For the 16 exclusive role
-changes, lock-command p50/p95 was 274.72/293.53 ms before and 84.42/98.65 ms
-after. Their complete request p50/p95 was 331.35/440.96 ms before and
-146.31/273.67 ms after. Same-account requests still serialize on their actor
-locks. These short local runs provide a comparison for these workloads. They
-do not establish production latency or long-running fairness.
-
-The PostgreSQL regression for unrelated authors observed one save waiting
-on an article row. Before the change the second save waited behind it. With
-the shared lock, the second save committed while the first row remained locked.
-The role-revocation regression verified both commit orders. A revocation
-that committed first denied the waiting save. A save that committed first
-updated the draft once, and subsequent requests lost author access.
-
-The full Release .NET run passed 191 tests with zero failures or skips.
-It also exercised last-administrator protection, session revocation,
-approved saves, notification rollback and the Stage 3 role-removal race.
-Solution formatting verification passed.
+See the [draft write optimization](../OPTIMIZATIONS.md#draft-write-concurrency)
+for the lock changes, performance comparison and regression evidence.

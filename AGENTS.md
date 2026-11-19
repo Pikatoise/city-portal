@@ -39,6 +39,15 @@ The owner defines scenarios and key decisions; AI implements agreed behavior and
 5. When work changes an agreed requirement, contract, or technical decision, update every affected specification in the same work session. Update VALUE.md for product changes and CORE.md for architecture or delivery changes; keep stage specifications consistent with both. Confirm new business rules and features with the owner before implementing them.
 6. Close the stage only when its acceptance criteria pass and the owner has reviewed the result. Record remaining limitations and the review outcome before describing the next stage. Keep GitHub Issues and Projects aligned with the stage specification.
 
+## Optimization and Refactoring
+
+Read [docs/OPTIMIZATIONS.md](docs/OPTIMIZATIONS.md) before revisiting an
+existing optimization or refactor. After implementing one, record its date,
+scope, reason, change and verification there in the same work session.
+Include before-and-after measurements and their conditions when measured.
+Keep effective contracts and operational procedures in their owning documents
+and link to the log for implementation history and evidence.
+
 ## Workspace Cleanup
 
 Keep temporary scripts, logs, screenshots, runtime copies and test fixtures only

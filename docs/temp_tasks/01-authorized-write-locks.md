@@ -2,8 +2,8 @@
 
 **Status** · Existing workflow implemented. Stage 4 cases deferred to that stage.
 
-The [Stage 2 verification](../stages/STAGE_2.md#draft-write-concurrency)
-records the lock order, before/after measurements and PostgreSQL regression.
+The [optimization log](../OPTIMIZATIONS.md#draft-write-concurrency) records
+the lock order, before/after measurements and PostgreSQL regression.
 The [Stage 4 direction](../CORE.md#classifieds-and-moderation) records the
 required commit-order cases for blocking versus publication or renewal.
 

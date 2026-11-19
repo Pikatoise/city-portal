@@ -350,12 +350,8 @@ The generated client workflow and frontend test commands live in the frontend
 package scripts. CI runs backend format/build/tests, frontend build/tests, and
 the Compose image/migration/HTTPS smoke path on Linux.
 The frontend CI job installs locked dependencies with lifecycle scripts disabled.
-SonarCloud's duplication metric skips the generated API client under
-`frontend/src/app/api/`. CI checks that the client matches the OpenAPI snapshot.
-On Windows, a clean install with scripts disabled passed formatting, client
-generation, the production build, and all 99 frontend tests. Local script checks
-confirmed TLS certificate and hostname verification, rejection of redirects
-from the OpenAPI refresh and capacity scripts, and detection of contract drift.
+[CI and verification tooling changes](OPTIMIZATIONS.md#ci-and-verification-tooling)
+record the SonarCloud follow-up and its verification.
 
 ## Registration and Confirmation Configuration
 
@@ -446,12 +442,12 @@ the [suggestion review scenario](stages/STAGE_3.md#local-review-scenario).
 ## Stage 2 Upgrade and Recovery
 
 Before applying `DiscoveryReadPerformance`, stop API writes and the Worker and
-take a consistent PostgreSQL/object/key backup. The explicit migration adds the
-current-public-revision index and rewrites generated search vectors to use the
-new physical storage policy. Existing content and article versions stay intact.
-Allow time and disk headroom for updating all retained revisions. Normal
-API/Worker startup still never migrates. Repeat the explicit migration command,
-then start API and Worker and verify readiness/publication visibility.
+take a consistent PostgreSQL/object/key backup. Allow time and disk headroom
+for updating all retained revisions. See the
+[News read optimization](OPTIMIZATIONS.md#news-discovery-queries) for the
+migration's changes and verification. Apply the explicit migration and repeat
+the command to verify repeat application. Start API and Worker, then verify
+readiness and publication visibility.
 
 Keep PostgreSQL, processed objects, Data Protection keys and private deployment
 configuration as one recovery set. Take a custom-format PostgreSQL dump and
@@ -469,7 +465,5 @@ and pending work. Confirm the Worker resumes Processing rows from staged payload
 and retries Deleting rows. Keep the original environment until recovery is
 reviewed. See the [combined recovery check](stages/STAGE_2.md#combined-recovery).
 
-After a Release API build and production frontend build, reproduce the isolated
-capacity baseline with `python scripts/check-news-capacity.py`. This creates a
-new fixture database/vhost and leaves ignored results, plans and keys. It uses
-local Compose infrastructure and does not deploy.
+See [the capacity check](OPTIMIZATIONS.md#reproduce-the-capacity-check) for
+the command, fixtures and measurement output.

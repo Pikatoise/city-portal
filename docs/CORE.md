@@ -122,14 +122,10 @@ An application service for a specific cross-module scenario coordinates module o
 
 Use optimistic concurrency with an explicit record version. Reject conflicting writes with HTTP 409 Conflict and let the interface load current data; do not silently overwrite another user's changes. Design transaction boundaries and rechecks for concurrent publication, withdrawal, moderation, account blocking, advertisement creation, and renewal.
 
-Writes using `AccountAuthorization` acquire the administration role lock, then
-the actor's normalized Email and account locks, then any workflow resource locks. They
-recheck the session and permissions after acquiring the account locks. A
-private News draft save takes the role lock in shared mode and locks one
-article and its working revision's Media references. Other workflows using
-this lock retain exclusive mode, including role changes and bootstrap. Role
-change observers update dependent modules before commit. See the
-[draft write concurrency verification](stages/STAGE_2.md#draft-write-concurrency).
+Writes using `AccountAuthorization` recheck the actor after acquiring the
+authorization locks. Role changes keep exclusive coordination and update
+dependent modules before commit. The [draft save lock policy](OPTIMIZATIONS.md#draft-write-concurrency)
+records lock ordering, the scope of shared locking and regression evidence.
 
 Record significant editorial, moderation, and administrative actions with the responsible actor. Define the audit schema and retention for each workflow. Business decisions and their reasons remain in the owning module independently of notification delivery.
 
@@ -263,13 +259,10 @@ and the [suggestion attachment rules](stages/STAGE_3.md#attachments-and-notifica
 
 ## Data Access, Search, and Cache
 
-Stage 2 capacity checks justified a partial index on the current public
-`PublishedRevisionId` and `MAIN` physical storage for generated search vectors.
-The owned DiscoveryReadPerformance migration recomputes existing vectors while
-preserving article content and versions. Apply it with writers stopped and
-allow time/disk space for retained revisions. Measurement details and latency
-limitations are in [Stage 2 acceptance](stages/STAGE_2.md#final-owner-acceptance-2026-11-17); no shared public
-cache or new search engine was added.
+See the [News discovery optimization](OPTIMIZATIONS.md#news-discovery-queries)
+for the index, storage policy and measurements, and the
+[upgrade procedure](DEVELOPMENT.md#stage-2-upgrade-and-recovery) for migration
+and recovery commands.
 
 Use efficient PostgreSQL queries, suitable indexes, pagination, and bounded reads. Start with PostgreSQL Full-Text Search over published content. Use ordinary query filters for category, district, price, and related attributes. Draft content must not enter public search.
 
