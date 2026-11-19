@@ -85,7 +85,10 @@ jobs:
       - name: Check live OpenAPI contract against client snapshot
         shell: bash
         run: |
-          curl --fail http://localhost:5080/openapi/v1.json | python3 scripts/check-openapi.py
+          contract=$(mktemp)
+          trap 'rm -f -- "$contract"' EXIT
+          curl --fail --output "$contract" http://localhost:5080/openapi/v1.json
+          python3 scripts/check-openapi.py < "$contract"
       - name: Check first-run setup and accounts through HTTPS and SMTP
         run: |
           python3 scripts/check-registration.py --ca /tmp/cityportal-root.crt --install
