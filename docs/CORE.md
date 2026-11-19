@@ -251,7 +251,9 @@ module rechecks the queue or assignment state for each attachment list and
 image request. Imported images receive independent article references.
 
 News updates Media references in the same authorized transaction as the article
-change. When a new revision inherits an archived template, News passes the
+change. Editorial actions update existing reference visibility through Media.
+See the [Media reference optimization](OPTIMIZATIONS.md#media-reference-visibility).
+When a new revision inherits an archived template, News passes the
 validated preceding revision ID from the same article. Direct corrections use
 the editing actor for upload selection and preserve the original author on the
 references. Cleanup follows the [product retention rules](VALUE.md#editorial-and-administrative-workspace)

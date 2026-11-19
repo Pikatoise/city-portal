@@ -301,16 +301,19 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
 
     private async Task RefreshMediaAsync(NewsDbContext context, NewsArticle article, DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken)
     {
-        ArticleRevision[] revisions = await context.Revisions.Where(item => item.ArticleId == article.Id).OrderBy(item => item.Id).ToArrayAsync(cancellationToken);
-        foreach (ArticleRevision revision in revisions)
+        bool deleted = article.DeletedAtUtc.HasValue;
+        bool exposeDeletedHistory = deleted && article.LastSubmittedRevisionId.HasValue;
+        bool authorVisible = article.IdeaContributorId is null || !deleted;
+        var revisions = await context.Revisions.Where(revision => revision.ArticleId == article.Id)
+            .Select(revision => new { revision.Id, revision.SubmittedAtUtc }).ToArrayAsync(cancellationToken);
+        RevisionMediaVisibility[] visibility = revisions.Select(revision =>
         {
-            Guid[] images = ArticleDocuments.Validate(JsonSerializer.Deserialize<ArticleContent>(revision.ContentJson)!).ImageIds;
-            bool submitted = revision.SubmittedAtUtc.HasValue || article.DeletedAtUtc.HasValue && article.LastSubmittedRevisionId.HasValue;
-            bool current = !article.DeletedAtUtc.HasValue && (revision.Id == article.WorkingRevisionId || revision.Id == article.PublishedRevisionId);
-            await _media.ReplaceAsync(connection, transaction, revision.Id, article.AuthorId, submitted ? article.ReviewerId : null, submitted,
-                current && article.PublicationState == "Published" && revision.Id == article.PublishedRevisionId, images, cancellationToken,
-                isCurrent: current, authorVisible: article.IdeaContributorId is null || article.DeletedAtUtc is null);
-        }
+            bool submitted = revision.SubmittedAtUtc.HasValue || exposeDeletedHistory;
+            bool current = !deleted && (revision.Id == article.WorkingRevisionId || revision.Id == article.PublishedRevisionId);
+            bool isPublic = current && article.PublicationState == "Published" && revision.Id == article.PublishedRevisionId;
+            return new RevisionMediaVisibility(revision.Id, submitted ? article.ReviewerId : null, submitted, isPublic, current, authorVisible);
+        }).ToArray();
+        await _media.UpdateVisibilityAsync(connection, transaction, visibility, cancellationToken);
     }
 
     private async Task RecordAsync(NewsDbContext context, NewsArticle article, ArticleRevision revision, Guid actorId, string action, string reason,

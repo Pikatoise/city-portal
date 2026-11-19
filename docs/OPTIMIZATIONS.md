@@ -7,6 +7,60 @@ Product and architecture contracts remain in [VALUE](VALUE.md), [CORE](CORE.md)
 and the stage specifications. Operating procedures are in
 [DEVELOPMENT](DEVELOPMENT.md).
 
+## Media reference visibility
+
+Completed on 2026-11-19.
+
+Editorial actions used to read and validate every retained revision's
+document and replace its Media references. A reviewer change rewrote even
+references on drafts whose audience stayed the same.
+
+News now reads revision IDs and submission timestamps to calculate access.
+Media updates existing references in batches of up to 128 revisions, groups
+revisions with the same target audience, and writes rows whose flags change.
+The operation keeps the revision and image locks in the caller's transaction.
+The attachment path still validates image selection and inheritance when an
+image set is saved or copied to a new revision.
+
+News marks the working and publication revisions current until deletion.
+Only the current published revision grants anonymous access, subject to the
+template block. Submitted revisions use the current review assignment for
+editor access, including retained history. Deletion preserves editorial
+access to retained history once an article was submitted. For a deleted
+draft created from a suggestion, Media removes author access through that
+draft while preserving independent suggestion and article references.
+
+### Measured reviewer assignment
+
+Compared the HTTP claim action at `4a626c3` and after the change with
+PostgreSQL 18.6, the Release API test host and the private S3 fixture. Each
+revision referenced one ready image. The short history had the original
+draft and its submitted revision. The long history added 128 retained
+submitted revisions. A temporary EF Core command listener counted Media
+SQL, including the revision and image locks. A PostgreSQL row trigger
+counted committed writes to Media references.
+
+| Revisions | Media SQL statements before / after | Rows deleted / inserted / updated before | Rows deleted / inserted / updated after |
+| ---: | ---: | ---: | ---: |
+| 2 | 12 / 4 | 2 / 2 / 0 | 0 / 0 / 1 |
+| 130 | 780 / 8 | 130 / 130 / 0 | 0 / 0 / 129 |
+
+The new path kept the unsubmitted draft reference unchanged in both fixtures.
+The claim updated the submitted references, including the retained ones an
+assigned editor can read. This comparison measured SQL and row counts.
+
+The PostgreSQL integration test
+`Review_MediaVisibilityUpdatesOnlyChangedReferencesAndRollsBackAsync`
+detected the old delete-and-insert path. It checks that claim, takeover and
+release each update only the submitted reference. It also forces a News
+history failure after Media updates and checks that the previous reviewer
+retains access while the replacement reviewer still has none.
+
+The full Release .NET suite passed 192 tests with zero failures or skips.
+It covers publication and withdrawal, template blocking and inheritance,
+attachment and cleanup races, and imported suggestion images. Solution
+formatting verification passed.
+
 ## Draft write concurrency
 
 Completed on 2026-11-19 in `4a626c3`. The previous exclusive role lock
