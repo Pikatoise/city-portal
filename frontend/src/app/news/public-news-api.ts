@@ -2,6 +2,7 @@ import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../api/api';
+import { getPublicArticle } from '../api/fn/news/get-public-article';
 import { getPublicHomepage } from '../api/fn/news/get-public-homepage';
 import { getRelatedArticles } from '../api/fn/news/get-related-articles';
 import { listPublicArticles, ListPublicArticles$Params } from '../api/fn/news/list-public-articles';
@@ -24,6 +25,9 @@ export class PublicNewsApi {
   }
   async list(params: ListPublicArticles$Params) {
     return (await firstValueFrom(listPublicArticles(this.http, this.api.rootUrl, params))).body;
+  }
+  async article(address: string) {
+    return (await firstValueFrom(getPublicArticle(this.http, this.api.rootUrl, { address }))).body;
   }
   async related(id: string) {
     return (await firstValueFrom(getRelatedArticles(this.http, this.api.rootUrl, { id }))).body;

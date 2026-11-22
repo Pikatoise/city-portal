@@ -9,18 +9,15 @@ import {
   signal,
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
-import { firstValueFrom } from 'rxjs';
-import { Api } from '../api/api';
 import { PublicArticleResponse } from '../api/models/public-article-response';
 import { CityClock } from '../staff/city-clock';
 import { SiteMetadata } from '../site-metadata';
 import { PublicNewsApi } from './public-news-api';
 import { NewsCard } from './news-card';
 import { PublicArticleSummaryResponse } from '../api/models/public-article-summary-response';
-import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 
 @Component({
   selector: 'app-public-article',
@@ -30,12 +27,9 @@ import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 })
 export class PublicArticle implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly discovery = inject(PublicNewsApi);
+  private readonly news = inject(PublicNewsApi);
   readonly related = signal<PublicArticleSummaryResponse[]>([]);
-  readonly taxonomy = signal<PublicTaxonomyResponse[]>([]);
   readonly relatedFailed = signal(false);
-  private readonly http = inject(HttpClient);
-  private readonly api = inject(Api);
   private readonly response = inject(RESPONSE_INIT, { optional: true });
   private readonly pending = inject(PendingTasks);
   private readonly title = inject(Title);
@@ -87,17 +81,9 @@ export class PublicArticle implements OnInit {
         'Cache-Control': 'no-store',
         'Content-Type': 'text/html; charset=utf-8',
       };
+    let article: PublicArticleResponse;
     try {
-      const article = await firstValueFrom(
-        this.http.get<PublicArticleResponse>(
-          `${this.api.rootUrl}/api/news/articles/by-address/${encodeURIComponent(address)}`,
-          {
-            transferCache: false,
-            credentials: 'omit',
-            cache: 'no-store',
-          },
-        ),
-      );
+      article = await this.news.article(address);
       if (generation !== this.generation) return;
       this.article.set(article);
       this.state.set('published');
@@ -118,20 +104,6 @@ export class PublicArticle implements OnInit {
       canonical.rel = 'canonical';
       canonical.href = article.canonicalUrl;
       this.document.head.appendChild(canonical);
-      // Related discovery failures must not turn an otherwise available article into an error page.
-      try {
-        const [related, categories, tags] = await Promise.all([
-          this.discovery.related(article.id),
-          this.discovery.taxonomy('categories'),
-          this.discovery.taxonomy('tags'),
-        ]);
-        if (generation === this.generation) {
-          this.related.set(related);
-          this.taxonomy.set([...categories, ...tags]);
-        }
-      } catch {
-        if (generation === this.generation) this.relatedFailed.set(true);
-      }
     } catch (error) {
       if (generation !== this.generation) return;
       this.article.set(null);
@@ -141,6 +113,13 @@ export class PublicArticle implements OnInit {
         missing ? (error.error?.code === 'article_withdrawn' ? 'withdrawn' : 'missing') : 'failed',
       );
       if (this.response) this.response.status = missing ? 404 : 503;
+      return;
+    }
+    try {
+      const related = await this.news.related(article.id);
+      if (generation === this.generation) this.related.set(related);
+    } catch {
+      if (generation === this.generation) this.relatedFailed.set(true);
     }
   }
   unavailable = (event: Event): void => {

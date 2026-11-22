@@ -125,6 +125,36 @@ It also exercised last-administrator protection, session revocation,
 approved saves, notification rollback and the Stage 3 role-removal race.
 Solution formatting verification passed.
 
+## Public article read
+
+Implemented on 2026-11-22. Article SSR previously paged through the public
+category and tag lists and dropped related stories when either list request
+failed. The [Stage 2 detail contract](stages/STAGE_2.md#public-news-and-discovery)
+now supplies the labels for the current published revision. The API queries by
+the revision's tag IDs (up to ten), skips the query when there are no IDs, and
+restores the stored order. PostgreSQL used the taxonomy primary-key index for
+the three queried IDs in the local fixture.
+
+The production Angular build made eight public news requests before the change
+and two after it on a loopback fixture with 205 categories and 205 tags, using
+100 items per page. Taxonomy list requests fell from six to zero. Active,
+renamed, and archived tag links rendered before and after the change. A
+separate live API and PostgreSQL fixture with the same public taxonomy counts
+confirmed two public news requests for SSR and two for an in-browser
+article-to-article navigation in Edge. Both reads made zero taxonomy requests.
+
+With a pending revision in PostgreSQL, SSR rendered only the published body,
+tag links, and SEO metadata. After withdrawal, SSR and the direct API returned
+404 without article content or article metadata. The SSR fixture also verified
+that a related-request failure leaves the article visible. Angular's router test
+verified that a late related response from the previous article is discarded.
+The live OpenAPI document matched the snapshot, and regenerating the TypeScript
+client from that snapshot produced matching files.
+
+The full runs passed 192 .NET tests and 100 Angular tests. The public-read
+regression also passed on the final Release build. Production SSR built
+successfully.
+
 ## News discovery queries
 
 Completed on 2026-11-17 in `1f67b7c`.

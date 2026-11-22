@@ -4957,6 +4957,7 @@
           "id",
           "canonicalUrl",
           "content",
+          "tags",
           "previewHtml",
           "authorDisplayName",
           "firstPublishedAtUtc",
@@ -4973,6 +4974,12 @@
           },
           "content": {
             "$ref": "#/components/schemas/ArticleContent"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicTaxonomyResponse"
+            }
           },
           "previewHtml": {
             "type": "string"

@@ -67,12 +67,8 @@
               >
             }
             <nav aria-label="Теги статьи">
-              @for (tagId of article.content.tagIds; track tagId) {
-                @for (entry of taxonomy(); track entry.id) {
-                  @if (entry.id === tagId) {
-                    <a routerLink="/news" [queryParams]="{ tagId }">{{ entry.name }}</a>
-                  }
-                }
+              @for (tag of article.tags; track tag.id) {
+                <a routerLink="/news" [queryParams]="{ tagId: tag.id }">{{ tag.name }}</a>
               }
             </nav>
             <p>

@@ -1,8 +1,9 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { RESPONSE_INIT, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Meta, Title } from '@angular/platform-browser';
 import { EMPTY } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,7 +12,7 @@ import { PublicArticleResponse } from '../api/models/public-article-response';
 import { SiteMetadata } from '../site-metadata';
 import { CityClock } from '../staff/city-clock';
 import { PublicArticle } from './public-article';
-import { PublicNewsApi } from './public-news-api';
+import { publicNewsRequests } from './public-news-api';
 
 const publication: PublicArticleResponse = {
   id: 'article-id',
@@ -20,8 +21,18 @@ const publication: PublicArticleResponse = {
   ideaContributorDisplayName: 'Idea contributor',
   firstPublishedAtUtc: '2026-11-15T10:00:00Z',
   updatedAtUtc: '2026-11-16T10:00:00Z',
-  content: { title: 'Published title', summary: 'Public summary', seoTitle: 'Public SEO' },
+  content: {
+    title: 'Published title',
+    summary: 'Public summary',
+    seoTitle: 'Public SEO',
+    categoryId: 'category-id',
+    tagIds: ['archived-id', 'active-id'],
+  },
   previewHtml: '<p>Public body</p>',
+  tags: [
+    { id: 'archived-id', name: 'Archived tag' },
+    { id: 'active-id', name: 'Active tag' },
+  ],
 };
 
 describe('Public article visibility', () => {
@@ -30,11 +41,10 @@ describe('Public article visibility', () => {
     response = {};
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
-        provideHttpClient(),
+        provideRouter([{ path: 'news/:address', component: PublicArticle }]),
+        provideHttpClient(withInterceptors([publicNewsRequests])),
         provideHttpClientTesting(),
         { provide: Api, useValue: { rootUrl: '' } },
-        { provide: PublicNewsApi, useValue: { related: async () => [], taxonomy: async () => [] } },
         { provide: ActivatedRoute, useValue: { paramMap: EMPTY } },
         { provide: RESPONSE_INIT, useValue: response },
         { provide: SiteMetadata, useValue: { name: signal('Portal') } },
@@ -43,9 +53,73 @@ describe('Public article visibility', () => {
     });
   });
   afterEach(() => {
-    TestBed.inject(HttpTestingController).verify();
-    TestBed.resetTestingModule();
-    vi.restoreAllMocks();
+    try {
+      TestBed.inject(HttpTestingController).verify();
+    } finally {
+      TestBed.resetTestingModule();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('keeps tag links on navigation when related stories fail and ignores the previous result', async () => {
+    const http = TestBed.inject(HttpTestingController);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/news/previous', PublicArticle);
+    const previousDetail = http.expectOne('/api/news/articles/by-address/previous');
+    expect(previousDetail.request.credentials).toBe('omit');
+    expect(previousDetail.request.cache).toBe('no-store');
+    expect(previousDetail.request.transferCache).toBe(false);
+    previousDetail.flush({
+      ...publication,
+      id: 'previous-id',
+      content: { ...publication.content, title: 'Previous article' },
+    });
+    const previousRelated = await vi.waitFor(() =>
+      http.expectOne('/api/news/articles/previous-id/related'),
+    );
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe('Previous article');
+    http.expectNone((request) => /\/api\/news\/(categories|tags)$/.test(request.url));
+
+    await harness.navigateByUrl('/news/current', PublicArticle);
+    http.expectOne('/api/news/articles/by-address/current').flush(publication);
+    const currentRelated = await vi.waitFor(() =>
+      http.expectOne('/api/news/articles/article-id/related'),
+    );
+    currentRelated.flush(null, {
+      status: 503,
+      statusText: 'Unavailable',
+    });
+    previousRelated.flush([
+      {
+        id: 'related-id',
+        title: 'Previous related story',
+        canonicalUrl: '/news/stale',
+        summary: 'Stale summary',
+        firstPublishedAtUtc: publication.firstPublishedAtUtc,
+        authorDisplayName: 'Author',
+      },
+    ]);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    const page = harness.routeNativeElement!;
+    expect(page.querySelector('h1')?.textContent).toBe('Published title');
+    expect(page.querySelector('a[href="/news?categoryId=category-id"]')).not.toBeNull();
+    expect(
+      Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href*="tagId="]'), (link) => [
+        link.getAttribute('href'),
+        link.textContent,
+      ]),
+    ).toEqual([
+      ['/news?tagId=archived-id', 'Archived tag'],
+      ['/news?tagId=active-id', 'Active tag'],
+    ]);
+    expect(page.querySelector('[role="status"]')?.textContent).toContain(
+      'Похожие новости сейчас недоступны.',
+    );
+    expect(page.textContent).not.toContain('Previous related story');
+    expect(response.status).toBe(200);
   });
 
   it('renders only the publication and clears its metadata when it becomes withdrawn', async () => {
@@ -60,6 +134,9 @@ describe('Public article visibility', () => {
     TestBed.inject(HttpTestingController)
       .expectOne((request) => request.url.includes('/api/news/articles/'))
       .flush(publication);
+    const http = TestBed.inject(HttpTestingController);
+    const related = await vi.waitFor(() => http.expectOne('/api/news/articles/article-id/related'));
+    related.flush([]);
     await loading;
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Published title');

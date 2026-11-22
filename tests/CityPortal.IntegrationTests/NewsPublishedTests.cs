@@ -265,18 +265,29 @@ public sealed partial class NewsTests
         using (HttpClient anonymous = Client(factory))
         {
             TaxonomyResponse category = await TaxonomyAsync(editor, "categories", "Public reads");
+            TaxonomyResponse archived = await TaxonomyAsync(editor, "tags", "Original archived tag");
+            TaxonomyResponse publishedTag = await TaxonomyAsync(editor, "tags", "Active tag");
+            TaxonomyResponse pendingTag = await TaxonomyAsync(editor, "tags", "Private pending tag");
             ArticleResponse draft = await SaveAsync(owner, await CreateAsync(owner), Complete(category.Id, "Never published secret"));
             Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/news/articles/{draft.Id}")).StatusCode);
-            ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Original public title");
+            ArticleResponse article = await PublishedAsync(owner, editor, category.Id, "Original public title", tagIds: [archived.Id, publishedTag.Id]);
             using JsonDocument original = await PublicAsync(anonymous, article.Id);
+            Assert.Equal(new[] { "Original archived tag", "Active tag" },
+                original.RootElement.GetProperty("tags").EnumerateArray().Select(tag => tag.GetProperty("name").GetString()));
             string firstAddress = original.RootElement.GetProperty("canonicalUrl").GetString()!;
             string firstDate = original.RootElement.GetProperty("firstPublishedAtUtc").GetString()!;
             string publicUpdated = original.RootElement.GetProperty("updatedAtUtc").GetString()!;
+            using HttpResponseMessage changedTag = await editor.PatchAsJsonAsync($"/api/editorial/tags/{archived.Id}",
+                new { archived.Version, name = "Renamed archived tag", archived = true });
+            Assert.Equal(HttpStatusCode.OK, changedTag.StatusCode);
             article = await ActAsync(owner, article, "working-version");
-            article = await SaveAsync(owner, article, Complete(category.Id, "Unsubmitted private title") with { SeoTitle = "Private SEO" });
+            article = await SaveAsync(owner, article, Complete(category.Id, "Unsubmitted private title") with { SeoTitle = "Private SEO", TagIds = [pendingTag.Id] });
             using JsonDocument pending = await PublicAsync(anonymous, article.Id);
             Assert.Equal("Original public title", pending.RootElement.GetProperty("content").GetProperty("title").GetString());
             Assert.DoesNotContain("Private SEO", pending.RootElement.GetRawText());
+            Assert.DoesNotContain("Private pending tag", pending.RootElement.GetRawText());
+            Assert.Equal(new[] { new PublicTaxonomyResponse(archived.Id, "Renamed archived tag"), new PublicTaxonomyResponse(publishedTag.Id, "Active tag") },
+                pending.RootElement.GetProperty("tags").Deserialize<PublicTaxonomyResponse[]>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             Assert.Equal(publicUpdated, pending.RootElement.GetProperty("updatedAtUtc").GetString());
             AccountResponse profile = (await owner.GetFromJsonAsync<AccountResponse>("/api/account"))!;
             Assert.Equal(HttpStatusCode.OK, (await owner.PatchAsJsonAsync("/api/account/display-name", new { profile.Version, displayName = "UpdatedPublicCredit" })).StatusCode);
@@ -286,6 +297,7 @@ public sealed partial class NewsTests
             Assert.Equal(publicUpdated, renamed.RootElement.GetProperty("updatedAtUtc").GetString());
             ArticleResponse corrected = await CorrectAsync(editor, article, Complete(category.Id, "Current corrected title"), "Verified correction");
             using JsonDocument current = await PublicAsync(anonymous, article.Id);
+            Assert.Equal(0, current.RootElement.GetProperty("tags").GetArrayLength());
             string currentAddress = current.RootElement.GetProperty("canonicalUrl").GetString()!;
             Assert.NotEqual(firstAddress, currentAddress);
             Assert.Equal(firstDate, current.RootElement.GetProperty("firstPublishedAtUtc").GetString());
@@ -303,6 +315,7 @@ public sealed partial class NewsTests
                 Assert.DoesNotContain("UpdatedPublicCredit", body);
                 Assert.DoesNotContain("Private withdrawal reason", body);
                 Assert.DoesNotContain("Original public title", body);
+                Assert.DoesNotContain("Renamed archived tag", body);
             }
         }
     }
@@ -561,9 +574,9 @@ public sealed partial class NewsTests
         return (await response.Content.ReadFromJsonAsync<TemplateResponse>())!;
     }
 
-    private static async Task<ArticleResponse> PublishedAsync(HttpClient owner, HttpClient editor, Guid categoryId, string title, ArticleImage? cover = null)
+    private static async Task<ArticleResponse> PublishedAsync(HttpClient owner, HttpClient editor, Guid categoryId, string title, ArticleImage? cover = null, Guid[]? tagIds = null)
     {
-        ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(categoryId, title) with { Cover = cover });
+        ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(categoryId, title) with { Cover = cover, TagIds = tagIds ?? [] });
         article = await ActAsync(owner, article, "submit");
         article = await ActAsync(editor, article, "claim");
         article = await ActAsync(editor, article, "approve");

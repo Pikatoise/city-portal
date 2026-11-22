@@ -113,6 +113,8 @@ Without a query, order news by first publication time descending; corrections do
 
 Related news contains at most five other currently published articles: first those sharing tags, then additional articles in the same category; order each group newest first. Exclude the current article and duplicates. Withdrawal applies to these results immediately.
 
+The public article detail response includes `tags` as ID and name pairs in the order stored on the current published revision. It uses current tag names and includes retained archived associations. The article page builds its category link from the revision's category ID and its tag links from `tags`. Related news loads independently, so a failed related request leaves the article and its links available. Results from a previous article are discarded after navigation.
+
 Filters include one category, one tag, and a first-publication date range, combinable with search. All filters are available in the detailed news list; links from category blocks preselect the category. News lists use 20 articles per numbered page. Interpret inclusive date filters in the configured city time zone, converting the start and the exclusive start of the following day to UTC. Pagination defaults to 20 and caps API page size at 100; public UI uses 20.
 
 The current URL of a withdrawn article shows "Материал снят с публикации" without article content or the withdrawal reason. Never-published articles remain unavailable to anonymous readers. Return a non-cacheable 404 with the special withdrawn-page shell for withdrawn articles and a generic 404 for unknown/never-published articles. Do not include title, summary, author, withdrawal reason, or article-specific preview metadata in the withdrawn shell. Previous addresses do not resolve and never redirect.
@@ -393,3 +395,9 @@ by this acceptance record.
 
 See the [draft write optimization](../OPTIMIZATIONS.md#draft-write-concurrency)
 for the lock changes, performance comparison and regression evidence.
+
+## Public article read
+
+The [public article optimization](../OPTIMIZATIONS.md#public-article-read)
+records the request counts and the verification of publication visibility,
+related-news failures, and OpenAPI consistency.

@@ -29,6 +29,9 @@ public sealed class PublicArticleOperations
             throw new AccountOperationException(404, "article_withdrawn", "The article has been withdrawn.");
         if (row.Article.PublicationState != "Published")
             throw NewsDatabase.Missing();
+        ArticleContent content = JsonSerializer.Deserialize<ArticleContent>(row.Revision.ContentJson)
+            ?? throw new InvalidOperationException("The stored revision is invalid.");
+        PublicTaxonomyResponse[] tags = await GetTagsAsync(content.TagIds, cancellationToken);
         DateTimeOffset? publishedAt = await _context.History.AsNoTracking()
             .Where(item => item.ArticleId == id && item.RevisionId == row.Revision.Id && (item.Action == "publish" || item.Action == "correct"))
             .Select(item => (DateTimeOffset?)item.CreatedAtUtc).MaxAsync(cancellationToken);
@@ -36,8 +39,21 @@ public sealed class PublicArticleOperations
         string? contributor = row.Article.IdeaContributorId is Guid residentId
             ? await _accounts.GetPublicDisplayNameAsync(residentId, cancellationToken)
             : null;
-        return new PublicArticleResponse(id, row.Article.PublicAddress!,
-            JsonSerializer.Deserialize<ArticleContent>(row.Revision.ContentJson)!, row.Revision.PreviewHtml, name, row.Article.FirstPublishedAtUtc!.Value,
+        return new PublicArticleResponse(id, row.Article.PublicAddress!, content, tags,
+            row.Revision.PreviewHtml, name, row.Article.FirstPublishedAtUtc!.Value,
             publishedAt ?? row.Article.FirstPublishedAtUtc.Value, contributor);
+    }
+
+    private async Task<PublicTaxonomyResponse[]> GetTagsAsync(Guid[] tagIds, CancellationToken cancellationToken)
+    {
+        if (tagIds.Length == 0)
+            return [];
+
+        // Archived associations retain their current label on published revisions.
+        Dictionary<Guid, PublicTaxonomyResponse> tags = await _context.Taxonomy.AsNoTracking()
+            .Where(entry => entry.Kind == "tags" && tagIds.Contains(entry.Id))
+            .Select(entry => new PublicTaxonomyResponse(entry.Id, entry.Name))
+            .ToDictionaryAsync(entry => entry.Id, cancellationToken);
+        return tagIds.Select(id => tags.GetValueOrDefault(id)).OfType<PublicTaxonomyResponse>().ToArray();
     }
 }
