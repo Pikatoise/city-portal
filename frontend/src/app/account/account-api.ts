@@ -2,10 +2,10 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, map, Observable } from 'rxjs';
 import { StrictHttpResponse } from '../api/strict-http-response';
+import { ApiWrite } from '../api-write';
 import { getAccount } from '../api/fn/account/get-account';
 import { resendConfirmation } from '../api/fn/account/resend-confirmation';
 import { confirmEmail } from '../api/fn/auth/confirm-email';
-import { getCsrf } from '../api/fn/auth/get-csrf';
 import { login } from '../api/fn/auth/login';
 import { logout } from '../api/fn/auth/logout';
 import { register } from '../api/fn/auth/register';
@@ -29,25 +29,22 @@ export interface AccountProblem {
 @Injectable({ providedIn: 'root' })
 export class AccountApi {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
 
   register(body: {
     email: string;
     displayName: string;
     password: string;
   }): Promise<AccountProfile> {
-    return this.write((token) =>
-      this.request(register(this.http, '', { body, 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(register, { body });
   }
 
   login(body: { email: string; password: string; rememberMe: boolean }): Promise<AccountProfile> {
-    return this.write((token) =>
-      this.request(login(this.http, '', { body, 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(login, { body });
   }
 
   logout(): Promise<void> {
-    return this.write((token) => this.request(logout(this.http, '', { 'X-CSRF-TOKEN': token })));
+    return this.write.invoke(logout, {});
   }
 
   profile(): Promise<AccountProfile> {
@@ -55,38 +52,26 @@ export class AccountApi {
   }
 
   resend(): Promise<ConfirmationDelivery> {
-    return this.write((token) =>
-      this.request(resendConfirmation(this.http, '', { 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(resendConfirmation, {});
   }
 
   confirm(body: { linkId: string; token: string }): Promise<ConfirmEmailResponse> {
-    return this.write((token) =>
-      this.request(confirmEmail(this.http, '', { body, 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(confirmEmail, { body });
   }
 
   forgotPassword(email: string): Promise<void> {
-    return this.write((token) =>
-      this.request(forgotPassword(this.http, '', { body: { email }, 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(forgotPassword, { body: { email } });
   }
 
   resetPassword(body: { linkId: string; token: string; newPassword: string }): Promise<void> {
-    return this.write((token) =>
-      this.request(resetPassword(this.http, '', { body, 'X-CSRF-TOKEN': token })),
-    );
+    return this.write.invoke(resetPassword, { body });
   }
 
   changeDisplayName(
     displayName: string,
     version: AccountProfile['version'],
   ): Promise<AccountProfile> {
-    return this.write((token) =>
-      this.request(
-        changeDisplayName(this.http, '', { body: { displayName, version }, 'X-CSRF-TOKEN': token }),
-      ),
-    );
+    return this.write.invoke(changeDisplayName, { body: { displayName, version } });
   }
 
   changePassword(
@@ -94,19 +79,7 @@ export class AccountApi {
     newPassword: string,
     version: AccountProfile['version'],
   ): Promise<void> {
-    return this.write((token) =>
-      this.request(
-        changePassword(this.http, '', {
-          body: { currentPassword, newPassword, version },
-          'X-CSRF-TOKEN': token,
-        }),
-      ),
-    );
-  }
-
-  private async write<T>(operation: (token: string) => Promise<T>): Promise<T> {
-    const csrf = await this.request(getCsrf(this.http, ''));
-    return operation(csrf.token);
+    return this.write.invoke(changePassword, { body: { currentPassword, newPassword, version } });
   }
 
   private request<T>(response: Observable<StrictHttpResponse<T>>): Promise<T> {

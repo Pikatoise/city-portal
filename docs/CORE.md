@@ -102,6 +102,8 @@ Use unified accounts with Regular User, Author, Editor, Moderator, and Administr
 
 Authenticate browser requests with an ASP.NET Core Identity Secure, HttpOnly authentication cookie. Protect state-changing requests against CSRF. Angular sends a separate CSRF token in a header; the API issues and validates the token. The CSRF token and the HttpOnly authentication cookie serve different purposes. Do not introduce browser bearer tokens or JWT authentication as an additional default.
 
+Use Angular's browser-only `ApiWrite` service for writes, including installation and anonymous authentication actions. It calls the generated `GET /api/auth/csrf` operation and the generated write operation through the configured same-origin API root. It obtains a fresh request token for every write and sends it in `X-CSRF-TOKEN`. Within an application instance it queues token requests so the browser can store the initial HttpOnly antiforgery cookie before sending the next request. A token failure prevents its write. Callers receive HTTP errors with their status and headers and decide when to retry. Public SSR reads remain anonymous.
+
 Enforce roles, policies, resource ownership, and state-dependent permissions in the API. Angular route guards and hidden controls improve the interface but do not grant or enforce backend access.
 
 Administrator grants all effective Editor permissions without requiring an assigned Editor role. Preserve the distinction between assigned roles and effective permissions. Ownership restrictions still apply: another author's draft is private before submission, including from editors and administrators.

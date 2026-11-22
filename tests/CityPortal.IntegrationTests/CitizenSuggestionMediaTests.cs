@@ -111,6 +111,89 @@ public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
         Assert.Equal(HttpStatusCode.OK, (await author.GetAsync(articlePreview)).StatusCode);
     }
 
+    [Fact]
+    public async Task Assignment_RollsBackDraftHistoryAndMediaWhenSuggestionWriteFailsAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        using HttpClient resident = await CitizenSuggestionTests.LoginAsync(factory, database, "Resident", confirmed: true);
+        using HttpClient author = await CitizenSuggestionTests.LoginAsync(factory, database, "Author", confirmed: true, role: "Author");
+        ImageResponse image = await UploadAsync(resident);
+        SuggestionResponse suggestion = await CitizenSuggestionTests.ReadAsync<SuggestionResponse>(
+            await resident.PostAsJsonAsync(_residentPath, new SuggestionInput
+            {
+                Title = "Park cleanup",
+                Description = "Photos from the resident.",
+                ImageIds = [image.Id]
+            }));
+        await using (AsyncServiceScope scope = factory.Services.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<MediaMaintenance>().ProcessPendingAsync(CancellationToken.None);
+        string residentPath = $"{_residentPath}/{suggestion.Id}";
+        string staffPath = $"{_staffPath}/{suggestion.Id}";
+        SuggestionResponse queued = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        await using var connection = new NpgsqlConnection(database);
+        await connection.OpenAsync();
+
+        // Fail the suggestion write after News has saved the new draft.
+        await ExecuteAsync(connection, """ALTER TABLE citizen_submissions."Suggestions" ADD CONSTRAINT reject_claim CHECK ("ArticleId" IS NULL)""");
+        using HttpResponseMessage failedClaim = await author.PostAsJsonAsync(staffPath + "/claim", new { queued.Version });
+        Assert.Equal(HttpStatusCode.InternalServerError, failedClaim.StatusCode);
+        SuggestionResponse stillQueued = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("Queued", stillQueued.Status);
+        Assert.Equal(queued.Version, stillQueued.Version);
+        Assert.Equal(queued.ExpiresAtUtc, stillQueued.ExpiresAtUtc);
+        Assert.True(stillQueued.CanEdit);
+        Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"{staffPath}/images/{image.Id}")).StatusCode);
+        await using var newsRows = new NpgsqlCommand("""
+            SELECT (SELECT count(*) FROM news."Articles") + (SELECT count(*) FROM news."Revisions") + (SELECT count(*) FROM news."History")
+            """, connection);
+        Assert.Equal(0L, await newsRows.ExecuteScalarAsync());
+
+        await ExecuteAsync(connection, """ALTER TABLE citizen_submissions."Suggestions" DROP CONSTRAINT reject_claim""");
+        using HttpResponseMessage claimed = await author.PostAsJsonAsync(staffPath + "/claim", new { queued.Version });
+        Assert.Equal(HttpStatusCode.NoContent, claimed.StatusCode);
+        StaffSuggestionResponse assigned = await AssignmentAsync(author);
+        using HttpResponseMessage imported = await author.PostAsJsonAsync(staffPath + "/import-images", new { imageIds = new[] { image.Id } });
+        Assert.Equal(HttpStatusCode.NoContent, imported.StatusCode);
+        string draftPath = $"/api/editorial/articles/{assigned.ArticleId}";
+        string imagePath = $"/api/media/images/{image.Id}/1280";
+        ArticleResponse draft = (await author.GetFromJsonAsync<ArticleResponse>(draftPath))!;
+        await using var history = new NpgsqlCommand("""SELECT count(*) FROM news."History" WHERE "ArticleId" = @id""", connection);
+        history.Parameters.AddWithValue("id", draft.Id);
+        long historyCount = Assert.IsType<long>(await history.ExecuteScalarAsync());
+        Assert.True(historyCount > 0);
+
+        // Fail the observer after News has saved deletion history and changed Media access.
+        await ExecuteAsync(connection, """ALTER TABLE citizen_submissions."Suggestions" ADD CONSTRAINT reject_return CHECK ("ArticleId" IS NOT NULL)""");
+        using HttpResponseMessage failedReturn = await author.PostAsJsonAsync(staffPath + "/return", new { assigned.Version });
+        Assert.Equal(HttpStatusCode.InternalServerError, failedReturn.StatusCode);
+        Assert.Equal(assigned, await AssignmentAsync(author));
+        ArticleResponse retained = (await author.GetFromJsonAsync<ArticleResponse>(draftPath))!;
+        Assert.Equal(draft.Version, retained.Version);
+        Assert.Equal(image.Id, Assert.Single(retained.Content.Gallery).MediaId);
+        Assert.Equal(historyCount, await history.ExecuteScalarAsync());
+        using HttpResponseMessage media = await author.GetAsync(imagePath);
+        Assert.Equal(HttpStatusCode.OK, media.StatusCode);
+
+        await ExecuteAsync(connection, """ALTER TABLE citizen_submissions."Suggestions" DROP CONSTRAINT reject_return""");
+        using HttpResponseMessage returned = await author.PostAsJsonAsync(staffPath + "/return", new { assigned.Version });
+        Assert.Equal(HttpStatusCode.NoContent, returned.StatusCode);
+        Assert.Equal(historyCount + 1, await history.ExecuteScalarAsync());
+        using HttpResponseMessage deletedDraft = await author.GetAsync(draftPath);
+        using HttpResponseMessage removedMedia = await author.GetAsync(imagePath);
+        Assert.Equal(HttpStatusCode.NotFound, deletedDraft.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, removedMedia.StatusCode);
+        SuggestionResponse returnedSuggestion = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal(assigned.Version + 1, returnedSuggestion.Version);
+        Assert.False(returnedSuggestion.CanEdit);
+    }
+
+    private static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static async Task<StaffSuggestionResponse> AssignmentAsync(HttpClient author)
     {
         StaffSuggestionPage page = (await author.GetFromJsonAsync<StaffSuggestionPage>($"{_staffPath}/queue?mine=true"))!;

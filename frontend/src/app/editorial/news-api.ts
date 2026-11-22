@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { StrictHttpResponse } from '../api/strict-http-response';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { listOwnArticles } from '../api/fn/editorial/list-own-articles';
 import { getOwnArticle } from '../api/fn/editorial/get-own-article';
 import { createArticleDraft } from '../api/fn/editorial/create-article-draft';
@@ -37,14 +37,9 @@ export type { ArticleHistoryResponse } from '../api/models/article-history-respo
 @Injectable({ providedIn: 'root' })
 export class NewsApi {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
   private request<T>(response: Observable<StrictHttpResponse<T>>): Promise<T> {
     return firstValueFrom(response.pipe(map((value) => value.body)));
-  }
-  private async write<T>(
-    operation: (token: string) => Observable<StrictHttpResponse<T>>,
-  ): Promise<T> {
-    const csrf = await this.request(getCsrf(this.http, ''));
-    return this.request(operation(csrf.token));
   }
   list(page = 1, search = '') {
     return this.request(listOwnArticles(this.http, '', { page, pageSize: 20, search }));
@@ -53,35 +48,18 @@ export class NewsApi {
     return this.request(getOwnArticle(this.http, '', { id }));
   }
   create() {
-    return this.write((token) => createArticleDraft(this.http, '', { 'X-CSRF-TOKEN': token }));
+    return this.write.invoke(createArticleDraft, {});
   }
   save(id: string, version: number | string, content: ArticleContent) {
-    return this.write((token) =>
-      saveArticleDraft(this.http, '', { id, body: { version, content }, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(saveArticleDraft, { id, body: { version, content } });
   }
   delete(id: string, version: number | string) {
-    return this.write((token) =>
-      deleteArticleDraft(this.http, '', { id, version, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(deleteArticleDraft, { id, version });
   }
   act(id: string, version: number | string, operation: string, reason = '') {
     if (operation === 'working-version')
-      return this.write((token) =>
-        createArticleWorkingVersion(this.http, '', {
-          id,
-          body: { version },
-          'X-CSRF-TOKEN': token,
-        }),
-      );
-    return this.write((token) =>
-      actOnArticleReview(this.http, '', {
-        id,
-        operation,
-        body: { version, reason },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+      return this.write.invoke(createArticleWorkingVersion, { id, body: { version } });
+    return this.write.invoke(actOnArticleReview, { id, operation, body: { version, reason } });
   }
   reviews(mine = false, page = 1) {
     return this.request(listArticleReviewQueue(this.http, '', { mine, page, pageSize: 20 }));
@@ -102,26 +80,15 @@ export class NewsApi {
     return this.request(getEditorialHomepage(this.http, ''));
   }
   saveHomepage(version: number | string, firstCategoryId: string, secondCategoryId: string) {
-    return this.write((token) =>
-      saveEditorialHomepage(this.http, '', {
-        body: { version, firstCategoryId, secondCategoryId },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+    return this.write.invoke(saveEditorialHomepage, {
+      body: { version, firstCategoryId, secondCategoryId },
+    });
   }
   feature(id: string, version: number | string, featured: boolean) {
-    return this.write((token) =>
-      setFeaturedArticle(this.http, '', { id, body: { version, featured }, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(setFeaturedArticle, { id, body: { version, featured } });
   }
   correct(id: string, version: number | string, content: ArticleContent, reason: string) {
-    return this.write((token) =>
-      correctPublishedArticle(this.http, '', {
-        id,
-        body: { version, content, reason },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+    return this.write.invoke(correctPublishedArticle, { id, body: { version, content, reason } });
   }
   async taxonomy(kind: string): Promise<TaxonomyResponse[]> {
     const entries: TaxonomyResponse[] = [];
@@ -135,19 +102,14 @@ export class NewsApi {
     return entries;
   }
   createTaxonomy(kind: string, name: string) {
-    return this.write((token) =>
-      createEditorialTaxonomy(this.http, '', { kind, body: { name }, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(createEditorialTaxonomy, { kind, body: { name } });
   }
   updateTaxonomy(entry: TaxonomyResponse, name: string, archived: boolean) {
-    return this.write((token) =>
-      saveEditorialTaxonomy(this.http, '', {
-        kind: entry.kind,
-        id: entry.id,
-        body: { name, archived, version: entry.version },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+    return this.write.invoke(saveEditorialTaxonomy, {
+      kind: entry.kind,
+      id: entry.id,
+      body: { name, archived, version: entry.version },
+    });
   }
 }
 

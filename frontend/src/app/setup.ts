@@ -1,10 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Api } from './api/api';
+import { ApiWrite } from './api-write';
 import { InstallationState } from './installation-state';
 import { installSite } from './api/fn/installation/install-site';
-import { getCsrf } from './api/fn/auth/get-csrf';
 import { accountProblem } from './account/account-api';
 import { SiteMetadata } from './site-metadata';
 
@@ -160,7 +159,7 @@ import { SiteMetadata } from './site-metadata';
 })
 export class Setup implements OnInit {
   private readonly installation = inject(InstallationState);
-  private readonly api = inject(Api);
+  private readonly write = inject(ApiWrite);
   private readonly site = inject(SiteMetadata);
   protected readonly installed = signal(false);
   protected readonly canInstall = signal(false);
@@ -204,9 +203,7 @@ export class Setup implements OnInit {
     this.busy.set(true);
     this.error.set('');
     try {
-      const csrf = await this.api.invoke(getCsrf);
-      await this.api.invoke(installSite, {
-        'X-CSRF-TOKEN': csrf.token,
+      await this.write.invoke(installSite, {
         body: {
           email: this.email,
           displayName: this.displayName,

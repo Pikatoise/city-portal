@@ -95,36 +95,50 @@ public sealed class StaffSuggestionOperations : IAccountRoleChangeObserver
             throw Missing();
     }
 
-    public async Task ChangeAssignmentAsync(Guid actorId, Guid sessionId, Guid id, int version, bool claim, CancellationToken cancellationToken)
+    public Task ChangeAssignmentAsync(Guid actorId, Guid sessionId, Guid id, int version, bool claim, CancellationToken cancellationToken) =>
+        claim ? ClaimAsync(actorId, sessionId, id, version, cancellationToken) : ReturnAsync(actorId, sessionId, id, version, cancellationToken);
+
+    private async Task ClaimAsync(Guid actorId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
     {
         await using AuthorizedAccountScope authorized = await _accounts.BeginAsync(actorId, sessionId, _authorRoles, cancellationToken);
         await using SuggestionsDbContext context = await SuggestionDatabase.JoinAsync(authorized.Connection, authorized.Transaction, cancellationToken);
-        Suggestion? item = await context.Suggestions.FromSqlInterpolated($"SELECT * FROM citizen_submissions.\"Suggestions\" WHERE \"Id\" = {id} FOR UPDATE")
-            .SingleOrDefaultAsync(cancellationToken);
+        Suggestion? item = await LockSuggestionAsync(context, id, cancellationToken);
         DateTimeOffset now = _time.GetUtcNow();
-        if (item is null || item.PausedAtUtc is null && item.ExpiresAtUtc <= now
-            || !claim && item.AssigneeId.HasValue && item.AssigneeId != actorId)
+        if (item is null || item.IsExpiredAt(now))
             throw Missing();
-        if (item.Version != version || claim && item.AssigneeId.HasValue || !claim && item.AssigneeId != actorId)
+        if (item.Version != version || item.AssigneeId.HasValue)
             throw Conflict();
-        if (claim)
-        {
-            item.ArticleId = await _articles.CreateFromSuggestionAsync(actorId, item.ResidentId, item.Title, item.Description,
-                authorized.Connection, authorized.Transaction, cancellationToken);
-            item.AssigneeId = actorId;
-            item.FirstClaimedAtUtc ??= now;
-            item.PausedAtUtc = now;
-            item.Version++;
-            await context.SaveChangesAsync(cancellationToken);
-        }
-        else if (item.ArticleId is not Guid articleId || !await _articles.DeleteSuggestionDraftAsync(articleId, actorId, actorId,
+
+        Guid articleId = await _articles.CreateFromSuggestionAsync(actorId, item.ResidentId, item.Title, item.Description,
+            authorized.Connection, authorized.Transaction, cancellationToken);
+        item.Claim(actorId, articleId, now);
+        await context.SaveChangesAsync(cancellationToken);
+        await authorized.CommitAsync(cancellationToken);
+    }
+
+    private async Task ReturnAsync(Guid actorId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope authorized = await _accounts.BeginAsync(actorId, sessionId, _authorRoles, cancellationToken);
+        await using SuggestionsDbContext context = await SuggestionDatabase.JoinAsync(authorized.Connection, authorized.Transaction, cancellationToken);
+        Suggestion? item = await LockSuggestionAsync(context, id, cancellationToken);
+        DateTimeOffset now = _time.GetUtcNow();
+        if (item is null || item.IsExpiredAt(now) || item.AssigneeId.HasValue && item.AssigneeId != actorId)
+            throw Missing();
+        if (item.Version != version || item.AssigneeId != actorId)
+            throw Conflict();
+
+        // News notifies the deletion observer in this transaction to return the suggestion.
+        if (item.ArticleId is not Guid articleId || !await _articles.DeleteSuggestionDraftAsync(articleId, actorId, actorId,
             authorized.Connection, authorized.Transaction, cancellationToken))
             throw Conflict();
 
         await authorized.CommitAsync(cancellationToken);
-        if (!claim)
-            await _articles.FlushAfterCommitAsync();
+        await _articles.FlushAfterCommitAsync();
     }
+
+    private static Task<Suggestion?> LockSuggestionAsync(SuggestionsDbContext context, Guid id, CancellationToken cancellationToken) =>
+        context.Suggestions.FromSqlInterpolated($"SELECT * FROM citizen_submissions.\"Suggestions\" WHERE \"Id\" = {id} FOR UPDATE")
+            .SingleOrDefaultAsync(cancellationToken);
 
     public async Task DeleteAsync(Guid actorId, Guid sessionId, Guid id, DeleteSuggestionRequest request, CancellationToken cancellationToken)
     {

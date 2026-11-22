@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { createSuggestion } from '../api/fn/suggestions/create-suggestion';
 import { getMySuggestion } from '../api/fn/suggestions/get-my-suggestion';
 import { listMySuggestions } from '../api/fn/suggestions/list-my-suggestions';
@@ -22,6 +22,7 @@ import { AccountApi, errorMessage } from './account-api';
 })
 export class Suggestions implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
   private readonly account = inject(AccountApi);
   protected readonly clock = inject(CityClock);
   protected readonly items = signal<SuggestionResponse[]>([]);
@@ -97,12 +98,9 @@ export class Suggestions implements OnInit {
       return;
     }
     await this.run(async () => {
-      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
       for (const file of files) {
-        const { body } = await firstValueFrom(
-          uploadSuggestionImage(this.http, '', { body: { file }, 'X-CSRF-TOKEN': csrf.token }),
-        );
-        this.images.update((items) => [...items, body]);
+        const image = await this.write.invoke(uploadSuggestionImage, { body: { file } });
+        this.images.update((items) => [...items, image]);
       }
     });
   }
@@ -127,7 +125,6 @@ export class Suggestions implements OnInit {
     }
 
     await this.run(async () => {
-      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
       const details = {
         title,
         description,
@@ -138,17 +135,12 @@ export class Suggestions implements OnInit {
       };
       const current = this.selected();
       if (current) {
-        await firstValueFrom(
-          updateMySuggestion(this.http, '', {
-            id: current.id,
-            body: { details, version: current.version },
-            'X-CSRF-TOKEN': csrf.token,
-          }),
-        );
+        await this.write.invoke(updateMySuggestion, {
+          id: current.id,
+          body: { details, version: current.version },
+        });
       } else {
-        await firstValueFrom(
-          createSuggestion(this.http, '', { body: details, 'X-CSRF-TOKEN': csrf.token }),
-        );
+        await this.write.invoke(createSuggestion, { body: details });
       }
       this.reset();
       this.notice.set(current ? 'Изменения сохранены.' : 'Предложение отправлено.');

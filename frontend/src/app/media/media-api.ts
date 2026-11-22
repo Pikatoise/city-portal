@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { StrictHttpResponse } from '../api/strict-http-response';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { listImages } from '../api/fn/media/list-images';
 import { listTemplates } from '../api/fn/media/list-templates';
 import { uploadImage } from '../api/fn/media/upload-image';
@@ -23,14 +23,9 @@ export type { RemovalRequestResponse } from '../api/models/removal-request-respo
 @Injectable({ providedIn: 'root' })
 export class MediaApi {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
   private request<T>(response: Observable<StrictHttpResponse<T>>): Promise<T> {
     return firstValueFrom(response.pipe(map((value) => value.body)));
-  }
-  private async write<T>(
-    operation: (token: string) => Observable<StrictHttpResponse<T>>,
-  ): Promise<T> {
-    const csrf = await this.request(getCsrf(this.http, ''));
-    return this.request(operation(csrf.token));
   }
   images(page = 1) {
     return this.request(listImages(this.http, '', { page, pageSize: 20 }));
@@ -39,44 +34,32 @@ export class MediaApi {
     return this.request(listTemplates(this.http, '', { scope, page, pageSize: 20 }));
   }
   upload(file: File) {
-    return this.write((token) =>
-      uploadImage(this.http, '', { body: { file }, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(uploadImage, { body: { file } });
   }
   propose(imageId: string, name: string) {
-    return this.write((token) =>
-      createTemplate(this.http, '', { body: { imageId, name }, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(createTemplate, { body: { imageId, name } });
   }
   act(template: TemplateResponse, operation: string, reason = '', imageId?: string, name?: string) {
-    return this.write((token) =>
-      templateAction(this.http, '', {
-        id: template.id,
-        operation,
-        body: { version: template.version, reason, imageId, name },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+    return this.write.invoke(templateAction, {
+      id: template.id,
+      operation,
+      body: { version: template.version, reason, imageId, name },
+    });
   }
   history(id: string, page = 1) {
     return this.request(templateHistory(this.http, '', { id, page, pageSize: 20 }));
   }
   requestRemoval(id: string) {
-    return this.write((token) =>
-      requestTemplateRemoval(this.http, '', { id, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(requestTemplateRemoval, { id });
   }
   removals(page = 1) {
     return this.request(templateRemovalQueue(this.http, '', { page, pageSize: 20 }));
   }
   resolve(request: RemovalRequestResponse) {
-    return this.write((token) =>
-      resolveTemplateRemoval(this.http, '', {
-        id: request.id,
-        body: { version: request.version },
-        'X-CSRF-TOKEN': token,
-      }),
-    );
+    return this.write.invoke(resolveTemplateRemoval, {
+      id: request.id,
+      body: { version: request.version },
+    });
   }
 }
 

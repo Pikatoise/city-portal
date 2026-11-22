@@ -11,15 +11,7 @@ internal sealed class SuggestionDraftDeletion : IArticleDraftDeletionObserver
     {
         await using SuggestionsDbContext context = await SuggestionDatabase.JoinAsync(connection, transaction, cancellationToken);
         Suggestion? item = await context.Suggestions.SingleOrDefaultAsync(value => value.ArticleId == articleId, cancellationToken);
-        if (item?.PausedAtUtc is not DateTimeOffset paused)
-            return;
-
-        TimeSpan pause = deletedAtUtc > paused ? deletedAtUtc - paused : TimeSpan.Zero;
-        item.ExpiresAtUtc = item.ExpiresAtUtc.Add(pause);
-        item.AssigneeId = null;
-        item.PausedAtUtc = null;
-        item.ArticleId = null;
-        item.Version++;
-        await context.SaveChangesAsync(cancellationToken);
+        if (item is not null && item.ReturnToQueue(deletedAtUtc))
+            await context.SaveChangesAsync(cancellationToken);
     }
 }

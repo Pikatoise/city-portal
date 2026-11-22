@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '../account/account-api';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { claimSuggestion } from '../api/fn/staff-suggestions/claim-suggestion';
 import { deleteSuggestion } from '../api/fn/staff-suggestions/delete-suggestion';
 import { importSuggestionImages } from '../api/fn/staff-suggestions/import-suggestion-images';
@@ -24,6 +24,7 @@ import { CityClock } from './city-clock';
 })
 export class SuggestionQueue implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
   protected readonly clock = inject(CityClock);
   protected readonly moderation = inject(ActivatedRoute).snapshot.data['moderation'] === true;
   protected readonly mine = signal(false);
@@ -80,14 +81,10 @@ export class SuggestionQueue implements OnInit {
 
   protected async importImages(id: string): Promise<void> {
     await this.run(async () => {
-      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
-      await firstValueFrom(
-        importSuggestionImages(this.http, '', {
-          id,
-          body: { imageIds: this.selectedImages() },
-          'X-CSRF-TOKEN': csrf.token,
-        }),
-      );
+      await this.write.invoke(importSuggestionImages, {
+        id,
+        body: { imageIds: this.selectedImages() },
+      });
       this.selectedImages.set([]);
       this.notice.set(
         'Изображения добавлены. Перед отправкой статьи заполните их альтернативный текст.',
@@ -109,17 +106,13 @@ export class SuggestionQueue implements OnInit {
     }
 
     await this.run(async () => {
-      const { body: csrf } = await firstValueFrom(getCsrf(this.http, ''));
-      const headers = { 'X-CSRF-TOKEN': csrf.token, id: item.id };
+      const { id, version } = item;
       if (this.moderation) {
-        await firstValueFrom(
-          deleteSuggestion(this.http, '', { ...headers, body: { version: item.version, reason } }),
-        );
+        await this.write.invoke(deleteSuggestion, { id, body: { version, reason } });
+      } else if (this.mine()) {
+        await this.write.invoke(returnSuggestion, { id, body: { version } });
       } else {
-        const change = this.mine() ? returnSuggestion : claimSuggestion;
-        await firstValueFrom(
-          change(this.http, '', { ...headers, body: { version: item.version } }),
-        );
+        await this.write.invoke(claimSuggestion, { id, body: { version } });
       }
       this.notice.set(
         this.moderation

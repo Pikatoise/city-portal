@@ -9,7 +9,7 @@ import { InstallationState } from './installation-state';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
-import { provideHttpClient, withXsrfConfiguration, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import { publicNewsRequests } from './news/public-news-api';
 
 export const appConfig: ApplicationConfig = {
@@ -19,9 +19,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideClientHydration(),
-    provideHttpClient(
-      withInterceptors([publicNewsRequests]),
-      withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-CSRF-TOKEN' }),
-    ),
+    provideHttpClient(withInterceptors([publicNewsRequests]), withNoXsrfProtection()),
   ],
 };

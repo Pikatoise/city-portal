@@ -151,6 +151,14 @@ permanently closes resident editing, including after a return to the queue.
   the earliest expiry first. Staff endpoints are under `/api/staff/suggestions`.
 - Ordinary News draft deletion also returns the linked suggestion in the
   deletion transaction. News retains its existing audit history rules.
+- Claim and explicit return acquire the Identity authorization locks and then
+  lock the suggestion row. Explicit return then locks the draft through News.
+  Ordinary deletion and Author role removal lock the draft first, under the
+  same exclusive administration lock. After News saves the deletion, history
+  and Media changes, its deletion observer calls the Citizen Submissions
+  model to resume the queue using the draft deletion timestamp. The observer
+  saves the suggestion in the same transaction. See the
+  [assignment refactor and verification](../OPTIMIZATIONS.md#suggestion-assignment-lifecycle).
 - The resident can follow the current public address. Withdrawal hides the
   link and leaves the published suggestion in the account. For the public
   byline, News resolves the resident's current display name through Identity.
@@ -210,6 +218,10 @@ for readiness and for both queues under their respective demo accounts. The
 final photo and review preview interactions were covered by the Angular
 regressions and the attachment permissions by the PostgreSQL and S3 integration
 test.
+
+The [Angular write transport check](../OPTIMIZATIONS.md#angular-csrf-transport)
+verified resident upload, creation and edits, plus claim, image import, return
+and moderation deletion in Edge through the real HTTPS API.
 
 ## Local Review Scenario
 

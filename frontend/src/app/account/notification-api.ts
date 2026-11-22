@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { StrictHttpResponse } from '../api/strict-http-response';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { listAccountNotifications } from '../api/fn/account-notifications/list-account-notifications';
 import { readAccountNotification } from '../api/fn/account-notifications/read-account-notification';
 import { deleteAccountNotification } from '../api/fn/account-notifications/delete-account-notification';
@@ -13,16 +13,10 @@ import { NotificationPreferenceResponse } from '../api/models/notification-prefe
 @Injectable({ providedIn: 'root' })
 export class NotificationApi {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
 
   private request<T>(response: Observable<StrictHttpResponse<T>>): Promise<T> {
     return firstValueFrom(response.pipe(map((value) => value.body)));
-  }
-
-  private async write<T>(
-    operation: (token: string) => Observable<StrictHttpResponse<T>>,
-  ): Promise<T> {
-    const csrf = await this.request(getCsrf(this.http, ''));
-    return this.request(operation(csrf.token));
   }
 
   list(page = 1) {
@@ -34,20 +28,14 @@ export class NotificationApi {
   }
 
   save(preferences: NotificationPreferenceResponse[]) {
-    return this.write((token) =>
-      saveNotificationPreferences(this.http, '', { body: preferences, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(saveNotificationPreferences, { body: preferences });
   }
 
   read(id: string) {
-    return this.write((token) =>
-      readAccountNotification(this.http, '', { id, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(readAccountNotification, { id });
   }
 
   delete(id: string) {
-    return this.write((token) =>
-      deleteAccountNotification(this.http, '', { id, 'X-CSRF-TOKEN': token }),
-    );
+    return this.write.invoke(deleteAccountNotification, { id });
   }
 }

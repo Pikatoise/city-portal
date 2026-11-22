@@ -182,6 +182,74 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         Assert.Empty((await QueueAsync(other)).Items);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DraftDeletionOrAuthorRoleRemoval_ResumesRemainingQueueTimeAsync(bool removeAuthorRole)
+    {
+        var time = new AdjustableTimeProvider();
+        (ApiFactory factory, string database) = await _fixture.CreateAsync(time);
+        await using ApiFactory lifetime = factory;
+        using HttpClient resident = await LoginAsync(factory, database, "Resident", confirmed: true);
+        using HttpClient author = await LoginAsync(factory, database, "Author", confirmed: true, role: "Author");
+        using HttpClient administrator = await LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        AccountResponse owner = (await author.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+        SuggestionResponse created = await ReadAsync<SuggestionResponse>(await resident.PostAsJsonAsync(_path,
+            new SuggestionInput { Title = "Park cleanup", Description = "A story for the queue." }));
+        string suggestionPath = $"{_path}/{created.Id}";
+        SuggestionResponse original = (await resident.GetFromJsonAsync<SuggestionResponse>(suggestionPath))!;
+        time.Advance(TimeSpan.FromHours(20));
+        using HttpResponseMessage claimed = await author.PostAsJsonAsync($"{_staff}/{created.Id}/claim", new { created.Version });
+        Assert.Equal(HttpStatusCode.NoContent, claimed.StatusCode);
+        StaffSuggestionResponse assignment = Assert.Single((await QueueAsync(author, mine: true)).Items);
+        Assert.Equal(original.Version + 1, assignment.Version);
+        string draftPath = $"/api/editorial/articles/{assignment.ArticleId}";
+        ArticleResponse draft = (await author.GetFromJsonAsync<ArticleResponse>(draftPath))!;
+
+        time.Advance(TimeSpan.FromHours(80));
+        Guid actorId = owner.Id;
+        if (removeAuthorRole)
+        {
+            AccountResponse admin = (await administrator.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+            actorId = admin.Id;
+            string accountPath = $"/api/admin/accounts/{owner.Id}";
+            AccountSummary account = (await administrator.GetFromJsonAsync<AccountSummary>(accountPath))!;
+            AccountSummary updated = await ReadAsync<AccountSummary>(
+                await administrator.PutAsJsonAsync(accountPath + "/roles", new { roles = Array.Empty<string>(), account.Version }));
+            Assert.DoesNotContain("Author", updated.Roles);
+        }
+        else
+        {
+            using HttpResponseMessage deleted = await author.DeleteAsync($"{draftPath}?version={draft.Version}");
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            Assert.Empty((await QueueAsync(author, mine: true)).Items);
+        }
+
+        await using var connection = new NpgsqlConnection(database);
+        await connection.OpenAsync();
+        await using var deletion = new NpgsqlCommand("""
+            SELECT history."ActorId", article."DeletedAtUtc"
+            FROM news."History" AS history JOIN news."Articles" AS article ON article."Id" = history."ArticleId"
+            WHERE history."ArticleId" = @id AND history."Action" = 'delete'
+            """, connection);
+        deletion.Parameters.AddWithValue("id", draft.Id);
+        await using NpgsqlDataReader audit = await deletion.ExecuteReaderAsync();
+        Assert.True(await audit.ReadAsync());
+        Assert.Equal(actorId, audit.GetGuid(0));
+        DateTimeOffset deletedAt = audit.GetFieldValue<DateTimeOffset>(1);
+        Assert.False(await audit.ReadAsync());
+
+        SuggestionResponse queued = (await resident.GetFromJsonAsync<SuggestionResponse>(suggestionPath))!;
+        Assert.Equal("Queued", queued.Status);
+        Assert.Equal(assignment.Version + 1, queued.Version);
+        Assert.False(queued.CanEdit);
+        Assert.Equal(original.ExpiresAtUtc?.AddHours(80), queued.ExpiresAtUtc);
+        Assert.Equal(deletedAt.AddHours(52), queued.ExpiresAtUtc);
+        time.Advance(TimeSpan.FromHours(52));
+        using HttpResponseMessage expired = await resident.GetAsync(suggestionPath);
+        Assert.Equal(HttpStatusCode.NotFound, expired.StatusCode);
+    }
+
     [Fact]
     public async Task AssignedSuggestion_PausesExpiryAndSurvivesPublicationAsync()
     {
@@ -193,6 +261,7 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         using HttpClient author = await LoginAsync(factory, database, "Author", confirmed: true, role: "Author");
         using HttpClient editor = await LoginAsync(factory, database, "Editor", confirmed: true, role: "Editor");
         using HttpClient moderator = await LoginAsync(factory, database, "Moderator", confirmed: true, role: "Moderator");
+        using HttpClient administrator = await LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
         using HttpClient publicClient = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
         const string contact = "private@example.test";
         var input = new SuggestionInput { Title = "River cleanup", Description = "First line\nSecond line", Contact = contact };
@@ -226,6 +295,7 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         SuggestionResponse queued = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
         Assert.Equal("Queued", queued.Status);
         Assert.False(queued.CanEdit);
+        Assert.Equal(first.Version + 1, queued.Version);
         Assert.Equal(persisted.ExpiresAtUtc?.AddHours(80), queued.ExpiresAtUtc);
 
         time.Advance(TimeSpan.FromHours(30));
@@ -247,6 +317,11 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         AccountResponse recipient = (await resident.GetFromJsonAsync<AccountResponse>("/api/account"))!;
         await using var deliveryDb = new NpgsqlConnection(database);
         await deliveryDb.OpenAsync();
+        await using var firstClaimTime = new NpgsqlCommand("""
+            SELECT "FirstClaimedAtUtc" FROM citizen_submissions."Suggestions" WHERE "Id" = @id
+            """, deliveryDb);
+        firstClaimTime.Parameters.AddWithValue("id", created.Id);
+        Assert.Equal(firstDraft.UpdatedAtUtc.UtcDateTime, await firstClaimTime.ExecuteScalarAsync());
         await using var delivery = new NpgsqlCommand("SELECT count(*) FROM notifications.\"EmailDeliveries\" WHERE \"AccountId\" = @id AND \"NotificationType\" = 'suggestion.published'", deliveryDb);
         delivery.Parameters.AddWithValue("id", recipient.Id);
         Assert.Equal(1L, await delivery.ExecuteScalarAsync());
@@ -281,6 +356,17 @@ public sealed class CitizenSuggestionTests : IClassFixture<RegistrationFixture>
         await ActAsync(author, article, "publish");
         Assert.Single((await resident.GetFromJsonAsync<AccountNotificationPage>("/api/account/notifications"))!.Items);
         Assert.Equal(1L, await delivery.ExecuteScalarAsync());
+
+        AccountResponse owner = (await author.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+        string accountPath = $"/api/admin/accounts/{owner.Id}";
+        AccountSummary account = (await administrator.GetFromJsonAsync<AccountSummary>(accountPath))!;
+        using HttpResponseMessage revoked = await administrator.PutAsJsonAsync(accountPath + "/roles",
+            new { roles = Array.Empty<string>(), account.Version });
+        revoked.EnsureSuccessStatusCode();
+        SuggestionResponse retained = (await resident.GetFromJsonAsync<SuggestionResponse>(residentPath))!;
+        Assert.Equal("Published", retained.Status);
+        Assert.Equal(second.Version, retained.Version);
+        Assert.Equal(published.PublicArticleUrl, retained.PublicArticleUrl);
     }
 
     private static async Task ExpireAsync(ApiFactory factory)

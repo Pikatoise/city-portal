@@ -7,6 +7,63 @@ Product and architecture contracts remain in [VALUE](VALUE.md), [CORE](CORE.md)
 and the stage specifications. Operating procedures are in
 [DEVELOPMENT](DEVELOPMENT.md).
 
+## Angular CSRF transport
+
+Completed on 2026-11-22. Setup, account and authentication, notification,
+editorial, Media, administration, resident suggestion and staff queue writes
+now share `ApiWrite`. The inventory found 37 write operations. Callers used
+the successful response body or waited for completion. Error handlers use
+the original HTTP status, Problem Details and, for rate limits, `Retry-After`.
+The [write transport contract](CORE.md#identity-and-authorization) describes
+token acquisition and the initial cookie ordering.
+
+Angular HTTP backend tests verified the configured root, JSON and multipart
+encoding, token acquisition order, failure isolation, error metadata, and the
+browser-only guard. The full Angular suite passed 103 tests, and the production
+SSR build passed. Regenerating the client produced the same files, and live
+OpenAPI matched the snapshot. Prettier passed on all changed Angular files.
+The repository-wide check reported 35 files outside this change.
+
+On an isolated HTTPS Compose stack, Edge completed setup and login. Two
+concurrent initial recovery requests from one fresh browser context each
+received HTTP 202 after sequential token requests. The API returned HTTP 400
+with `invalid_csrf` for missing and invalid headers. An anonymous write also
+succeeded after logout. The production build passed browser checks for a real
+multipart upload, suggestion creation and edit, claim, image import, return,
+moderation deletion, and logout. A production SSR homepage request carrying a
+fixture session cookie made anonymous news reads and made no CSRF request.
+
+## Suggestion assignment lifecycle
+
+Implemented on 2026-11-22. Following a return previously required tracing
+assignment fields and timer changes across the staff operation and the News
+deletion observer. Citizen Submissions now gives claim and explicit return
+their own methods and keeps both state transitions on the suggestion model.
+The News deletion observer applies the same return transition after an
+explicit return, ordinary draft deletion, or Author role removal.
+
+The transition increments the version once and adds the pause duration to
+the previous deadline using the draft deletion timestamp. The first claim
+timestamp remains write-once. News still owns draft deletion, history, and
+Media access updates. The
+[Stage 3 contract](stages/STAGE_3.md#author-queue-and-manual-deletion)
+records the lock order and transaction boundaries.
+
+`DraftDeletionOrAuthorRoleRemoval_ResumesRemainingQueueTimeAsync`
+checks both entry points, the deletion audit actor, the single version
+increment, and expiry after the remaining 52 hours. The publication workflow
+test checks explicit return, the write-once claim timestamp, and preservation
+of the published suggestion after role removal.
+`Assignment_RollsBackDraftHistoryAndMediaWhenSuggestionWriteFailsAsync`
+forces the suggestion write to fail after News has saved creation or
+deletion. It verifies rollback of the assignment, draft, history, and image
+access, then retries each action with the same version.
+
+The Release build and solution formatting verification passed. The full
+Release .NET suite passed 195 tests with zero failures or skips, including
+competing claims and survival of the draft and imported images after manual
+deletion of the source suggestion.
+
 ## Media reference visibility
 
 Completed on 2026-11-19.

@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, map, Observable } from 'rxjs';
-import { getCsrf } from '../api/fn/auth/get-csrf';
+import { ApiWrite } from '../api-write';
 import { listAccounts } from '../api/fn/administration/list-accounts';
 import { getAdminAccount } from '../api/fn/administration/get-admin-account';
 import { changeRoles } from '../api/fn/administration/change-roles';
@@ -72,6 +72,7 @@ export function administrationError(error: unknown): string {
 @Injectable({ providedIn: 'root' })
 export class AdministrationApi {
   private readonly http = inject(HttpClient);
+  private readonly write = inject(ApiWrite);
 
   accounts(
     query: string,
@@ -101,11 +102,7 @@ export class AdministrationApi {
   }
 
   roles(id: string, roles: string[], version: AccountSummary['version']): Promise<AccountSummary> {
-    return this.write((token) =>
-      this.request(
-        changeRoles(this.http, '', { id, body: { roles, version }, 'X-CSRF-TOKEN': token }),
-      ),
-    );
+    return this.write.invoke(changeRoles, { id, body: { roles, version } });
   }
 
   deliveries(state: string, page: number): Promise<EmailDeliveryPage> {
@@ -115,20 +112,7 @@ export class AdministrationApi {
   }
 
   replay(delivery: EmailDeliverySummary): Promise<void> {
-    return this.write((token) =>
-      this.request(
-        replayEmail(this.http, '', {
-          id: delivery.id,
-          body: { version: delivery.version },
-          'X-CSRF-TOKEN': token,
-        }),
-      ),
-    );
-  }
-
-  private async write<T>(operation: (token: string) => Promise<T>): Promise<T> {
-    const csrf = await this.request(getCsrf(this.http, ''));
-    return operation(csrf.token);
+    return this.write.invoke(replayEmail, { id: delivery.id, body: { version: delivery.version } });
   }
 
   private request<T>(response: Observable<StrictHttpResponse<T>>): Promise<T> {
