@@ -33,10 +33,7 @@ Retain the stack and security baseline in CORE.md. Add one News project and one 
 | Notifications | Workflow delivery, preferences, attempts, retries, and account notification presentation. Business decisions remain in the owning News or Media module. |
 
 The editor prototype led to Tiptap with a ProseMirror document format.
-[CORE.md](../CORE.md#media-storage-and-processing) records the Media stack and
-[the search section](../CORE.md#data-access-search-and-cache) records the
-PostgreSQL full-text search design. Public article, feed and image responses
-use `no-store` and check current database visibility.
+[CORE.md](../CORE.md#media-storage-and-processing) records the Media stack.
 
 ## Implementation Order
 
@@ -95,7 +92,18 @@ Every image placement in cover, gallery, or body requires nonempty alternative t
 
 Autosave and the Save button persist drafts on the server using the expected record version. A conflicting save returns HTTP 409 and preserves the committed version, including when multiple tabs edit the same draft. Approved unpublished versions use only explicit Save: validate submission fields and atomically save, invalidate approval, and return to review. Invalid input does not commit that transition. Draft autosave runs after five seconds without input and serializes saves from one form. On 409, stop autosave and retain unsaved edits in the open form; offer copying those edits before loading the current server version. Do not silently merge or overwrite. A failed network save keeps the form dirty and shows retry feedback; do not report unsaved content as saved.
 
-The editor supports paragraphs, subheadings, emphasis, lists, links, quotations, and captioned images. Arbitrary HTML and complex page layouts are excluded. Images reference Media IDs. Validate structure, URLs, and referenced-media access on the server and sanitize rendered content.
+The editor supports paragraphs, subheadings, emphasis, lists, links, quotations, and captioned images. Arbitrary HTML and complex page layouts are excluded. Images reference Media IDs. The editor pastes rich content as plain text.
+
+Store `schemaVersion: 1` and the ProseMirror JSON body separately from title,
+summary, taxonomy IDs, cover/gallery placements, attribution and SEO. The
+server validates and renders its own allowlist of nodes. It accepts `doc`,
+`paragraph`, `heading` (H2/H3), `text`, `bulletList`, `orderedList`,
+`listItem`, `blockquote`, `hardBreak` and `mediaFigure`. Text and hard
+breaks admit bold, italic and absolute HTTP/HTTPS link marks. Ordered lists
+start at a value from 1 to 1,000,000. Canonicalization strips editor-only link attributes.
+The renderer escapes attributes and sets `rel="noopener noreferrer"` on links.
+Validate structure, supplied fields and Media access on draft save. Check
+required fields on submission and on approved-version saves.
 
 The approved main path is `Draft -> In Review -> Approved -> Published`, with return/resubmission, final rejection, author withdrawal, published corrections, and article withdrawal described above. Use independent publication and working-version state as specified below. Do not conflate final rejection of an article with rejection of a superseded revision that permits a new proposal.
 
@@ -106,6 +114,14 @@ Public address contract: use `/news/{transliterated-title}-{dd-MM-yyyy}-{guid-su
 The address migration runs immediately after the schema migration in the explicit migration command. If interrupted between those steps, readiness fails and public article/discovery requests and address-changing publication operations return 503 until the command is retried; backfill is transactional and does not recalculate stored dates. Focused integration tests cover transliteration, collision rollback, concurrent HTTP publication and correction, republishing after a time-zone change, and backfill recovery. Publication and correction also acquire the role lock in exclusive mode, so those concurrency tests do not independently demonstrate contention on the address-specific lock; the unique database index remains the final uniqueness constraint.
 
 ## Public News and Discovery
+
+News uses a generated Russian `tsvector` with title A, summary B and body C
+weights and `MAIN` storage. GIN indexes support search and tag filters. The
+public join uses the current `PublishedRevisionId` and a partial index for
+public articles. Each query checks visibility. The API fetches author names
+in one bounded Identity batch. Public API and SSR news responses use
+`no-store`. SSR reads omit credentials and bypass browser and transfer
+caches. See the [query measurements](../OPTIMIZATIONS.md#news-discovery-queries).
 
 The Stage 2 homepage presents the editorial carousel, five latest news items, then two category blocks of five stories each, newest first. The large left card contains one to five editor-selected stories, displayed one at a time with arrows only for multiple stories. Immediately exclude withdrawn articles. Three compact cards on the right start the latest-news block; the next two stories continue below as wide rows. Category blocks use wide rows. Repeating stories across blocks is allowed. Every block ends with a link to the detailed news list; category links preselect their category. Header search opens that list. The sticky category bar starts with Latest and scrolls to the matching homepage block instead of opening the detailed list; its categories match displayed blocks. Homepage blocks have no inline filters or pagination. Transport and Culture are prototype examples. Editors and administrators choose the two production homepage categories and their order. Future-module blocks arrive with their owning workflows.
 
@@ -134,6 +150,17 @@ Approved template files are immutable; proposing a different image creates a sep
 The assigned reviewer may access images attached to their submitted article version under the review permissions. A review assignment does not grant general access to another author's private media library.
 
 At article withdrawal, deny new anonymous access to an image unless another currently published article still uses it. Historical/draft references keep the file retained without making it public. Approved-template library/preview access is available to authors; approval alone does not permit anonymous access. A template block overrides publication references: deny public image delivery and render a placeholder even in currently published articles. Retain proposal revisions, moderation actions, and removal-request resolutions without automatic history deletion, with actor, time, state/version, and reason where required. Moderator/Administrator users can inspect this history; submitters can inspect their own proposal decisions while retaining author access. Do not expose moderation history to other authors selecting an approved template.
+
+Media stores a Processing row and the four processed payloads atomically in
+PostgreSQL. The Worker writes deterministic object keys, marks the
+image Ready and clears the payloads in one database transaction. Only
+Ready images can be attached. Partial
+writes retain payloads for retry with a 20-second to 15-minute backoff.
+Missing payloads mark the image Failed. Reconciliation runs every ten seconds
+without concurrent execution in the persistent `CityPortal.Email` Quartz
+scheduler. Cleanup rechecks retention under the attachment lock and marks
+the row Deleting before removing objects. Failed deletes retain the row for
+retry. See [upgrade and recovery](../development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md).
 
 ## API, Transactions, and Module Contracts
 
@@ -177,15 +204,15 @@ Authoring DTOs include article ID/version, working/public revision IDs and state
 Return 201 for new resources, 200 for reads/updated DTOs, 202 for durable accepted processing/notification work, and 204 for actions without a response body. Errors follow Stage 1: 400 validation/CSRF, 401 no current session, 403 known operation without permission, 404 inaccessible private detail/unknown public content, 409 stale version/state/assignment/uniqueness, 413 oversized request, 415 unsupported upload type, and 429 with Retry-After for limits. Do not let differing private-detail errors enumerate hidden articles.
 
 - News uses explicit Media operations to validate and retain references; it never reads or writes Media tables directly.
-- Editorial actions update existing reference visibility in the article transaction. The [Media reference optimization](../OPTIMIZATIONS.md#media-reference-visibility) records how this path and attachment selection are coordinated.
+- Editorial actions update existing reference visibility under revision and image locks in the article transaction. News marks working and published references current separately from retained history. When a new revision inherits an archived template, News passes the validated preceding revision ID from the same article. Direct corrections validate uploads against the editing actor and keep the original author on the references. See the [Media reference measurements](../OPTIMIZATIONS.md#media-reference-visibility).
 - Draft media remains private. Public image access depends on current publication references and absence of a template block, including after withdrawal; historical/draft references alone do not grant anonymous access. Approved-template previews require author access; Moderator/Administrator users can inspect proposals under their template-review permission. Approval never substitutes for a current-publication reference on anonymous image reads.
-- Validate actual image format, byte size, dimensions, and animation against the approved limits above; extensions and declared MIME alone are insufficient. Generate object keys on the server. Processing follows the rules above; initial throttling defaults are specified below.
+- Validate actual image format, byte size, dimensions, and animation against the approved limits above; compare the decoded format with the declared MIME type and reject animated containers even if they contain only one frame. Generate object keys on the server. Processing follows the rules above; initial throttling defaults are specified below.
 - News changes, history, and notification Outbox work commit atomically. Provider/broker outages do not undo committed decisions.
 - An upload that has never been attached to an article or template proposal is eligible for automatic cleanup seven days after creation. Draft, retained-version, and history references exclude images from cleanup. Coordinate reference attachment and cleanup so a competing reference cannot lose its file.
-- PostgreSQL and S3 do not share a database transaction. Represent images as Processing/Ready/Failed/Deleting and permit article/template attachment only to Ready images. Use durable idempotent processing/cleanup work and server-generated object keys. A partial upload never becomes selectable. Reconcile stale processing and partially written output objects; mark deletion under the same reference lock used by attachment before deleting objects. Keep referenced masters/variants and retry failed object deletion without removing references.
+- PostgreSQL and S3 do not share a transaction. Processing and cleanup must be idempotent. Retain the master and variants while referenced.
 - Version checks and coordinated authorization/state rechecks cover competing review actions, publication, editor correction versus author revision, withdrawal, role revocation, article deletion, and media deletion. Coordinate role changes and assignment release through explicit Identity/News operations in one PostgreSQL transaction with shared connection/transaction. Reuse the existing administration serialization order before article/review locks; recheck the actor after waiting. A release records the role-changing actor and affected reviewer. No stale assignment remains actionable for a revoked reviewer. Deletion versus first publication must not permit deleting an article that wins publication.
-- Private draft saves preserve current authorization, version checks and atomic Media reference changes under the [draft save lock policy](../OPTIMIZATIONS.md#draft-write-concurrency). Approved saves retain exclusive authorization coordination.
-- Public lists, direct URLs, search, SSR, media responses, and caches must enforce current visibility after withdrawal. Start with private S3 buckets, API-streamed image access, and no shared public-response cache. Do not issue anonymous object URLs or long-lived signed links bypassing current visibility/block checks. Return no-store on gated image/article responses and shared-cache exclusions for staff pages; in-flight/already-downloaded bytes cannot be recalled. Verify subsequent-request denial and concurrent visibility changes before considering caching.
+- Private draft saves preserve current authorization, version checks and atomic Media reference changes under the [draft save lock policy](../CORE.md#transactions-concurrency-and-module-interaction). Approved saves retain exclusive authorization coordination.
+- Public lists, direct URLs, search, SSR, media responses, and caches must enforce current visibility after withdrawal. Start with private S3 buckets, API-streamed image access, and no shared public-response cache. Do not issue anonymous object URLs or long-lived signed links bypassing current visibility/block checks. Return `no-store` on gated image/article responses and exclude staff pages from shared caches. Image responses also use `nosniff` and disable range and conditional responses. Visibility changes apply to subsequent requests. Verify subsequent-request denial and concurrent visibility changes before considering caching.
 
 ## Notifications
 
@@ -204,6 +231,14 @@ Account notification records expire 30 days after creation regardless of read st
 
 Workflow Email expires seven days after the originating event; check expiry before SMTP and administrative replay. Reuse Stage 1 transient retry intervals of 1, 5, 15, 30, and 60 minutes after each preceding failed attempt; permanent failure stops automatic attempts. An administrator may replay failed work only within the same seven-day window. Replay does not move the event timestamp or expiry. Expired deliveries are skipped without deleting the business decision/history. Resolved delivery retention and retained replay audit follow Stage 1 independently of account-notification cleanup.
 
+Template decisions commit with audit records, deduplication receipts, account
+notices and Email Outbox work in one PostgreSQL transaction. Media uses
+current News working/publication references to identify affected authors.
+Notification content excludes private article titles, template names and
+decision reasons. SMTP delivery and replay recheck the Email preference and
+original event deadline. Retention clears protected payloads for expired
+unsent work and keeps deduplication receipts.
+
 ## Engineering Defaults
 
 These parameters are implementation choices delegated by the owner; they do not extend the agreed feature scope. Adjust after measurement or compatibility checks, recording the reason and preserving product behavior.
@@ -213,7 +248,7 @@ These parameters are implementation choices delegated by the owner; they do not 
 | Text counting | NFC-normalized Unicode scalar values for text fields; trim outer whitespace for names/titles and presence checks. Preserve body formatting. Check decoded URLs separately. Password rules remain unchanged. |
 | Supporting fields | Category/tag/template/source name up to 100 characters; SEO title up to 200, SEO description up to 500; alt text up to 500; caption up to 1000; feedback/reasons/change summary up to 2000; up to 20 sources, URL up to 2048 characters. Required reasons and names must contain non-whitespace text. |
 | Links | External links and source URLs use absolute HTTP/HTTPS only. Block active-content schemes; do not fetch arbitrary submitted URLs server-side. Render links safely with escaped text. |
-| Payload bounds | Structured body up to 2 MiB UTF-8 JSON and 2000 blocks in addition to the approved plain-text bound; image requests bounded around the 10 MiB file plus form overhead. Validate before persistence. |
+| Payload bounds | Structured body up to 2 MiB UTF-8 JSON, 2,000 blocks, 20,000 nodes and 24 levels, plus the approved plain-text limit. Full save requests up to 4 MiB. Multipart image requests up to 11 MiB, including the 10 MiB file and form overhead. Validate before persistence. |
 | Upload throttling | Initially 20 upload attempts per ten minutes per account and 60 per ten minutes per trusted client IP; rejected attempts count. Acquire one process-local upload slot before multipart model binding, rejecting competing work with 429/Retry-After; bound request buffering to memory. Stage 1 auth limits remain unchanged. |
 | Write throttling | Initially 120 draft-save attempts per minute per account and 30 workflow/moderation mutations per minute per account; shared persistent enforcement and Retry-After. |
 | Search bounds | Query up to 200 characters; bounded page size and stable ordering; database indexes on public revision/search, first publication, taxonomy, and reference joins. |
@@ -368,7 +403,7 @@ and repeat stand startup passed. Replacement-address checks covered transliterat
 collision rollback, concurrent publication/correction, retained local dates and
 interrupted backfill recovery; EF pending-model verification passed.
 
-Local setup and recovery commands are in [DEVELOPMENT.md](../DEVELOPMENT.md).
+See [local startup](../DEVELOPMENT.md#local-startup) and [Stage 2 upgrade and recovery](../development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md) for commands.
 Module design is in [CORE.md](../CORE.md).
 
 ## Final Owner Acceptance: 2026-11-17
@@ -394,7 +429,7 @@ by this acceptance record.
 ## Draft write concurrency
 
 See the [draft write optimization](../OPTIMIZATIONS.md#draft-write-concurrency)
-for the lock changes, performance comparison and regression evidence.
+for the performance comparison and regression evidence. The [lock policy](../CORE.md#transactions-concurrency-and-module-interaction) is in CORE.md.
 
 ## Public article read
 

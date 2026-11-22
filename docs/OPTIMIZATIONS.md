@@ -1,91 +1,50 @@
 # CityPortal Optimizations and Refactoring
 
-Record completed optimizations, refactors and related engineering improvements
-here. Each entry identifies the affected area, the reason for the change,
-the implementation and the verification or limits of the evidence.
-Product and architecture contracts remain in [VALUE](VALUE.md), [CORE](CORE.md)
-and the stage specifications. Operating procedures are in
-[DEVELOPMENT](DEVELOPMENT.md).
+Record each change's date, scope, reason, implementation and verification,
+including measurement conditions and limits. See [VALUE.md](VALUE.md),
+[CORE.md](CORE.md) and the stage specifications for current contracts, and
+[DEVELOPMENT.md](DEVELOPMENT.md) for operating procedures.
 
 ## Angular CSRF transport
 
-Completed on 2026-11-22. Setup, account and authentication, notification,
-editorial, Media, administration, resident suggestion and staff queue writes
-now share `ApiWrite`. The inventory found 37 write operations. Callers used
-the successful response body or waited for completion. Error handlers use
-the original HTTP status, Problem Details and, for rate limits, `Retry-After`.
-The [write transport contract](CORE.md#identity-and-authorization) describes
-token acquisition and the initial cookie ordering.
+2026-11-22. Consolidated CSRF acquisition for 37 Angular write operations
+in `ApiWrite`, preserving response bodies, HTTP status, Problem Details and
+`Retry-After`. See the [transport contract](CORE.md#identity-and-authorization).
 
-Angular HTTP backend tests verified the configured root, JSON and multipart
-encoding, token acquisition order, failure isolation, error metadata, and the
-browser-only guard. The full Angular suite passed 103 tests, and the production
-SSR build passed. Regenerating the client produced the same files, and live
-OpenAPI matched the snapshot. Prettier passed on all changed Angular files.
-The repository-wide check reported 35 files outside this change.
+All 103 Angular tests and the production SSR build passed. Tests covered API
+root, JSON/multipart writes, token ordering, failure isolation, error metadata
+and the browser guard. Regenerated client and live OpenAPI matched the
+snapshot. Prettier passed on changed files and flagged 35 other files.
 
-On an isolated HTTPS Compose stack, Edge completed setup and login. Two
-concurrent initial recovery requests from one fresh browser context each
-received HTTP 202 after sequential token requests. The API returned HTTP 400
-with `invalid_csrf` for missing and invalid headers. An anonymous write also
-succeeded after logout. The production build passed browser checks for a real
-multipart upload, suggestion creation and edit, claim, image import, return,
-moderation deletion, and logout. A production SSR homepage request carrying a
-fixture session cookie made anonymous news reads and made no CSRF request.
+Edge against isolated HTTPS Compose passed setup, login, multipart upload,
+suggestion create/edit/claim/import/return, moderation deletion and logout.
+Two simultaneous first recovery requests returned 202 after sequential token
+requests. Missing and invalid headers returned 400 `invalid_csrf`. An
+anonymous write worked after logout, and SSR with a fixture cookie still made
+anonymous news reads without requesting a token.
 
 ## Suggestion assignment lifecycle
 
-Implemented on 2026-11-22. Following a return previously required tracing
-assignment fields and timer changes across the staff operation and the News
-deletion observer. Citizen Submissions now gives claim and explicit return
-their own methods and keeps both state transitions on the suggestion model.
-The News deletion observer applies the same return transition after an
-explicit return, ordinary draft deletion, or Author role removal.
+2026-11-22. Claim and return now use named suggestion state transitions.
+The News deletion observer reuses return for explicit return, ordinary deletion
+and Author role removal, resolving duplicated ownership of timer and version
+updates. See the [Stage 3 contract](stages/STAGE_3.md#author-queue-and-manual-deletion).
 
-The transition increments the version once and adds the pause duration to
-the previous deadline using the draft deletion timestamp. The first claim
-timestamp remains write-once. News still owns draft deletion, history, and
-Media access updates. The
-[Stage 3 contract](stages/STAGE_3.md#author-queue-and-manual-deletion)
-records the lock order and transaction boundaries.
-
-`DraftDeletionOrAuthorRoleRemoval_ResumesRemainingQueueTimeAsync`
-checks both entry points, the deletion audit actor, the single version
-increment, and expiry after the remaining 52 hours. The publication workflow
-test checks explicit return, the write-once claim timestamp, and preservation
-of the published suggestion after role removal.
+`DraftDeletionOrAuthorRoleRemoval_ResumesRemainingQueueTimeAsync` checks the
+deletion actor, single version increment and 52 hours of remaining queue time.
+The publication test checks explicit return, the first-claim timestamp and
+published suggestions after role removal.
 `Assignment_RollsBackDraftHistoryAndMediaWhenSuggestionWriteFailsAsync`
-forces the suggestion write to fail after News has saved creation or
-deletion. It verifies rollback of the assignment, draft, history, and image
-access, then retries each action with the same version.
-
-The Release build and solution formatting verification passed. The full
-Release .NET suite passed 195 tests with zero failures or skips, including
-competing claims and survival of the draft and imported images after manual
-deletion of the source suggestion.
+forces failure after News saves creation or deletion, then checks rollback and
+same-version retry. Release build, formatting and all 195 .NET tests passed.
 
 ## Media reference visibility
 
-Completed on 2026-11-19.
-
-Editorial actions used to read and validate every retained revision's
-document and replace its Media references. A reviewer change rewrote even
-references on drafts whose audience stayed the same.
-
-News now reads revision IDs and submission timestamps to calculate access.
-Media updates existing references in batches of up to 128 revisions, groups
-revisions with the same target audience, and writes rows whose flags change.
-The operation keeps the revision and image locks in the caller's transaction.
-The attachment path still validates image selection and inheritance when an
-image set is saved or copied to a new revision.
-
-News marks the working and publication revisions current until deletion.
-Only the current published revision grants anonymous access, subject to the
-template block. Submitted revisions use the current review assignment for
-editor access, including retained history. Deletion preserves editorial
-access to retained history once an article was submitted. For a deleted
-draft created from a suggestion, Media removes author access through that
-draft while preserving independent suggestion and article references.
+2026-11-19. Reviewer changes previously validated every retained revision
+document and replaced its Media references. News now derives audiences from
+revision IDs and submission timestamps. Media groups matching audiences in
+batches of up to 128 revisions and updates changed flags in place.
+See the [Stage 2 contract](stages/STAGE_2.md#api-transactions-and-module-contracts).
 
 ### Measured reviewer assignment
 
@@ -120,26 +79,9 @@ formatting verification passed.
 
 ## Draft write concurrency
 
-Completed on 2026-11-19 in `4a626c3`. The previous exclusive role lock
-serialized draft writes across unrelated authors. The targeted change lets
-independent ordinary drafts progress together.
-
-The administration advisory lock coordinates setup, bootstrap, role changes
-and writes using `AccountAuthorization`. Those writes take it before the
-normalized Email and actor account locks, recheck the current session and
-role, and then acquire the workflow resource locks. Password and profile
-changes take Email and account locks in that order. Registration and login lock the Email.
-Logout revokes the session record, which subsequent authorization checks
-read. Role changes hold the exclusive lock through their dependent News and
-Citizen Submissions updates. The commit releases transaction locks before
-post-commit notification flushing.
-
-Private draft saves share the administration lock with other draft saves.
-They hold one article row and replace one working revision's Media references,
-with image IDs locked in sorted order. The other workflows using this lock
-keep exclusive mode. An approved save can refresh multiple revisions. It
-releases the shared transaction before making changes, starts an exclusive
-transaction, and validates the actor, ownership and version again.
+2026-11-19 (`4a626c3`). An exclusive administration lock serialized even
+unrelated draft saves. Private draft saves now share it. See the
+[authorization and lock policy](CORE.md#transactions-concurrency-and-module-interaction).
 
 ### Local comparison
 
@@ -170,17 +112,10 @@ after. Their complete request p50/p95 was 331.35/440.96 ms before and
 locks. These short runs compare the listed workloads. Production latency and
 long-running fairness remain unmeasured.
 
-The PostgreSQL regression for unrelated authors observed one save waiting
-on an article row. Before the change the second save waited behind it. With
-the shared lock, the second save committed while the first row remained locked.
-The role-revocation regression verified both commit orders. A revocation
-that committed first denied the waiting save. A save that committed first
-updated the draft once, and subsequent requests lost author access.
-
-The full Release .NET run passed 191 tests with zero failures or skips.
-It also exercised last-administrator protection, session revocation,
-approved saves, notification rollback and the Stage 3 role-removal race.
-Solution formatting verification passed.
+A PostgreSQL regression held one article row locked. The second author's save
+waited before the change and committed independently after it. Role-revocation
+tests covered both commit orders. Release formatting and all 191 .NET tests
+passed, including approved saves, notification rollback and Stage 3 role removal.
 
 ## Public article read
 
@@ -224,24 +159,12 @@ storage choice to existing revisions without changing text or article versions.
 The upgrade regression verifies preserved content/search, the physical policy,
 the index and repeat application.
 
-The upgrade regression checks a large vector under the preceding EXTENDED policy
-and verifies its PostgreSQL row version changes during migration. Removing the
-recomputation UPDATE failed the assertion; restoring it passed the focused test.
-Specification and standards reviews resolved their findings. Failed helper commands
-retain stdout/stderr before checking their exit code.
-
-An isolated comparison measured the representative tag-page query at 62.428 ms
-before the index and 4.078 ms after it. A representative broad ranked search
-measured 471.552 ms before the storage change and 20.571 ms after it. These are
-single-query diagnostics, separate from HTTP percentiles.
-
-`SET STORAGE` sets the policy for future writes. See the
-[PostgreSQL 18 ALTER TABLE reference](https://www.postgresql.org/docs/18/sql-altertable.html).
-The update takes normal PostgreSQL DDL and write locks. A migration failure
-rolls back, and a later explicit run may retry it. Follow the
-[upgrade procedure](DEVELOPMENT.md#stage-2-upgrade-and-recovery) for writer
-shutdown, backup and disk headroom. The change used the existing PostgreSQL
-search path and the existing no-store response policy.
+The upgrade regression detected removal of the recomputation UPDATE by checking
+the PostgreSQL row version of a large vector originally stored as EXTENDED.
+An isolated tag-page query improved from 62.428 ms to 4.078 ms. A broad ranked
+search improved from 471.552 ms to 20.571 ms. These timings measure individual
+queries. See [migration and recovery](development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md)
+for deployment steps.
 
 ### Capacity results
 
@@ -285,26 +208,11 @@ were feed 0.390 ms, search 18.395 ms, image visibility 0.031 ms and tag page
 JSON in ignored `.local/issue14/capacity_<uuid>/` artifacts during measurement.
 The owner-requested cleanup removed local artifacts and disposable fixtures.
 
-### Reproduce the capacity check
-
-Build the Release API and production Angular SSR, then run the capacity check.
-
-```powershell
-python scripts/check-news-capacity.py
-```
-
-The helper requires the local Compose infrastructure and ignored `.env`. Each
-fresh run creates a unique isolated database and broker vhost. It leaves those
-fixtures and ignored results, plans and keys for inspection. It stops its
-API/SSR processes on exit. `--serve`
-keeps them available for local review; interrupt it to stop. `--reuse` accepts
-only a previously created `.local/issue14/capacity_<uuid>` directory.
-
-The baseline contains 10,000 public articles with roughly 3,800 body characters,
-100,000 image-reference rows, 100 categories and 1,000 tags. Reference rows
-exercise metadata and query volume. Recovery and live Media checks cover
-object delivery functionally. This workload uses ordinary article sizes and
-short measurement runs.
+See the [capacity procedure](development_instructions/development_and_verification/news_capacity_check.md).
+The fixture used 10,000 public articles with roughly 3,800 body characters,
+100,000 image-reference rows, 100 categories and 1,000 tags. The load run
+exercised image metadata and queries. Recovery and live Media checks covered
+object delivery separately.
 
 ## CI and verification tooling
 

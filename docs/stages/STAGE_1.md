@@ -4,7 +4,7 @@
 
 Complete and owner-accepted on 2026-11-13, including the keyless first-run wizard and setup-only page access. No open business decisions remain. Minor visual refinements are deferred.
 
-[VALUE.md](../VALUE.md) defines product behavior; [CORE.md](../CORE.md) defines architecture and delivery order. This document retains the Stage 1 contracts and acceptance record. Operational commands belong in [DEVELOPMENT.md](../DEVELOPMENT.md).
+[VALUE.md](../VALUE.md) defines product behavior; [CORE.md](../CORE.md) defines architecture and delivery order. This document retains the Stage 1 contracts and acceptance record. See [DEVELOPMENT.md](../DEVELOPMENT.md) for the local startup, installation and verification guides.
 
 Implementation and acceptance tasks #1-#6 are complete in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3) for [Pikatoise/city-portal](https://github.com/Pikatoise/city-portal).
 
@@ -249,4 +249,4 @@ and closed the stage after reviewing the wizard and page isolation on 2026-11-13
 - SMTP acceptance followed by a database acknowledgement failure can duplicate external Email.
 - Real-provider SMTP/TLS, public DNS/certificate issuance, and public deployment remain deployment checks.
 
-Startup, migration, smoke-check commands, and certificate handling are maintained in [DEVELOPMENT.md](../DEVELOPMENT.md). Git history retains the implementation chronology and earlier verification details.
+See [local startup](../DEVELOPMENT.md#local-startup) for Compose, migrations and certificates, and [registration smoke checks](../development_instructions/development_and_verification/registration_and_confirmation.md) for Email verification. Git history retains the implementation chronology and earlier verification details.

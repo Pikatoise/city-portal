@@ -53,7 +53,7 @@ Detailed account constraints, link and session lifetimes, abuse limits, administ
 
 - Moderators can block and unblock only ordinary users; administrators can block and unblock any user, including staff.
 - Blocks require a reason and remain until manually removed. History records the reason and responsible staff member.
-- Successful blocking prevents subsequent account actions and immediately hides all its advertisements, including direct advertisement pages. If blocking and hiding cannot both complete, the operation fails without partially applying either change. Published articles remain available unless separately withdrawn by an editor.
+- Successful blocking prevents subsequent account actions and immediately hides all its advertisements, including direct pages and cached results. A committed block prevents publication or renewal of that account's listings, including publication by staff. If blocking and hiding cannot both complete, roll back both changes and report the failure to staff. Published articles remain available unless separately withdrawn by an editor.
 - After unblocking, advertisements remain hidden until the owner manually relists or renews each one. Direct advertisement blocks still require the correction and approval process described below.
 
 ## Public Website
@@ -255,6 +255,6 @@ The following are outside the initial implementation or subject to later agreeme
 - Bookmarks, popularity statistics, personalized recommendations, and news digests.
 - City events calendar and public issue reporting.
 - Complex real-time collaboration.
-- Scheduled publication, advanced search, and additional media capabilities.
+- Scheduled publication, advanced search, advanced revision comparison, and additional media capabilities.
 
 Open details include state models, notification events and defaults, comment-report handling, and remaining module interactions.

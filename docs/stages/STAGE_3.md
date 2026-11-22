@@ -108,6 +108,7 @@ permanently closes resident editing, including after a return to the queue.
 - A resident can stage up to five JPEG, PNG or static WebP images per
   suggestion, up to 10 MiB each. The usual Media processor validates and
   re-encodes each file, strips metadata and creates durable processing work.
+  Suggestion uploads stay outside editorial libraries.
 - Submission and edits attach only the resident's own suggestion uploads.
   A file can belong to one suggestion. Staff attachment list and image requests
   recheck whether the suggestion is available in the queue or assigned to the
