@@ -4,8 +4,8 @@
 
 In development. Stage 3 was accepted on 2026-11-19. The account's My
 Advertisements page supports private drafts and their photo carousel. The
-category and district administration API is implemented. The administration
-screens, moderation and public listing pages remain pending.
+category and district administration screen and API are implemented.
+Moderation and public listing pages remain pending.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -86,6 +86,12 @@ administrator adds installation districts. Preserve referenced catalog entries.
 | PUT `/api/admin/classifieds/catalog/{kind}/{id}` | Administrators update a named entry using its current version. Categories support archival. |
 | GET/POST `/api/account/classifieds/drafts` | The confirmed owner lists their drafts, newest update first, or creates an incomplete draft. |
 | GET/PUT/DELETE `/api/account/classifieds/drafts/{id}` | The owner reads, replaces, or deletes a draft. Writes check the current version. Foreign IDs return 404. |
+
+The browser-rendered `/staff/classifieds/catalog` page opens from the
+administrator's profile and account management screen. Administrators with
+confirmed Email can add and rename categories and districts, set the category's
+price requirement, and archive or restore categories. Version conflicts preserve
+the form so the administrator can reload and check the current entry.
 
 The initial draft fields are title, plain-text description, category ID,
 district ID, optional whole-number price, phone and Email. Bound fields at 200 title
@@ -219,6 +225,13 @@ and all 103 Angular tests passed. In Edge with mocked API responses, the account
 price, uploaded two photos, saved a whole price, switched carousel photos,
 and deleted the draft. At viewport widths of 390 and 1440 pixels the carousel
 sat between the title and description without horizontal page overflow.
+
+The catalog administration change passed the Angular production build and
+all 103 Angular tests. An Edge check with mocked API responses verified adding
+a category and a district, renaming the district, archiving and restoring a
+category, and preserving form input after a version conflict. It verified that
+a regular account cannot access the editor and that the page fits 390 and
+1440 pixel viewports.
 
 ## Open decisions
 

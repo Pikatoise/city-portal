@@ -22,6 +22,7 @@ import {
       <h1 id="accounts-title">Аккаунты и роли</h1>
       <p>Часовой пояс города: {{ clock.timeZone() }}</p>
       <nav class="staff-nav">
+        <a routerLink="/staff/classifieds/catalog">Категории и районы объявлений</a>
         <a routerLink="/staff/media">Медиатека</a>
         <a routerLink="/staff/accounts">Аккаунты</a
         ><a routerLink="/staff/email-deliveries">Доставка Email</a

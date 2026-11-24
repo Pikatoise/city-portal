@@ -1,0 +1,132 @@
+<section class="staff-panel" aria-labelledby="catalog-title">
+  <h1 id="catalog-title">Категории и районы объявлений</h1>
+  <nav class="staff-nav" aria-label="Администрирование">
+    <a routerLink="/staff/accounts">Аккаунты</a>
+    <a routerLink="/account">Личный кабинет</a>
+  </nav>
+  @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (allowed()) {
+    <div class="catalog-actions" role="group" aria-label="Списки объявлений">
+      <button
+        type="button"
+        [attr.aria-pressed]="kind() === 'categories'"
+        [disabled]="busy()"
+        (click)="select('categories')"
+      >
+        Категории
+      </button>
+      <button
+        type="button"
+        [attr.aria-pressed]="kind() === 'districts'"
+        [disabled]="busy()"
+        (click)="select('districts')"
+      >
+        Районы
+      </button>
+    </div>
+    @if (result(); as entries) {
+      <form (ngSubmit)="save()">
+        <fieldset [disabled]="busy()">
+          <legend>
+            {{
+              editing()
+                ? 'Редактирование'
+                : kind() === 'categories'
+                  ? 'Новая категория'
+                  : 'Новый район'
+            }}
+          </legend>
+          <div class="field">
+            <label for="catalog-name">Название</label>
+            <input id="catalog-name" name="name" [(ngModel)]="name" required maxlength="120" />
+          </div>
+          @if (kind() === 'categories') {
+            <label class="catalog-option">
+              <input type="checkbox" name="requiresPrice" [(ngModel)]="requiresPrice" />
+              Цена обязательна
+            </label>
+            @if (editing()) {
+              <label class="catalog-option">
+                <input type="checkbox" name="archived" [(ngModel)]="archived" />
+                В архиве
+              </label>
+              <p class="field-hint">Архивная категория сохраняется в существующих объявлениях.</p>
+            }
+          }
+          <div class="catalog-actions">
+            <button type="submit" class="primary-button" [disabled]="!name.trim()">
+              {{ editing() ? 'Сохранить' : 'Добавить' }}
+            </button>
+            @if (editing()) {
+              <button type="button" (click)="edit(null)">Отменить</button>
+            }
+          </div>
+        </fieldset>
+      </form>
+
+      <h2>{{ kind() === 'categories' ? 'Категории' : 'Районы' }}</h2>
+      <button type="button" [disabled]="busy()" (click)="select(kind(), page())">
+        Обновить список
+      </button>
+      @if (entries.items.length > 0) {
+        <ul class="catalog-list">
+          @for (entry of entries.items; track entry.id) {
+            <li>
+              <div>
+                <strong>{{ entry.name }}</strong>
+                @if (entry.archived) {
+                  <span>В архиве</span>
+                }
+                @if (entry.requiresPrice) {
+                  <span>Цена обязательна</span>
+                }
+              </div>
+              <button
+                type="button"
+                [disabled]="busy()"
+                [attr.aria-label]="'Изменить ' + entry.name"
+                (click)="edit(entry)"
+              >
+                Изменить
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p>Записей пока нет.</p>
+      }
+      @if (page() > 1 || entries.hasNextPage) {
+        <nav class="catalog-actions" aria-label="Страницы справочника">
+          <button
+            type="button"
+            [disabled]="busy() || page() === 1"
+            (click)="select(kind(), page() - 1)"
+          >
+            Назад
+          </button>
+          <span>{{ page() }}</span>
+          <button
+            type="button"
+            [disabled]="busy() || !entries.hasNextPage"
+            (click)="select(kind(), page() + 1)"
+          >
+            Дальше
+          </button>
+        </nav>
+      }
+    } @else if (busy()) {
+      <p role="status">Загружаем каталог…</p>
+    }
+  } @else if (signedOut()) {
+    <p><a routerLink="/account/login">Войти</a>, чтобы открыть каталог.</p>
+  } @else if (busy()) {
+    <p role="status">Проверяем доступ…</p>
+  } @else {
+    <button type="button" (click)="initialize()">Повторить</button>
+  }
+</section>

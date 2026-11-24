@@ -41,6 +41,9 @@ const roleLabels: Record<string, string> = {
         <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>
         <p><a routerLink="/account/suggestions">Мои предложения новостей</a></p>
         <p><a routerLink="/account/classifieds">Мои объявления</a></p>
+        @if (account.roles.includes('Administrator')) {
+          <p><a routerLink="/staff/classifieds/catalog">Категории и районы объявлений</a></p>
+        }
         @if (
           account.roles.includes('Author') ||
           account.roles.includes('Moderator') ||
