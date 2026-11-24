@@ -80,6 +80,59 @@ public sealed class ClassifiedsPhotoTests : IClassFixture<MediaFixture>
         await AssertMediaCountAsync(database, photos, 0);
     }
 
+    [Fact]
+    public async Task StaffPhoto_RequiresCurrentPendingVersionAndReviewPermissionAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "PhotoOwner", confirmed: true, role: "Moderator");
+        using HttpClient reviewer = await CitizenSuggestionTests.LoginAsync(factory, database, "Reviewer", confirmed: true, role: "Administrator");
+        using HttpClient other = await CitizenSuggestionTests.LoginAsync(factory, database, "Other", confirmed: true);
+        ImageResponse photo = await UploadAsync(owner);
+        CatalogEntryResponse category = (await owner.GetFromJsonAsync<ClassifiedsPage<CatalogEntryResponse>>(_account + "/catalog/categories"))!.Items[0];
+        CatalogEntryResponse district = await CitizenSuggestionTests.ReadAsync<CatalogEntryResponse>(
+            await reviewer.PostAsJsonAsync("/api/admin/classifieds/catalog/districts", new SaveClassifiedsCatalogEntryRequest { Name = "Central" }));
+        var details = new ListingDraftInput
+        {
+            Title = "Desk",
+            Description = "Solid wood",
+            CategoryId = category.Id,
+            DistrictId = district.Id,
+            Email = "owner@example.test",
+            Price = 0,
+            Photos = [new ListingPhotoInput { ImageId = photo.Id, AlternativeText = "Wooden desk" }]
+        };
+        ListingDraftResponse draft = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(_drafts, details));
+        string ownerPath = $"{_drafts}/{draft.Id}";
+        string staffPath = $"/api/staff/classifieds/review/{draft.Id}";
+        string staffPhoto = $"{staffPath}/images/{photo.Id}";
+        await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<MediaMaintenance>().ProcessPendingAsync(CancellationToken.None);
+        Assert.Equal(HttpStatusCode.NotFound, (await reviewer.GetAsync($"{staffPhoto}?version={draft.Version}")).StatusCode);
+
+        ListingDraftResponse submitted = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(
+            await owner.PostAsJsonAsync(ownerPath + "/submit", new ListingDraftVersionRequest { Version = draft.Version }));
+        string pendingPhoto = $"{staffPhoto}?version={submitted.Version}";
+        ListingReviewPreview preview = (await reviewer.GetFromJsonAsync<ListingReviewPreview>(staffPath))!;
+        Assert.Equal("Wooden desk", Assert.Single(preview.Submission.Photos).AlternativeText);
+        using HttpResponseMessage opened = await reviewer.GetAsync(pendingPhoto);
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        Assert.Equal("image/webp", opened.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.GetAsync(pendingPhoto)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await other.GetAsync(pendingPhoto)).StatusCode);
+
+        ListingDraftResponse recalled = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(
+            await owner.PostAsJsonAsync(ownerPath + "/recall", new ListingDraftVersionRequest { Version = submitted.Version }));
+        Assert.Equal(HttpStatusCode.NotFound, (await reviewer.GetAsync(pendingPhoto)).StatusCode);
+        ListingDraftResponse resubmitted = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(
+            await owner.PostAsJsonAsync(ownerPath + "/submit", new ListingDraftVersionRequest { Version = recalled.Version }));
+        Assert.Equal(HttpStatusCode.NotFound, (await reviewer.GetAsync(pendingPhoto)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await reviewer.PostAsJsonAsync(staffPath + "/reject",
+            new DecideListingReviewRequest { Version = resubmitted.Version, Reason = "Final decision" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await reviewer.GetAsync($"{staffPhoto}?version={resubmitted.Version}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync($"{ownerPath}/images/{photo.Id}")).StatusCode);
+    }
+
     private static async Task AssertMediaCountAsync(string database, ListingPhotoInput[] photos, long expected)
     {
         await using var connection = new NpgsqlConnection(database);

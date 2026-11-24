@@ -91,6 +91,10 @@ namespace CityPortal.Classifieds.Migrations
                     b.Property<long?>("Price")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ReviewOutcome")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<DateTimeOffset?>("SubmittedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -111,10 +115,42 @@ namespace CityPortal.Classifieds.Migrations
 
                     b.HasIndex("DistrictId");
 
+                    b.HasIndex("SubmittedAtUtc", "Id")
+                        .HasFilter("\"SubmittedAtUtc\" IS NOT NULL");
+
                     b.HasIndex("OwnerId", "UpdatedAtUtc", "Id")
                         .IsDescending(false, true, true);
 
                     b.ToTable("Drafts", "classifieds");
+                });
+
+            modelBuilder.Entity("CityPortal.Classifieds.ListingReviewDecision", b =>
+                {
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SubmittedVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("ListingId", "SubmittedVersion");
+
+                    b.ToTable("ReviewDecisions", "classifieds");
                 });
 
             modelBuilder.Entity("CityPortal.Classifieds.ListingDraft", b =>

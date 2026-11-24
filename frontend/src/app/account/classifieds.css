@@ -43,3 +43,8 @@
   max-inline-size: 100%;
   overflow-wrap: anywhere;
 }
+
+.review-reason {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

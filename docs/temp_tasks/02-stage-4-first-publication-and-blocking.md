@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-[01 Staff review and owner feedback](01-stage-4-review-queue.md).
+[Staff review and owner feedback](../stages/STAGE_4.md#staff-review-and-owner-feedback).
 
 ## Outcome
 

@@ -40,6 +40,10 @@ export const routes: Routes = [
         loadComponent: () => import('./editorial/taxonomy').then((m) => m.Taxonomy),
       },
       {
+        path: 'staff/classifieds/review',
+        loadComponent: () => import('./staff/classifieds-review').then((m) => m.ClassifiedsReview),
+      },
+      {
         path: 'staff/classifieds/catalog',
         loadComponent: () =>
           import('./staff/classifieds-catalog').then((m) => m.ClassifiedsCatalog),

@@ -12,6 +12,8 @@ internal sealed class ClassifiedsDbContext : DbContext
 
     internal DbSet<ListingDraft> Drafts => Set<ListingDraft>();
 
+    internal DbSet<ListingReviewDecision> ReviewDecisions => Set<ListingReviewDecision>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("classifieds");
@@ -22,9 +24,17 @@ internal sealed class ClassifiedsDbContext : DbContext
             entry.HasIndex(item => new { item.Kind, item.NormalizedName }).IsUnique();
             entry.Property(item => item.Version).IsConcurrencyToken();
         });
+        modelBuilder.Entity<ListingReviewDecision>(decision =>
+        {
+            decision.HasKey(item => new { item.ListingId, item.SubmittedVersion });
+            decision.Property(item => item.Outcome).HasMaxLength(8);
+            decision.Property(item => item.Reason).HasMaxLength(500);
+        });
         modelBuilder.Entity<ListingDraft>(draft =>
         {
             draft.HasIndex(item => new { item.OwnerId, item.UpdatedAtUtc, item.Id }).IsDescending(false, true, true);
+            draft.HasIndex(item => new { item.SubmittedAtUtc, item.Id }).HasFilter("\"SubmittedAtUtc\" IS NOT NULL");
+            draft.Property(item => item.ReviewOutcome).HasMaxLength(8);
             draft.Property(item => item.Title).HasMaxLength(200);
             draft.Property(item => item.Description).HasMaxLength(10000);
             draft.Property(item => item.Phone).HasMaxLength(50);

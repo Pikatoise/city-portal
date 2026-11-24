@@ -11,6 +11,7 @@ export interface ListingDraftResponse {
   details: ListingDraftInput;
   id: string;
   photos?: Array<ListingPhotoResponse>;
+  reviewReason?: (string | null);
   state: string;
   updatedAtUtc: string;
   version: (number | string);

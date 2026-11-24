@@ -73,6 +73,16 @@ export type { SubmitListingDraft$Params as SubmitListingDraft$Params } from './f
 export { submitListingDraft as submitListingDraft } from './fn/classifieds-drafts/submit-listing-draft';
 export type { RecallListingDraft$Params as RecallListingDraft$Params } from './fn/classifieds-drafts/recall-listing-draft';
 export { recallListingDraft as recallListingDraft } from './fn/classifieds-drafts/recall-listing-draft';
+export type { ListListingReviews$Params as ListListingReviews$Params } from './fn/classifieds-review/list-listing-reviews';
+export { listListingReviews as listListingReviews } from './fn/classifieds-review/list-listing-reviews';
+export type { GetListingReview$Params as GetListingReview$Params } from './fn/classifieds-review/get-listing-review';
+export { getListingReview as getListingReview } from './fn/classifieds-review/get-listing-review';
+export type { OpenListingReviewPhoto$Params as OpenListingReviewPhoto$Params } from './fn/classifieds-review/open-listing-review-photo';
+export { openListingReviewPhoto as openListingReviewPhoto } from './fn/classifieds-review/open-listing-review-photo';
+export type { ReturnListingReview$Params as ReturnListingReview$Params } from './fn/classifieds-review/return-listing-review';
+export { returnListingReview as returnListingReview } from './fn/classifieds-review/return-listing-review';
+export type { RejectListingReview$Params as RejectListingReview$Params } from './fn/classifieds-review/reject-listing-review';
+export { rejectListingReview as rejectListingReview } from './fn/classifieds-review/reject-listing-review';
 export type { GetEditorialHomepage$Params as GetEditorialHomepage$Params } from './fn/editorial/get-editorial-homepage';
 export { getEditorialHomepage as getEditorialHomepage } from './fn/editorial/get-editorial-homepage';
 export type { SaveEditorialHomepage$Params as SaveEditorialHomepage$Params } from './fn/editorial/save-editorial-homepage';

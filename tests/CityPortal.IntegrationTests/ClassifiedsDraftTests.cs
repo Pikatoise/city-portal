@@ -167,4 +167,95 @@ public sealed class ClassifiedsDraftTests : IClassFixture<RegistrationFixture>
             await owner.PutAsJsonAsync(path, update with { Version = recalled.Version, Details = update.Details with { Title = "Revised desk" } }));
         Assert.Equal("Revised desk", editing.Details.Title);
     }
+
+    [Fact]
+    public async Task Moderation_OrdersPendingListingsAndEnforcesDecisionsAsync()
+    {
+        const string queue = "/api/staff/classifieds/review";
+        (ApiFactory factory, string database) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "Owner", confirmed: true);
+        using HttpClient moderator = await CitizenSuggestionTests.LoginAsync(factory, database, "Moderator", confirmed: true, role: "Moderator");
+        using HttpClient administrator = await CitizenSuggestionTests.LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        CatalogEntryResponse category = (await owner.GetFromJsonAsync<ClassifiedsPage<CatalogEntryResponse>>($"{_catalog}/categories"))!.Items[0];
+        CatalogEntryResponse district = await CitizenSuggestionTests.ReadAsync<CatalogEntryResponse>(
+            await administrator.PostAsJsonAsync($"{_adminCatalog}/districts", new SaveClassifiedsCatalogEntryRequest { Name = "Central" }));
+        var details = new ListingDraftInput
+        {
+            Title = "Desk",
+            Description = "Solid wood",
+            CategoryId = category.Id,
+            DistrictId = district.Id,
+            Email = "owner@example.test",
+            Price = 0
+        };
+
+        ListingDraftResponse oldest = await SubmitAsync(owner, details);
+        ListingDraftResponse later = await SubmitAsync(owner, details with { Title = "Chair" });
+        ListingDraftResponse own = await SubmitAsync(moderator, details);
+        string reviewPath = $"{queue}/{oldest.Id}";
+        string ownerPath = $"{_drafts}/{oldest.Id}";
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await owner.GetAsync(queue)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await moderator.GetAsync($"{queue}/{own.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await moderator.PostAsJsonAsync($"{queue}/{own.Id}/reject",
+            new { own.Version, Reason = "Own submission" })).StatusCode);
+        JsonElement page = await moderator.GetFromJsonAsync<JsonElement>(queue);
+        Assert.Equal(new[] { oldest.Id, later.Id }, page.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid()));
+        JsonElement preview = await moderator.GetFromJsonAsync<JsonElement>(reviewPath);
+        Assert.Equal("owner@example.test", preview.GetProperty("submission").GetProperty("details").GetProperty("email").GetString());
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await moderator.PostAsJsonAsync(reviewPath + "/return",
+            new { oldest.Version, Reason = " " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await moderator.PostAsJsonAsync(reviewPath + "/return",
+            new { oldest.Version, Reason = new string('x', 501) })).StatusCode);
+        string reason = new('x', 500);
+        Assert.Equal(HttpStatusCode.NoContent, (await moderator.PostAsJsonAsync(reviewPath + "/return",
+            new { oldest.Version, Reason = $" {reason} " })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await moderator.GetAsync(reviewPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await administrator.PostAsJsonAsync(reviewPath + "/reject",
+            new { oldest.Version, Reason = "Stale decision" })).StatusCode);
+
+        ListingDraftResponse returned = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        Assert.Equal("Returned", returned.State);
+        Assert.Equal(reason, returned.ReviewReason);
+        ListingDraftResponse revised = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PutAsJsonAsync(ownerPath,
+            new UpdateListingDraftRequest { Version = returned.Version, Details = details with { Title = "Revised desk" } }));
+        ListingDraftResponse resubmitted = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(ownerPath + "/submit",
+            new ListingDraftVersionRequest { Version = revised.Version }));
+        Assert.Equal(HttpStatusCode.NoContent, (await administrator.PostAsJsonAsync(reviewPath + "/reject",
+            new { resubmitted.Version, Reason = "Final decision" })).StatusCode);
+        ListingDraftResponse rejected = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        Assert.Equal("Rejected", rejected.State);
+        Assert.Equal("Final decision", rejected.ReviewReason);
+        Assert.Equal(HttpStatusCode.Conflict, (await owner.PutAsJsonAsync(ownerPath,
+            new UpdateListingDraftRequest { Version = rejected.Version, Details = details })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await owner.PostAsJsonAsync(ownerPath + "/submit",
+            new ListingDraftVersionRequest { Version = rejected.Version })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"{ownerPath}?version={rejected.Version}")).StatusCode);
+
+        string laterPath = $"{_drafts}/{later.Id}";
+        HttpResponseMessage[] attempts = await Task.WhenAll(
+            owner.PostAsJsonAsync(laterPath + "/recall", new ListingDraftVersionRequest { Version = later.Version }),
+            moderator.PostAsJsonAsync($"{queue}/{later.Id}/return", new { later.Version, Reason = "Correct the price" }),
+            administrator.PostAsJsonAsync($"{queue}/{later.Id}/reject", new { later.Version, Reason = "Reject the listing" }));
+        try
+        {
+            Assert.Single(attempts, attempt => attempt.IsSuccessStatusCode);
+            Assert.Equal(2, attempts.Count(attempt => attempt.StatusCode == HttpStatusCode.Conflict));
+        }
+        finally
+        {
+            foreach (HttpResponseMessage attempt in attempts)
+                attempt.Dispose();
+        }
+        Assert.Equal(HttpStatusCode.NotFound, (await moderator.GetAsync($"{queue}/{later.Id}")).StatusCode);
+    }
+
+    private static async Task<ListingDraftResponse> SubmitAsync(HttpClient owner, ListingDraftInput details)
+    {
+        ListingDraftResponse draft = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(_drafts, details));
+        return await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync($"{_drafts}/{draft.Id}/submit",
+            new ListingDraftVersionRequest { Version = draft.Version }));
+    }
 }

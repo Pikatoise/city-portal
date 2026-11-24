@@ -118,6 +118,7 @@ public partial class Program
                 || context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/media", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/editorial", StringComparison.OrdinalIgnoreCase)
+                || context.Request.Path.StartsWithSegments("/api/staff/classifieds", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/staff/suggestions", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/news", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Path.StartsWithSegments("/api/installation", StringComparison.OrdinalIgnoreCase))

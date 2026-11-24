@@ -16,13 +16,21 @@
       {{
         inReview()
           ? 'Объявление на проверке'
-          : current()
-            ? 'Редактирование черновика'
-            : 'Новый черновик'
+          : rejected()
+            ? 'Объявление отклонено'
+            : current()
+              ? 'Редактирование черновика'
+              : 'Новый черновик'
       }}
     </h2>
     @if (inReview()) {
       <p class="field-hint">Чтобы внести правки, отзови объявление с проверки.</p>
+    }
+    @if (current()?.reviewReason; as reason) {
+      <p class="field-hint">
+        {{ rejected() ? 'Причина отклонения' : 'Возвращено на доработку' }}
+      </p>
+      <p class="review-reason">{{ reason }}</p>
     }
     <form (ngSubmit)="save()" (input)="dirty = true">
       <fieldset [disabled]="busy()">
@@ -33,7 +41,7 @@
             name="title"
             [(ngModel)]="title"
             maxlength="200"
-            [readOnly]="inReview()"
+            [readOnly]="readOnly()"
           />
         </div>
         <section class="listing-photos" aria-labelledby="listing-photos-title">
@@ -70,11 +78,11 @@
                 [ngModel]="selectedPhoto.alternativeText"
                 (ngModelChange)="updateAlternativeText($event)"
                 maxlength="300"
-                [readOnly]="inReview()"
+                [readOnly]="readOnly()"
               />
             </div>
             <div class="listing-actions">
-              @if (!inReview()) {
+              @if (!readOnly()) {
                 <button type="button" (click)="removePhoto(photoIndex())">Убрать фото</button>
               }
               @if (current() && selectedPhoto.image.state === 'Processing') {
@@ -82,7 +90,7 @@
               }
             </div>
           }
-          @if (!inReview()) {
+          @if (!readOnly()) {
             <div class="field">
               <label for="listing-files">Добавить фото</label>
               <input
@@ -108,7 +116,7 @@
             [(ngModel)]="description"
             maxlength="10000"
             rows="5"
-            [readOnly]="inReview()"
+            [readOnly]="readOnly()"
           ></textarea>
         </div>
         <div class="field">
@@ -117,7 +125,7 @@
             id="listing-category"
             name="category"
             [(ngModel)]="category"
-            [disabled]="inReview()"
+            [disabled]="readOnly()"
             (change)="dirty = true"
           >
             <option value="">Выбрать категорию</option>
@@ -135,7 +143,7 @@
             id="listing-district"
             name="district"
             [(ngModel)]="district"
-            [disabled]="inReview()"
+            [disabled]="readOnly()"
             (change)="dirty = true"
           >
             <option value="">Выбрать район</option>
@@ -154,7 +162,7 @@
             [max]="maximumPrice"
             step="1"
             [(ngModel)]="price"
-            [readOnly]="inReview()"
+            [readOnly]="readOnly()"
             aria-describedby="listing-price-hint"
           />
           <p class="field-hint" id="listing-price-hint">
@@ -169,7 +177,7 @@
             type="tel"
             [(ngModel)]="phone"
             maxlength="50"
-            [readOnly]="inReview()"
+            [readOnly]="readOnly()"
           />
         </div>
         <div class="field">
@@ -180,20 +188,22 @@
             type="email"
             [(ngModel)]="email"
             maxlength="254"
-            [readOnly]="inReview()"
+            [readOnly]="readOnly()"
           />
         </div>
         <div class="listing-actions">
-          @if (!inReview()) {
+          @if (!readOnly()) {
             <button type="submit">Сохранить черновик</button>
           }
           @if (current()) {
-            <button type="button" (click)="toggleReview()" [disabled]="dirty">
-              {{ inReview() ? 'Отозвать с проверки' : 'Отправить на проверку' }}
-            </button>
+            @if (!rejected()) {
+              <button type="button" (click)="toggleReview()" [disabled]="dirty">
+                {{ inReview() ? 'Отозвать с проверки' : 'Отправить на проверку' }}
+              </button>
+            }
             <button type="button" (click)="newDraft()">Новый черновик</button>
             @if (!inReview()) {
-              <button type="button" (click)="removeDraft()">Удалить черновик</button>
+              <button type="button" (click)="removeDraft()">Удалить объявление</button>
             }
           }
         </div>
@@ -202,7 +212,7 @@
         }
       </fieldset>
     </form>
-    <h2>Сохранённые черновики</h2>
+    <h2>Сохранённые объявления</h2>
     @if (items().length) {
       <ul class="listing-items">
         @for (item of items(); track item.id) {
@@ -210,8 +220,16 @@
             <button type="button" (click)="open(item.id)" [disabled]="busy()">
               {{ item.details.title || 'Без заголовка' }}
             </button>
-            @if (item.state === 'InReview') {
-              <span>На проверке</span>
+            @switch (item.state) {
+              @case ('InReview') {
+                <span>На проверке</span>
+              }
+              @case ('Returned') {
+                <span>На доработке</span>
+              }
+              @case ('Rejected') {
+                <span>Отклонено</span>
+              }
             }
           </li>
         }
@@ -228,7 +246,7 @@
         </nav>
       }
     } @else {
-      <p>Черновиков пока нет.</p>
+      <p>Объявлений пока нет.</p>
     }
   } @else if (busy()) {
     <p role="status">Загружаем черновики…</p>

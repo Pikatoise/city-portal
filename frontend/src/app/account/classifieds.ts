@@ -55,6 +55,8 @@ export class Classifieds implements OnInit {
   protected readonly districts = signal<CatalogEntryResponse[]>([]);
   protected readonly current = signal<ListingDraftResponse | null>(null);
   protected readonly inReview = computed(() => this.current()?.state === 'InReview');
+  protected readonly rejected = computed(() => this.current()?.state === 'Rejected');
+  protected readonly readOnly = computed(() => this.inReview() || this.rejected());
   protected readonly photos = signal<ListingPhotoResponse[]>([]);
   protected readonly photoIndex = signal(0);
   protected readonly photo = computed(() => this.photos()[this.photoIndex()]);
@@ -182,7 +184,7 @@ export class Classifieds implements OnInit {
   }
 
   protected async save(): Promise<void> {
-    if (this.inReview()) return;
+    if (this.readOnly()) return;
     if (
       this.price !== null &&
       (!Number.isSafeInteger(this.price) || this.price < 0 || this.price > maximumPrice)
@@ -225,18 +227,19 @@ export class Classifieds implements OnInit {
 
   protected async removeDraft(): Promise<void> {
     const draft = this.current();
-    if (!draft || this.inReview() || !window.confirm('Удалить черновик и его фотографии?')) return;
+    if (!draft || this.inReview() || !window.confirm('Удалить объявление и его фотографии?'))
+      return;
     await this.run(async () => {
       await this.write.invoke(deleteListingDraft, { id: draft.id, version: draft.version });
       this.edit(null);
-      this.message.set('Черновик удалён.');
+      this.message.set('Объявление удалено.');
       await this.readPage(1);
     });
   }
 
   protected async toggleReview(): Promise<void> {
     const draft = this.current();
-    if (!draft || this.dirty) return;
+    if (!draft || this.dirty || this.rejected()) return;
     await this.run(async () => {
       const recalling = this.inReview();
       const operation = recalling ? recallListingDraft : submitListingDraft;

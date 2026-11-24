@@ -1,0 +1,99 @@
+<section class="staff-panel" aria-labelledby="review-title">
+  <p><a routerLink="/account">Личный кабинет</a></p>
+  <h1 id="review-title">Модерация объявлений</h1>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (preview(); as review) {
+    <article aria-labelledby="submission-title">
+      <h2 id="submission-title">{{ review.submission.details.title }}</h2>
+      @if (review.submission.photos?.length) {
+        <div class="review-photos">
+          @for (photo of review.submission.photos; track photo.image.id) {
+            <img [src]="imageUrl(review, photo.image.id)" [alt]="photo.alternativeText" />
+          }
+        </div>
+      }
+      <p class="listing-text">{{ review.submission.details.description }}</p>
+      <dl class="profile-fields listing-text">
+        <dt>Категория</dt>
+        <dd>{{ review.category }}</dd>
+        <dt>Район</dt>
+        <dd>{{ review.district }}</dd>
+        @if (review.submission.details.price != null) {
+          <dt>Цена</dt>
+          <dd>
+            {{
+              review.submission.details.price === 0 ? 'Бесплатно' : review.submission.details.price
+            }}
+          </dd>
+        }
+        @if (review.submission.details.phone; as phone) {
+          <dt>Телефон</dt>
+          <dd>{{ phone }}</dd>
+        }
+        @if (review.submission.details.email; as email) {
+          <dt>Email</dt>
+          <dd>{{ email }}</dd>
+        }
+      </dl>
+      <div class="field">
+        <label for="review-reason">Причина решения</label>
+        <textarea
+          id="review-reason"
+          [(ngModel)]="reason"
+          maxlength="500"
+          rows="4"
+          required
+          [readOnly]="busy()"
+          aria-describedby="reason-hint"
+        ></textarea>
+        <p class="field-hint" id="reason-hint">Обязательна, до 500 символов.</p>
+      </div>
+      <div class="review-actions">
+        <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(false)">
+          Вернуть на доработку
+        </button>
+        <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(true)">
+          Отклонить окончательно
+        </button>
+        <button type="button" [disabled]="busy()" (click)="close()">К очереди</button>
+      </div>
+    </article>
+  } @else {
+    @if (loaded()) {
+      @if (items().length) {
+        <ul class="review-queue">
+          @for (item of items(); track item.id) {
+            <li>
+              <button type="button" (click)="open(item.id)" [disabled]="busy()">
+                {{ item.title }}
+              </button>
+              <time [attr.datetime]="item.submittedAtUtc">{{
+                clock.format(item.submittedAtUtc)
+              }}</time>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p>На этой странице нет заявок.</p>
+      }
+      <nav class="review-actions" aria-label="Страницы очереди">
+        @if (page() > 1) {
+          <button type="button" [disabled]="busy()" (click)="load(page() - 1)">Назад</button>
+        }
+        @if (hasNext()) {
+          <button type="button" [disabled]="busy()" (click)="load(page() + 1)">Дальше</button>
+        }
+        <button type="button" [disabled]="busy()" (click)="load(page())">Обновить очередь</button>
+      </nav>
+    } @else if (busy()) {
+      <p role="status">Загружаем очередь…</p>
+    } @else {
+      <button type="button" (click)="load(1)">Попробовать снова</button>
+    }
+  }
+</section>

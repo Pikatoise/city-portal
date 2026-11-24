@@ -15,6 +15,8 @@ public static class ClassifiedsModule
             provider.GetRequiredService<AccountAuthorization>()));
         services.AddScoped(provider => new ListingDraftOperations(provider.GetRequiredService<ClassifiedsDbContext>(),
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>()));
+        services.AddScoped(provider => new ListingReviewOperations(provider.GetRequiredService<ClassifiedsDbContext>(),
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>()));
         services.AddHealthChecks().AddDbContextCheck<ClassifiedsDbContext>("classifieds-database", tags: ["ready"],
             customTestQuery: async (context, token) => await context.Database.CanConnectAsync(token)
                 && !(await context.Database.GetPendingMigrationsAsync(token)).Any());

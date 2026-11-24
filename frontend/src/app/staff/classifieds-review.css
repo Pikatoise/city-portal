@@ -1,0 +1,36 @@
+.review-queue {
+  list-style: none;
+  padding: 0;
+}
+
+.review-queue li,
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-queue li {
+  border-bottom: 1px solid var(--color-divider);
+  padding-block: 12px;
+}
+
+.review-queue button,
+.listing-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.review-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.review-photos img {
+  width: min(100%, 16rem);
+  height: auto;
+  align-self: flex-start;
+  border-radius: 6px;
+}

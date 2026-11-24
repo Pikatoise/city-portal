@@ -5,7 +5,8 @@
 In development. Stage 3 was accepted on 2026-11-19. The account's My
 Advertisements page supports private drafts, their photo carousel, and
 submission and recall. The category and district administration screen and
-API are implemented. Staff moderation and public listing pages remain pending.
+API are implemented. Staff can review, return, and reject pending submissions.
+First publication, direct blocks, and public listing pages remain pending.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -146,6 +147,28 @@ HTTP 409. The shared account authorization lock serializes these actions
 with concurrent owner writes and excludes catalog changes during validation.
 First publication requires the later staff decision and account-blocking workflow.
 
+### Staff review and owner feedback
+
+Confirmed moderators and administrators can review pending submissions from
+other accounts. The browser-rendered `/staff/classifieds/review` opens from
+their profile. The queue shows 20 items per page in ascending submission time
+with listing ID as a tie-breaker. The preview includes the saved title,
+description, contacts, category, district, price, and attached photos.
+
+| Routes under `/api/staff/classifieds/review` | Contract |
+| --- | --- |
+| GET the collection | List pending submissions from other accounts. |
+| GET `/{id}` and `/{id}/images/{imageId}` | Read the submitted preview or a ready attached photo. Photo reads require the preview version in the query. Return 404 outside an accessible pending submission. |
+| POST `/{id}/return` or `/{id}/reject` | Accept the preview version and a reason of 1 to 500 characters after trimming. Require CSRF. Return 204 on success and 409 for a stale version or closed review. |
+
+Return sets the owner state to `Returned` and allows editing, deletion, and
+resubmission. Rejection sets `Rejected` and allows owner reads and deletion.
+The owner sees the decision and reason in My Advertisements. Resubmission
+opens a new review without deleting the prior decision record. Classifieds
+stores the decision, reason, actor, UTC time, and submitted version together
+with the draft state change. Staff decisions use the exclusive administration
+lock to serialize with owner writes and recheck the current version.
+
 ## Tools and technical contracts
 
 - Classifieds owns listing revisions, taxonomy, visibility, expiry and listing
@@ -200,6 +223,11 @@ First publication requires the later staff decision and account-blocking workflo
 - The API accepts up to five photos and rejects a sixth. The detail page shows
   the current public photos in a separate carousel immediately below the title,
   followed by the description. A listing without photos has no carousel.
+- Confirmed moderators and administrators can view and decide other users'
+  pending submissions. The queue shows oldest submissions first. Return and
+  final rejection require a reason of up to 500 characters. Owners see the
+  outcome and can resubmit only after a return. Concurrent decisions and recall
+  use the submitted version and allow a single winner.
 - At the seven-day boundary an expired listing disappears from all public reads
   and stays in the owner's account. Renewal of unchanged eligible content starts
   a new seven-day period. A directly blocked listing stays hidden through correction
@@ -263,6 +291,20 @@ the pending edit and deletion guards, and an unchanged draft after recall.
 An Edge check with mocked responses verified field feedback, prevention of
 submission with unsaved edits, read-only fields in review, and editing after
 recall.
+
+The staff review change passed the solution format check, live OpenAPI
+comparison, generated client comparison, production Angular build, and all
+103 Angular tests. All six targeted Classifieds tests passed with PostgreSQL,
+RabbitMQ, and RustFS. They cover role and ownership checks, queue order,
+reason validation, concurrent staff decisions and owner recall, and photo
+access across recall and resubmission. Changed Angular files passed Prettier.
+The workspace-wide Prettier check flagged 34 files outside this change.
+A live HTTPS Edge check exercised submission, staff preview,
+return, correction, resubmission, final rejection, and deletion. It also
+checked layout at 390 and 1440 pixels. The isolated PostgreSQL database retained
+both decision records after deletion, with their submitted versions, staff
+actors, and UTC decision timestamps. The browser fixture seeded the owner's
+Email confirmation before exercising the advertisement workflow.
 
 ## Open decisions
 

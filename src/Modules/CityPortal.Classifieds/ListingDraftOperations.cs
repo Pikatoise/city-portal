@@ -31,7 +31,11 @@ public sealed class ListingDraftOperations
     public async Task<ListingDraftResponse> GetAsync(Guid ownerId, Guid id, CancellationToken cancellationToken)
     {
         ListingDraft draft = await FindAsync(_context, ownerId, id, cancellationToken);
-        return Response(draft) with { Photos = await _images.ReadAsync(id, cancellationToken) };
+        return Response(draft) with
+        {
+            Photos = await _images.ReadAsync(id, cancellationToken),
+            ReviewReason = await ReadReviewReasonAsync(_context, draft, cancellationToken)
+        };
     }
 
     public async Task<Stream> OpenImageAsync(Guid ownerId, Guid id, Guid imageId, CancellationToken cancellationToken)
@@ -76,8 +80,9 @@ public sealed class ListingDraftOperations
         ListingPhotoResponse[] photos = details.Photos is null
             ? await _images.ReadAsync(draft.Id, cancellationToken)
             : await _images.ReplaceAsync(scope, draft.Id, details.Photos, cancellationToken);
+        string? reason = await ReadReviewReasonAsync(context, draft, cancellationToken);
         await scope.CommitAsync(cancellationToken);
-        return Response(draft) with { Photos = photos };
+        return Response(draft) with { Photos = photos, ReviewReason = reason };
     }
 
     public async Task DeleteAsync(Guid ownerId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
@@ -86,7 +91,7 @@ public sealed class ListingDraftOperations
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
         ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
         RequireVersion(draft, version);
-        RequireEditing(draft);
+        RequireOutsideReview(draft);
         await _images.ReplaceAsync(scope, draft.Id, [], cancellationToken);
         context.Drafts.Remove(draft);
         await context.SaveChangesAsync(cancellationToken);
@@ -105,6 +110,7 @@ public sealed class ListingDraftOperations
 
         DateTimeOffset now = _time.GetUtcNow();
         draft.SubmittedAtUtc = now;
+        draft.ReviewOutcome = null;
         draft.UpdatedAtUtc = now;
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
@@ -167,13 +173,20 @@ public sealed class ListingDraftOperations
 
     private static AccountOperationException Missing() => new(404, "listing_draft_not_found", "The draft is unavailable.");
 
-    private static void RequireVersion(ListingDraft draft, int version)
+    internal static void RequireVersion(ListingDraft draft, int version)
     {
         if (draft.Version != version)
             throw new AccountOperationException(409, "listing_draft_conflict", "The draft has changed.");
     }
 
     private static void RequireEditing(ListingDraft draft)
+    {
+        RequireOutsideReview(draft);
+        if (draft.ReviewOutcome == ListingReviewOperations.Rejected)
+            throw new AccountOperationException(409, "listing_rejected", "A rejected listing cannot be edited or submitted again.");
+    }
+
+    private static void RequireOutsideReview(ListingDraft draft)
     {
         if (draft.SubmittedAtUtc.HasValue)
             throw new AccountOperationException(409, "listing_in_review", "Recall the listing before changing or deleting it.");
@@ -188,7 +201,12 @@ public sealed class ListingDraftOperations
 
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static ListingDraftResponse Response(ListingDraft draft) =>
+    private static async Task<string?> ReadReviewReasonAsync(ClassifiedsDbContext context, ListingDraft draft, CancellationToken cancellationToken) =>
+        draft.ReviewOutcome is null ? null : await context.ReviewDecisions
+            .Where(decision => decision.ListingId == draft.Id && decision.SubmittedVersion < draft.Version)
+            .OrderByDescending(decision => decision.SubmittedVersion).Select(decision => decision.Reason).FirstOrDefaultAsync(cancellationToken);
+
+    internal static ListingDraftResponse Response(ListingDraft draft) =>
         new(draft.Id, new ListingDraftInput
         {
             Title = draft.Title,
@@ -198,5 +216,5 @@ public sealed class ListingDraftOperations
             Price = draft.Price,
             Phone = draft.Phone,
             Email = draft.Email
-        }, draft.UpdatedAtUtc, draft.Version, draft.SubmittedAtUtc.HasValue ? "InReview" : "Draft");
+        }, draft.UpdatedAtUtc, draft.Version, draft.SubmittedAtUtc.HasValue ? "InReview" : draft.ReviewOutcome ?? "Draft");
 }
