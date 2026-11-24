@@ -109,6 +109,13 @@ revision references. Reads enforce expiry before Quartz cleanup runs. See
 
 ### Classifieds and Moderation
 
+Classifieds owns private drafts and the installation catalog of categories
+and districts. Draft writes share the Identity administration lock. Catalog
+changes take it exclusively so a new association cannot race archival.
+Media owns private draft photo references. Classifieds and Media save changes
+to the draft and its photos in the same transaction.
+See [Stage 4](stages/STAGE_4.md) for API contracts and delivery status.
+
 Store expiry and enforce it in public reads independently of cleanup. Account
 blocking and hiding its listings commit or roll back together. Stage 4 must
 verify both commit orders for a block racing with publication or renewal,
@@ -188,7 +195,7 @@ and the root `.editorconfig` for C# and enforce format checks in build and CI.
 | [1](stages/STAGE_1.md) | Accounts, roles, Email, installation and the Identity/Notifications foundation. | 2026-11-13 |
 | [2](stages/STAGE_2.md) | News, Media, editorial history, public SSR and basic search. | 2026-11-17 |
 | [3](stages/STAGE_3.md) | Citizen suggestions, assignment, article conversion and expiry. | 2026-11-19 |
-| 4 | Classifieds, moderation, reports, blocking and lifecycle management. | Planned |
+| [4](stages/STAGE_4.md) | Classifieds, moderation, reports, blocking and lifecycle management. | In development |
 | 5 | Comments and moderation. | Planned |
 | 6 | Telegram, weather and RSS. | Planned |
 

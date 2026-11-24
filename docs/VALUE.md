@@ -160,9 +160,18 @@ to the existing channel preferences. Republication does not repeat that notice.
 
 ### Classified Advertisements
 
-Registered users can save drafts, create, edit, delete, withdraw, and renew advertisements, upload multiple images, and track listing status. Fields include title, description, category, price where applicable, district, and seller contacts.
+Registered users can save drafts, create, edit, delete, withdraw, and renew advertisements, attach up to five photos, and track listing status. Fields include title, description, category, price where applicable, district, and seller contacts.
 
-Planned categories cover electronics and belongings, real estate, vehicles, services, jobs, animals and lost pets, and miscellaneous listings. Categories and their attributes are configurable. Visitors search and filter by category, price, location, and relevant attributes.
+Drafts may omit required fields. Submission requires a title, description, category, district, and at least one contact. A price is required in categories that call for one.
+
+Owners select the district from the installation's administrator-managed list.
+The initial electronics and belongings, real estate, and vehicle categories
+require a price. In the other initial categories it is optional. Prices are
+nonnegative whole numbers. Zero means the listing is free.
+
+Photos are optional. Each photo requires alternative text and must be a JPEG, PNG, or static WebP up to 10 MiB and 40 megapixels. On the advertisement detail page, photos appear in a separate carousel immediately after the title. The description is a separate text field.
+
+The initial flat category list covers electronics and belongings, real estate, vehicles, services, jobs, animals and lost pets, and miscellaneous listings. Administrators configure categories and their attributes. Archived categories remain on existing advertisements and drafts and cannot be assigned to other advertisements. The first version uses the common listing fields. Visitors search and filter by category, price, location, and relevant attributes.
 
 Seller contacts are limited to phone and/or Email. There is no advertisement messaging, live chat, or Telegram contact option.
 

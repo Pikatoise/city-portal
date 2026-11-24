@@ -14,5 +14,6 @@ internal sealed class MediaImage
     public int Attempts { get; set; }
     public bool EverAttached { get; set; }
     public bool ForSuggestion { get; set; }
+    public bool ForListing { get; set; }
     public string? ErrorCode { get; set; }
 }

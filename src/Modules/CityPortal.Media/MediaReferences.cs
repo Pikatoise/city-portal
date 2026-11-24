@@ -23,6 +23,8 @@ public sealed class MediaReferences
             MediaImage image = await MediaDatabase.LockImageAsync(context, id, cancellationToken);
             if (!ids.Contains(id))
                 continue;
+            if (image.ForListing)
+                throw MediaDatabase.Missing();
             if (image.State != "Ready")
                 throw MediaDatabase.Conflict();
             // News validates that the inherited revision belongs to this same article before calling.

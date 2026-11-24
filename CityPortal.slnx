@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/CityPortal.CitizenSubmissions/CityPortal.CitizenSubmissions.csproj" />
+    <Project Path="src/Modules/CityPortal.Classifieds/CityPortal.Classifieds.csproj" />
     <Project Path="src/Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
     <Project Path="src/Modules/CityPortal.Media/CityPortal.Media.csproj" />
     <Project Path="src/Modules/CityPortal.News/CityPortal.News.csproj" />

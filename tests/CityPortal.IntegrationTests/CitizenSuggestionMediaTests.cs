@@ -9,6 +9,7 @@ using Npgsql;
 
 namespace CityPortal.IntegrationTests;
 
+[Collection("Media upload slot")]
 public sealed class CitizenSuggestionMediaTests : IClassFixture<MediaFixture>
 {
     private const string _residentPath = "/api/account/suggestions";

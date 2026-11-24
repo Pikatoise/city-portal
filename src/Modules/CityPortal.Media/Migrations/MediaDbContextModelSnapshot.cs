@@ -57,12 +57,12 @@ namespace CityPortal.Media.Migrations
                     b.Property<Guid>("AuthorId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("Current")
+                    b.Property<bool>("AuthorVisible")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<bool>("AuthorVisible")
+                    b.Property<bool>("Current")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
@@ -134,6 +134,29 @@ namespace CityPortal.Media.Migrations
                     b.ToTable("Templates", "media");
                 });
 
+            modelBuilder.Entity("CityPortal.Media.ListingImageReference", b =>
+                {
+                    b.Property<Guid>("ImageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlternativeText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("DraftId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ImageId");
+
+                    b.HasIndex("DraftId");
+
+                    b.ToTable("ListingImages", "media");
+                });
+
             modelBuilder.Entity("CityPortal.Media.MediaImage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -151,6 +174,9 @@ namespace CityPortal.Media.Migrations
                         .HasColumnType("character varying(80)");
 
                     b.Property<bool>("EverAttached")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ForListing")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("ForSuggestion")
@@ -327,6 +353,15 @@ namespace CityPortal.Media.Migrations
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CityPortal.Media.ListingImageReference", b =>
+                {
+                    b.HasOne("CityPortal.Media.MediaImage", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

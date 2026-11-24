@@ -58,6 +58,11 @@ export const routes: Routes = [
         loadComponent: () => import('./account/suggestions').then((m) => m.Suggestions),
       },
       {
+        path: 'account/classifieds',
+        loadComponent: () => import('./account/classifieds').then((m) => m.Classifieds),
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
         path: 'account/notifications',
         loadComponent: () => import('./account/notifications').then((m) => m.Notifications),
       },

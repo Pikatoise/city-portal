@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CityPortal.CitizenSubmissions;
+using CityPortal.Classifieds;
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
@@ -36,6 +37,7 @@ public partial class Program
         builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId));
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
         builder.Services.AddCitizenSubmissionsModule(database);
+        builder.Services.AddClassifiedsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
@@ -98,6 +100,7 @@ public partial class Program
             await app.Services.MigrateMediaAsync(CancellationToken.None);
             await app.Services.MigrateNewsAsync(CancellationToken.None);
             await app.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
+            await app.Services.MigrateClassifiedsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();

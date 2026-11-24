@@ -1,0 +1,185 @@
+<section class="account-panel" aria-labelledby="classifieds-title">
+  <p><a routerLink="/account">Личный кабинет</a></p>
+  <h1 id="classifieds-title">Мои объявления</h1>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p role="status">{{ message() }}</p>
+  }
+  @if (denied() === 401) {
+    <p><a routerLink="/account/login">Войти</a>, чтобы открыть объявления.</p>
+  } @else if (denied() === 403) {
+    <p>Подтверди Email <a routerLink="/account">в профиле</a>, чтобы работать с объявлениями.</p>
+  } @else if (ready()) {
+    <h2>{{ current() ? 'Редактирование черновика' : 'Новый черновик' }}</h2>
+    <form (ngSubmit)="save()" (input)="dirty = true">
+      <fieldset [disabled]="busy()">
+        <div class="field">
+          <label for="listing-title">Заголовок</label>
+          <input id="listing-title" name="title" [(ngModel)]="title" maxlength="200" />
+        </div>
+        <section class="listing-photos" aria-labelledby="listing-photos-title">
+          <h3 id="listing-photos-title">Фотографии</h3>
+          @if (photo(); as selectedPhoto) {
+            <figure class="listing-photo">
+              @if (imageUrl(selectedPhoto); as url) {
+                <img [src]="url" [alt]="selectedPhoto.alternativeText" />
+              }
+              <figcaption>
+                <span>{{ selectedPhoto.image.name }}</span>
+                @switch (selectedPhoto.image.state) {
+                  @case ('Processing') {
+                    <span>Обрабатывается</span>
+                  }
+                  @case ('Failed') {
+                    <span>Не удалось обработать</span>
+                  }
+                }
+              </figcaption>
+            </figure>
+            @if (photos().length > 1) {
+              <div class="listing-actions">
+                <button type="button" (click)="changePhoto(-1)">Предыдущее фото</button>
+                <span aria-live="polite">{{ photoIndex() + 1 }} из {{ photos().length }}</span>
+                <button type="button" (click)="changePhoto(1)">Следующее фото</button>
+              </div>
+            }
+            <div class="field">
+              <label for="listing-alt">Альтернативный текст фотографии</label>
+              <input
+                id="listing-alt"
+                name="alternativeText"
+                [ngModel]="selectedPhoto.alternativeText"
+                (ngModelChange)="updateAlternativeText($event)"
+                maxlength="300"
+              />
+            </div>
+            <div class="listing-actions">
+              <button type="button" (click)="removePhoto(photoIndex())">Убрать фото</button>
+              @if (current() && selectedPhoto.image.state === 'Processing') {
+                <button type="button" (click)="refreshPhotos()">Обновить фото</button>
+              }
+            </div>
+          }
+          <div class="field">
+            <label for="listing-files">Добавить фото</label>
+            <input
+              id="listing-files"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              aria-describedby="listing-files-hint"
+              [disabled]="photos().length >= 5"
+              (change)="upload($event)"
+            />
+            <p class="field-hint" id="listing-files-hint">
+              До пяти файлов JPEG, PNG или WebP по 10 МиБ.
+            </p>
+          </div>
+        </section>
+        <div class="field">
+          <label for="listing-description">Описание</label>
+          <textarea
+            id="listing-description"
+            name="description"
+            [(ngModel)]="description"
+            maxlength="10000"
+            rows="5"
+          ></textarea>
+        </div>
+        <div class="field">
+          <label for="listing-category">Категория</label>
+          <select
+            id="listing-category"
+            name="category"
+            [(ngModel)]="category"
+            (change)="dirty = true"
+          >
+            <option value="">Выбрать категорию</option>
+            @if (category && !hasCategory(category)) {
+              <option [value]="category">Архивная категория</option>
+            }
+            @for (entry of categories(); track entry.id) {
+              <option [value]="entry.id">{{ entry.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="listing-district">Район</label>
+          <select
+            id="listing-district"
+            name="district"
+            [(ngModel)]="district"
+            (change)="dirty = true"
+          >
+            <option value="">Выбрать район</option>
+            @for (entry of districts(); track entry.id) {
+              <option [value]="entry.id">{{ entry.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="listing-price">Цена</label>
+          <input
+            id="listing-price"
+            name="price"
+            type="number"
+            min="0"
+            [max]="maximumPrice"
+            step="1"
+            [(ngModel)]="price"
+            aria-describedby="listing-price-hint"
+          />
+          <p class="field-hint" id="listing-price-hint">
+            Укажи целое число. 0 означает «бесплатно».
+          </p>
+        </div>
+        <div class="field">
+          <label for="listing-phone">Телефон</label>
+          <input id="listing-phone" name="phone" type="tel" [(ngModel)]="phone" maxlength="50" />
+        </div>
+        <div class="field">
+          <label for="listing-email">Email</label>
+          <input id="listing-email" name="email" type="email" [(ngModel)]="email" maxlength="254" />
+        </div>
+        <div class="listing-actions">
+          <button type="submit">Сохранить черновик</button>
+          @if (current()) {
+            <button type="button" (click)="newDraft()">Новый черновик</button>
+            <button type="button" (click)="removeDraft()">Удалить черновик</button>
+          }
+        </div>
+      </fieldset>
+    </form>
+    <h2>Сохранённые черновики</h2>
+    @if (items().length) {
+      <ul class="listing-items">
+        @for (item of items(); track item.id) {
+          <li>
+            <button type="button" (click)="open(item.id)" [disabled]="busy()">
+              {{ item.details.title || 'Без заголовка' }}
+            </button>
+          </li>
+        }
+      </ul>
+      @if (page() > 1 || hasNext()) {
+        <nav class="listing-actions" aria-label="Страницы черновиков">
+          <button type="button" [disabled]="busy() || page() === 1" (click)="showPage(page() - 1)">
+            Назад
+          </button>
+          <span>{{ page() }}</span>
+          <button type="button" [disabled]="busy() || !hasNext()" (click)="showPage(page() + 1)">
+            Дальше
+          </button>
+        </nav>
+      }
+    } @else {
+      <p>Черновиков пока нет.</p>
+    }
+  } @else if (busy()) {
+    <p role="status">Загружаем черновики…</p>
+  } @else {
+    <button type="button" (click)="load()">Повторить</button>
+  }
+</section>

@@ -21,13 +21,13 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         AccountOperations accounts = http.RequestServices.GetRequiredService<AccountOperations>();
         string ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         string path = (http.Request.Path.Value ?? string.Empty).TrimEnd('/').ToLowerInvariant();
-        bool suggestionUpload = path == "/api/account/suggestions/uploads";
-        bool imageUpload = path == "/api/media/images" || suggestionUpload;
+        bool residentUpload = path is "/api/account/suggestions/uploads" or "/api/account/classifieds/uploads";
+        bool imageUpload = path == "/api/media/images" || residentUpload;
         if (imageUpload)
         {
             await accounts.EnforceIpLimitAsync(ip, "media-upload-ip", 60, TimeSpan.FromMinutes(10), http.RequestAborted);
             await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "media-upload-account", 20, TimeSpan.FromMinutes(10), http.RequestAborted);
-            if (!http.User.IsInRole(suggestionUpload ? "RegularUser" : "Author")
+            if (!http.User.IsInRole(residentUpload ? "RegularUser" : "Author")
                 || !bool.TryParse(http.User.FindFirstValue("email_confirmed"), out bool confirmed) || !confirmed)
                 throw new AccountOperationException(403, "media_permission_required", "A confirmed account with the required role is needed.");
         }
@@ -40,6 +40,9 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         }
         if (path == "/api/installation/complete")
             await accounts.EnforceIpLimitAsync(ip, "installation", 10, TimeSpan.FromMinutes(10), http.RequestAborted);
+        if (http.Request.Path.StartsWithSegments("/api/account/classifieds", StringComparison.OrdinalIgnoreCase)
+            || http.Request.Path.StartsWithSegments("/api/admin/classifieds", StringComparison.OrdinalIgnoreCase))
+            await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "classifieds-mutation", 30, TimeSpan.FromMinutes(1), http.RequestAborted);
         if (http.Request.Path.StartsWithSegments("/api/account/suggestions", StringComparison.OrdinalIgnoreCase)
             || http.Request.Path.StartsWithSegments("/api/staff/suggestions", StringComparison.OrdinalIgnoreCase))
             await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "suggestion-mutation", 20, TimeSpan.FromMinutes(1), http.RequestAborted);

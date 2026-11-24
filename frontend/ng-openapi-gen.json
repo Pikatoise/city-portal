@@ -3,5 +3,6 @@
   "input": "openapi.json",
   "output": "src/app/api",
   "services": false,
+  "ignoreUnusedModels": false,
   "promises": true
 }
