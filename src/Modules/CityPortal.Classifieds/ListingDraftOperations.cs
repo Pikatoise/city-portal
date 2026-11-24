@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using CityPortal.Identity;
 using CityPortal.Media;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,7 @@ public sealed class ListingDraftOperations
         {
             draft = await FindAsync(context, ownerId, id.Value, cancellationToken);
             RequireVersion(draft, version);
+            RequireEditing(draft);
             draft.Version++;
         }
         else
@@ -84,10 +86,79 @@ public sealed class ListingDraftOperations
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
         ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
         RequireVersion(draft, version);
+        RequireEditing(draft);
         await _images.ReplaceAsync(scope, draft.Id, [], cancellationToken);
         context.Drafts.Remove(draft);
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
+    }
+
+    public async Task<ListingDraftResponse> SubmitAsync(Guid ownerId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
+        await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
+        ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
+        RequireVersion(draft, version);
+        RequireEditing(draft);
+        ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
+        await ValidateSubmissionAsync(context, draft, photos, cancellationToken);
+
+        DateTimeOffset now = _time.GetUtcNow();
+        draft.SubmittedAtUtc = now;
+        draft.UpdatedAtUtc = now;
+        draft.Version++;
+        await context.SaveChangesAsync(cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        return Response(draft) with { Photos = photos };
+    }
+
+    public async Task<ListingDraftResponse> RecallAsync(Guid ownerId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
+        await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
+        ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
+        RequireVersion(draft, version);
+        if (!draft.SubmittedAtUtc.HasValue)
+            throw new AccountOperationException(409, "listing_not_in_review", "Only a submitted listing can be recalled.");
+
+        draft.SubmittedAtUtc = null;
+        draft.UpdatedAtUtc = _time.GetUtcNow();
+        draft.Version++;
+        await context.SaveChangesAsync(cancellationToken);
+        ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        return Response(draft) with { Photos = photos };
+    }
+
+    private static async Task ValidateSubmissionAsync(ClassifiedsDbContext context, ListingDraft draft, ListingPhotoResponse[] photos, CancellationToken cancellationToken)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (draft.Title is null)
+            errors["title"] = ["Enter a title."];
+        if (draft.Description is null)
+            errors["description"] = ["Enter a description."];
+
+        bool? requiresPrice = await context.Catalog.Where(entry => entry.Id == draft.CategoryId && entry.Kind == "categories")
+            .Select(entry => (bool?)entry.RequiresPrice).SingleOrDefaultAsync(cancellationToken);
+        if (requiresPrice is null)
+            errors["categoryId"] = ["Choose a category."];
+        else if (requiresPrice.Value && draft.Price is null)
+            errors["price"] = ["Enter a price for this category."];
+
+        if (!await context.Catalog.AnyAsync(entry => entry.Id == draft.DistrictId && entry.Kind == "districts", cancellationToken))
+            errors["districtId"] = ["Choose a district."];
+
+        if (draft.Phone is null && draft.Email is null)
+            errors["phone"] = ["Enter a phone number or Email address."];
+        else if (draft.Phone is not null && !new PhoneAttribute().IsValid(draft.Phone))
+            errors["phone"] = ["Enter a valid phone number."];
+        if (draft.Email is not null && !new EmailAddressAttribute().IsValid(draft.Email))
+            errors["email"] = ["Enter a valid Email address."];
+        if (photos.Any(photo => photo.Image.State != "Ready"))
+            errors["photos"] = ["Wait for photo processing or remove unavailable photos."];
+
+        if (errors.Count > 0)
+            throw new AccountOperationException(400, "listing_not_ready", "Complete the required fields before submitting.", errors);
     }
 
     private static async Task<ListingDraft> FindAsync(ClassifiedsDbContext context, Guid ownerId, Guid id, CancellationToken cancellationToken) =>
@@ -100,6 +171,12 @@ public sealed class ListingDraftOperations
     {
         if (draft.Version != version)
             throw new AccountOperationException(409, "listing_draft_conflict", "The draft has changed.");
+    }
+
+    private static void RequireEditing(ListingDraft draft)
+    {
+        if (draft.SubmittedAtUtc.HasValue)
+            throw new AccountOperationException(409, "listing_in_review", "Recall the listing before changing or deleting it.");
     }
 
     private static async Task RequireActiveEntryAsync(ClassifiedsDbContext context, string kind, Guid? id, string field, CancellationToken cancellationToken)
@@ -121,5 +198,5 @@ public sealed class ListingDraftOperations
             Price = draft.Price,
             Phone = draft.Phone,
             Email = draft.Email
-        }, draft.UpdatedAtUtc, draft.Version);
+        }, draft.UpdatedAtUtc, draft.Version, draft.SubmittedAtUtc.HasValue ? "InReview" : "Draft");
 }

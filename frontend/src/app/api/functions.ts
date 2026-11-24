@@ -69,6 +69,10 @@ export type { UploadListingPhoto$Params as UploadListingPhoto$Params } from './f
 export { uploadListingPhoto as uploadListingPhoto } from './fn/classifieds-drafts/upload-listing-photo';
 export type { OpenMyListingPhoto$Params as OpenMyListingPhoto$Params } from './fn/classifieds-drafts/open-my-listing-photo';
 export { openMyListingPhoto as openMyListingPhoto } from './fn/classifieds-drafts/open-my-listing-photo';
+export type { SubmitListingDraft$Params as SubmitListingDraft$Params } from './fn/classifieds-drafts/submit-listing-draft';
+export { submitListingDraft as submitListingDraft } from './fn/classifieds-drafts/submit-listing-draft';
+export type { RecallListingDraft$Params as RecallListingDraft$Params } from './fn/classifieds-drafts/recall-listing-draft';
+export { recallListingDraft as recallListingDraft } from './fn/classifieds-drafts/recall-listing-draft';
 export type { GetEditorialHomepage$Params as GetEditorialHomepage$Params } from './fn/editorial/get-editorial-homepage';
 export { getEditorialHomepage as getEditorialHomepage } from './fn/editorial/get-editorial-homepage';
 export type { SaveEditorialHomepage$Params as SaveEditorialHomepage$Params } from './fn/editorial/save-editorial-homepage';

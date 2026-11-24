@@ -38,6 +38,7 @@ export type { InstallSiteRequest } from './models/install-site-request';
 export type { JsonElement } from './models/json-element';
 export type { ListingDraftInput } from './models/listing-draft-input';
 export type { ListingDraftResponse } from './models/listing-draft-response';
+export type { ListingDraftVersionRequest } from './models/listing-draft-version-request';
 export type { ListingPhotoInput } from './models/listing-photo-input';
 export type { ListingPhotoResponse } from './models/listing-photo-response';
 export type { LoginRequest } from './models/login-request';

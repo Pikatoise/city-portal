@@ -18,13 +18,25 @@ import {
   listListingCatalog,
   listMyListingDrafts,
   openMyListingPhoto,
+  recallListingDraft,
   saveListingDraft,
+  submitListingDraft,
   uploadListingPhoto,
 } from '../api/functions';
 import { CatalogEntryResponse, ListingDraftResponse, ListingPhotoResponse } from '../api/models';
-import { AccountApi, errorMessage } from './account-api';
+import { AccountApi, accountProblem, errorMessage } from './account-api';
 
 const maximumPrice = 999_999_999_999;
+const submissionErrors: Record<string, string> = {
+  title: 'Заполни заголовок.',
+  description: 'Заполни описание.',
+  categoryId: 'Выбери категорию.',
+  districtId: 'Выбери район.',
+  price: 'Укажи цену в этой категории.',
+  phone: 'Проверь номер телефона. Если телефона нет, укажи Email.',
+  email: 'Проверь адрес Email.',
+  photos: 'Дождись обработки фотографий или убери недоступные.',
+};
 
 @Component({
   imports: [FormsModule, RouterLink],
@@ -42,6 +54,7 @@ export class Classifieds implements OnInit {
   protected readonly categories = signal<CatalogEntryResponse[]>([]);
   protected readonly districts = signal<CatalogEntryResponse[]>([]);
   protected readonly current = signal<ListingDraftResponse | null>(null);
+  protected readonly inReview = computed(() => this.current()?.state === 'InReview');
   protected readonly photos = signal<ListingPhotoResponse[]>([]);
   protected readonly photoIndex = signal(0);
   protected readonly photo = computed(() => this.photos()[this.photoIndex()]);
@@ -169,6 +182,7 @@ export class Classifieds implements OnInit {
   }
 
   protected async save(): Promise<void> {
+    if (this.inReview()) return;
     if (
       this.price !== null &&
       (!Number.isSafeInteger(this.price) || this.price < 0 || this.price > maximumPrice)
@@ -211,11 +225,31 @@ export class Classifieds implements OnInit {
 
   protected async removeDraft(): Promise<void> {
     const draft = this.current();
-    if (!draft || !window.confirm('Удалить черновик и его фотографии?')) return;
+    if (!draft || this.inReview() || !window.confirm('Удалить черновик и его фотографии?')) return;
     await this.run(async () => {
       await this.write.invoke(deleteListingDraft, { id: draft.id, version: draft.version });
       this.edit(null);
       this.message.set('Черновик удалён.');
+      await this.readPage(1);
+    });
+  }
+
+  protected async toggleReview(): Promise<void> {
+    const draft = this.current();
+    if (!draft || this.dirty) return;
+    await this.run(async () => {
+      const recalling = this.inReview();
+      const operation = recalling ? recallListingDraft : submitListingDraft;
+      const saved = await this.write.invoke(operation, {
+        id: draft.id,
+        body: { version: draft.version },
+      });
+      this.edit(saved);
+      this.message.set(
+        recalling
+          ? 'Объявление отозвано. Черновик можно редактировать.'
+          : 'Объявление отправлено на проверку.',
+      );
       await this.readPage(1);
     });
   }
@@ -270,10 +304,17 @@ export class Classifieds implements OnInit {
         this.ready.set(false);
         this.denied.set(status);
       } else {
+        const problem = accountProblem(error);
+        const validation = Object.keys(problem.errors ?? {})
+          .map((field) => submissionErrors[field])
+          .filter(Boolean)
+          .join(' ');
         this.error.set(
-          status === 409
-            ? 'Черновик изменился. Скопируй свои правки и открой его заново.'
-            : errorMessage(error),
+          problem.code === 'listing_not_ready' && validation
+            ? validation
+            : status === 409
+              ? 'Черновик изменился. Скопируй свои правки и открой его заново.'
+              : errorMessage(error),
         );
       }
     } finally {

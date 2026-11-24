@@ -3,9 +3,9 @@
 ## Status and sources
 
 In development. Stage 3 was accepted on 2026-11-19. The account's My
-Advertisements page supports private drafts and their photo carousel. The
-category and district administration screen and API are implemented.
-Moderation and public listing pages remain pending.
+Advertisements page supports private drafts, their photo carousel, and
+submission and recall. The category and district administration screen and
+API are implemented. Staff moderation and public listing pages remain pending.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -29,11 +29,13 @@ and/or Email.
 | --- | --- |
 | Visitor | Browse available listings, search and filter by category, price, location and relevant attributes, and submit a report without logging in. |
 | Owner | With confirmed Email, create and save drafts, submit, edit, withdraw, delete and renew own listings subject to their current state. See listing status and review feedback in the account. |
-| Moderator | Review submitted versions and reports, block listings with a reason, and block or unblock ordinary accounts. Corrections belong to the listing owner. |
-| Administrator | Block or unblock accounts, including staff, subject to the account safeguards to be agreed below. Listing moderation and catalog configuration permissions are open. |
+| Moderator | Review other users' submitted versions and reports, block listings with a reason, and block or unblock ordinary accounts. Corrections belong to the listing owner. |
+| Administrator | Review other users' submitted versions, configure the catalog, and block or unblock accounts, including staff, subject to the account safeguards to be agreed below. |
 
 - First publication requires approval. Changes await moderation while the
   last published revision remains visible for its current publication period.
+- Approval publishes immediately. Return for corrections and rejection require
+  a reason. The owner can recall a pending submission to resume editing.
 - Publication lasts seven days. The owner can renew unchanged active or expired
   content for seven days from renewal without a new review. Expiry hides the
   listing publicly and leaves it in the owner's account.
@@ -120,10 +122,29 @@ Media job removes unused staged uploads after seven days. Review and public
 delivery extend the contract when those workflows are implemented.
 
 The browser-rendered `/account/classifieds` page opens from the profile.
-It lists the owner's drafts and supports creation, editing and deletion.
+It lists the owner's drafts and supports creation, editing, deletion, submission
+and recall.
 The draft form places the photo carousel immediately below the title field,
 followed by the description. It shows one photo at a time and supports buttons
 for moving between photos. Ready images load from the owner-only endpoint.
+
+### Owner submission and recall
+
+The confirmed owner sends the last saved draft for review with a versioned
+POST to `/api/account/classifieds/drafts/{id}/submit`. Submission checks the
+required fields, the category's current price rule, supplied contact formats
+and readiness of attached photos. Existing archived category associations
+remain valid. Incomplete submissions return HTTP 400 with field errors.
+
+A successful submission records its UTC time and returns the draft with
+state `InReview` and an incremented version. The owner can view the saved
+content and photos. Editing or deleting the draft requires recalling it first
+with a versioned POST to `/api/account/classifieds/drafts/{id}/recall`. Recall
+returns the draft to `Draft`, preserves its fields and attachments, and
+increments the version again. A stale version or invalid transition returns
+HTTP 409. The shared account authorization lock serializes these actions
+with concurrent owner writes and excludes catalog changes during validation.
+First publication requires the later staff decision and account-blocking workflow.
 
 ## Tools and technical contracts
 
@@ -233,13 +254,21 @@ category, and preserving form input after a version conflict. It verified that
 a regular account cannot access the editor and that the page fits 390 and
 1440 pixel viewports.
 
+The submission and recall change passed all seven targeted Classifieds and
+infrastructure tests, the solution format check, live OpenAPI comparison,
+production Angular build and all 103 Angular tests.
+`Submission_ValidatesFieldsFreezesDraftAndAllowsVersionedRecallAsync` verifies
+field validation, owner-only access, a single successful concurrent submission,
+the pending edit and deletion guards, and an unchanged draft after recall.
+An Edge check with mocked responses verified field feedback, prevention of
+submission with unsaved edits, read-only fields in review, and editing after
+recall.
+
 ## Open decisions
 
 ### Moderation and visibility
 
-- Confirm whether administrators also get listing and report moderation. Define
-  decision reasons, whether approval publishes immediately, and how an owner
-  edits a version already in review. Define who can review their own listing.
+- Confirm whether administrators also handle advertisement reports.
 - Define how renewal interacts with a pending revision, and which relisting
   operations are available after withdrawal, expiry or an account unblock.
 - Agree public contact display, URL and unavailable-page behavior, search order,

@@ -175,7 +175,7 @@ The initial flat category list covers electronics and belongings, real estate, v
 
 Seller contacts are limited to phone and/or Email. There is no advertisement messaging, live chat, or Telegram contact option.
 
-Advertisements require moderator approval before publication. Owners make corrections; moderators do not rewrite listings. Changes to a published advertisement await moderation while its approved version remains public.
+Advertisements require approval before publication. Moderators and administrators can review other users' advertisements. Approval publishes the listing immediately. Return for corrections and rejection require a reason. Owners recall a submission before editing it. Changes to a published advertisement await moderation while its approved version remains public.
 
 Publication lasts seven days. Owners may renew active or expired listings for seven days from renewal. Unchanged content needs no new review. Expired listings leave the public catalog but remain in the owner's account.
 

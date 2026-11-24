@@ -101,6 +101,28 @@ public sealed class ClassifiedsDraftsController : ControllerBase
         [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
         _drafts.SaveAsync(RequireOwner(), SessionId, id, request.Version, request.Details, cancellationToken);
 
+    [HttpPost("drafts/{id:guid}/submit", Name = "submitListingDraft")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4096)]
+    [ProducesResponseType<ListingDraftResponse>(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<ListingDraftResponse> SubmitAsync(Guid id, ListingDraftVersionRequest request,
+        [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
+        _drafts.SubmitAsync(RequireOwner(), SessionId, id, request.Version, cancellationToken);
+
+    [HttpPost("drafts/{id:guid}/recall", Name = "recallListingDraft")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4096)]
+    [ProducesResponseType<ListingDraftResponse>(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<ListingDraftResponse> RecallAsync(Guid id, ListingDraftVersionRequest request,
+        [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
+        _drafts.RecallAsync(RequireOwner(), SessionId, id, request.Version, cancellationToken);
+
     [HttpDelete("drafts/{id:guid}", Name = "deleteListingDraft")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]

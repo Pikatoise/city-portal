@@ -91,6 +91,9 @@ namespace CityPortal.Classifieds.Migrations
                     b.Property<long?>("Price")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Title")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");

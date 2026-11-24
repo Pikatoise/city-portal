@@ -22,5 +22,7 @@ internal sealed class ListingDraft
 
     public DateTimeOffset UpdatedAtUtc { get; set; }
 
+    public DateTimeOffset? SubmittedAtUtc { get; set; }
+
     public int Version { get; set; } = 1;
 }
