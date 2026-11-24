@@ -190,14 +190,14 @@ and the root `.editorconfig` for C# and enforce format checks in build and CI.
 
 ## Delivery Order
 
-| Stage | Scope | Owner acceptance |
-| --- | --- | --- |
-| [1](stages/STAGE_1.md) | Accounts, roles, Email, installation and the Identity/Notifications foundation. | 2026-11-13 |
-| [2](stages/STAGE_2.md) | News, Media, editorial history, public SSR and basic search. | 2026-11-17 |
-| [3](stages/STAGE_3.md) | Citizen suggestions, assignment, article conversion and expiry. | 2026-11-19 |
-| [4](stages/STAGE_4.md) | Classifieds, moderation, reports, blocking and lifecycle management. | In development |
-| 5 | Comments and moderation. | Planned |
-| 6 | Telegram, weather and RSS. | Planned |
+| Stage                  | Scope                                                                           | Owner acceptance |
+| ---------------------- | ------------------------------------------------------------------------------- | ---------------- |
+| [1](stages/STAGE_1.md) | Accounts, roles, Email, installation and the Identity/Notifications foundation. | 2026-11-13       |
+| [2](stages/STAGE_2.md) | News, Media, editorial history, public SSR and basic search.                    | 2026-11-17       |
+| [3](stages/STAGE_3.md) | Citizen suggestions, assignment, article conversion and expiry.                 | 2026-11-19       |
+| [4](stages/STAGE_4.md) | Classifieds, moderation, reports, blocking and lifecycle management.            | In development   |
+| 5                      | Comments and moderation.                                                        | Planned          |
+| 6                      | Telegram, weather, RSS, MCP and AI integrations                                 | Planned          |
 
 Each stage includes its relevant workspaces, notifications and audit history.
 Follow [AGENTS.md](../AGENTS.md#stage-workflow) for stage planning, owner review,
