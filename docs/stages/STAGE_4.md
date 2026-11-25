@@ -2,7 +2,7 @@
 
 ## Status and sources
 
-In development. Stage 3 was accepted on 2026-11-19. The account's My
+Complete and owner-accepted on 2026-11-25. The account's My
 Advertisements page supports private drafts, their photo carousel, and
 submission and recall. The category and district administration screen and
 API are implemented. Staff can review, return, reject, and approve pending
@@ -12,11 +12,11 @@ renewal, withdrawal and relisting are implemented. The public catalog and
 its homepage entry point are implemented. Visitors can report public articles
 and listings. Staff review them in separate queues.
 Owners and staff can read moderation history. Listing and account decisions
-queue the agreed account and Email notices. Stage acceptance is pending.
+queue the agreed account and Email notices. See the [owner review](#owner-acceptance).
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
-Track specification decisions in [issue #15](https://github.com/Pikatoise/city-portal/issues/15)
+Specification decisions were tracked in [issue #15](https://github.com/Pikatoise/city-portal/issues/15)
 in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
 
 ## Goal and scope
@@ -545,6 +545,39 @@ broker restarted, the Worker scheduled a retry while SMTP was still down.
 After SMTP restarted, the Email reached `Sent` on attempt two. The isolated
 stand seeded the owner's Email confirmation before the check.
 
-## Open decisions
+## Owner acceptance
 
-- Record the owner's review after Stage 4 acceptance.
+On 2026-11-25, the owner accepted the draft-to-publication flow, including
+immediate public edits after first approval and subsequent staff review. The
+review covered the forced failure during account blocking, which rolled back
+both the account block and the listing changes.
+
+The owner also accepted expiry and renewal, report handling, direct listing
+blocks and correction approval, account blocking and manual relisting after
+unblocking, decision history, and notification recovery after a delivery
+outage. The owner then approved closing Stage 4. CI passed for implementation
+commit `9cc86ad`.
+
+Category-specific catalog attributes remain deferred. No Stage 4 product
+decisions remain open.
+
+## Upgrade and recovery verification
+
+On 2026-11-25, an isolated Docker Compose stand ran the Stage 3 build from
+`7f79c62` and the Stage 4 build from `9cc86ad`. The Stage 3 fixture used
+confirmed accounts and a published article with a processed cover. With the
+API and Worker stopped, the Stage 4 migration added the Classifieds and
+Reports schemas. A second run preserved the migration history. Over HTTPS,
+the upgraded stand preserved an existing session, article history, the
+server-rendered article, and the cover's SHA-256 hash.
+
+The upgraded stand published two listings with photos and blocked one of
+them. With the API and Worker stopped, a custom-format PostgreSQL dump,
+an authenticated export of 16 S3 objects, and the Data Protection keys were
+captured. The recovery stand used a new database, private bucket, key volume,
+and RabbitMQ vhost. Explicit migrations succeeded after restore, and all
+16 object hashes matched the backup. Over HTTPS the restored stand preserved
+the old session, article and history, the public listing and its photo, and
+the blocked listing's private photo and moderation history. Anonymous reads
+kept the blocked listing and photo hidden, and the public catalog included
+only the visible listing. This rehearsal used synthetic local data.
