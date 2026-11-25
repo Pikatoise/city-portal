@@ -182,11 +182,25 @@ Publication lasts seven days. Edits and review preserve the expiry date. Owners 
 
 Moderators and administrators can block another user's advertisements with a mandatory reason of up to 500 characters, including after publication. Blocked advertisements cannot be relisted or renewed. Owners may correct and resubmit them; they remain hidden until approved.
 
-### Advertisement Reports
+### Article and Advertisement Reports
 
-Any visitor, including an anonymous visitor, can report an advertisement. Moderators see reported listings, the total report count for each, and each report's detailed text.
+Anonymous and signed-in visitors can report a public article or advertisement.
+Choose one of the subject's standard categories, then add optional text up to
+500 characters. The limit is five reports per hour per IP and five per hour
+per signed-in account. Blocked accounts cannot submit reports.
 
-Reports do not automatically hide listings; moderators decide whether to block them. Moderators can dismiss reports without an explanation. Reviewed reports and decisions remain in history, and the listing leaves the queue. A new report returns it to the queue with previous decisions visible.
+Moderators and administrators use separate article and advertisement queues.
+Each subject appears once. Opening it shows the subject, all reports and
+previous decisions. Staff may dismiss the reports they saw without a reason
+or hide another user's publication with a required reason of up to 500
+characters. For articles, hiding uses editorial withdrawal. For advertisements,
+it uses a direct listing block. Reports leave the publication visible until
+staff act. A report that arrived during review remains pending. A later
+report returns the subject to the queue if it is still public.
+
+After deletion, history retains the subject ID and last reported title, the
+report categories and text, and staff decisions. Report history contains no IP
+addresses.
 
 ### Article Comments
 

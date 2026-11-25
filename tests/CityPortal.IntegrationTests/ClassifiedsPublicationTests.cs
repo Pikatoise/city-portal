@@ -338,7 +338,7 @@ public sealed class ClassifiedsPublicationTests : IClassFixture<RegistrationFixt
     private static Task<HttpResponseMessage> BlockAsync(HttpClient staff, AccountResponse target) =>
         staff.PostAsJsonAsync($"{_blocks}/{target.Id}/block", new { target.Version, Reason = "Moderation reason" });
 
-    private static async Task<ListingDraftResponse> SubmitAsync(HttpClient owner, HttpClient admin, string districtName)
+    internal static async Task<ListingDraftResponse> SubmitAsync(HttpClient owner, HttpClient admin, string districtName)
     {
         CatalogEntryResponse category = (await owner.GetFromJsonAsync<ClassifiedsPage<CatalogEntryResponse>>("/api/account/classifieds/catalog/categories"))!.Items[0];
         CatalogEntryResponse district = await CitizenSuggestionTests.ReadAsync<CatalogEntryResponse>(

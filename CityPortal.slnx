@@ -10,6 +10,7 @@
     <Project Path="src/Modules/CityPortal.Media/CityPortal.Media.csproj" />
     <Project Path="src/Modules/CityPortal.News/CityPortal.News.csproj" />
     <Project Path="src/Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />
+    <Project Path="src/Modules/CityPortal.Reports/CityPortal.Reports.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CityPortal.IntegrationTests/CityPortal.IntegrationTests.csproj" />

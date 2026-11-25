@@ -1,0 +1,149 @@
+<section class="staff-panel" aria-labelledby="reports-title">
+  <nav class="queue-nav" aria-label="Виды жалоб">
+    <a routerLink="/account">Личный кабинет</a>
+    <a
+      routerLink="/staff/reports/articles"
+      [attr.aria-current]="kind === 'articles' ? 'page' : null"
+      >Жалобы на статьи</a
+    >
+    <a
+      routerLink="/staff/reports/classifieds"
+      [attr.aria-current]="kind === 'classifieds' ? 'page' : null"
+      >Жалобы на объявления</a
+    >
+  </nav>
+  <h1 id="reports-title">
+    {{ kind === 'articles' ? 'Жалобы на статьи' : 'Жалобы на объявления' }}
+  </h1>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (preview(); as item) {
+    <button type="button" [disabled]="busy()" (click)="close()">К списку</button>
+    <h2>{{ item.title }}</h2>
+    @if (item.publicUrl; as url) {
+      <p>
+        <a [routerLink]="url" target="_blank" rel="noopener"
+          >Открыть публичную страницу (в новой вкладке)</a
+        >
+      </p>
+    }
+    @if (item.text != null) {
+      <p class="reported-text">{{ item.text }}</p>
+    } @else {
+      <p>Публикация удалена.</p>
+    }
+
+    <h3>Жалобы</h3>
+    <ul class="queue-rows">
+      @for (report of item.reports; track report.sequence) {
+        <li>
+          <strong>{{ categories[report.category] || report.category }}</strong>
+          <span>{{ report.decisionId ? 'Обработана' : 'Новая' }}</span>
+          <time [attr.datetime]="report.receivedAtUtc">{{
+            clock.format(report.receivedAtUtc)
+          }}</time>
+          @if (report.text; as text) {
+            <p class="reported-text">{{ text }}</p>
+          }
+        </li>
+      }
+    </ul>
+    @if (item.decisions.length) {
+      <h3>История решений</h3>
+      <ul class="queue-rows">
+        @for (decision of item.decisions; track decision.id) {
+          <li>
+            <strong>{{
+              decision.outcome === 'hide' ? 'Публикация скрыта' : 'Жалобы отклонены'
+            }}</strong>
+            <time [attr.datetime]="decision.decidedAtUtc">{{
+              clock.format(decision.decidedAtUtc)
+            }}</time>
+            @if (decision.reason; as decisionReason) {
+              <p class="reported-text">{{ decisionReason }}</p>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @if (item.throughSequence != null) {
+      <div class="queue-actions">
+        <button type="button" [disabled]="busy()" (click)="decide('dismiss')">
+          Отклонить показанные жалобы
+        </button>
+        <button type="button" [disabled]="busy()" (click)="open(item.id)">Обновить жалобы</button>
+      </div>
+      @if (item.canHide) {
+        <form (ngSubmit)="decide('hide')">
+          <label for="report-hide-reason">Причина скрытия</label>
+          <textarea
+            id="report-hide-reason"
+            name="hideReason"
+            [(ngModel)]="reason"
+            rows="3"
+            maxlength="500"
+            required
+            [readOnly]="busy()"
+          ></textarea>
+          <button type="submit" [disabled]="busy() || !reason.trim()">Скрыть публикацию</button>
+        </form>
+      }
+    }
+  } @else {
+    @if (loaded()) {
+      <div class="queue-actions">
+        <button
+          type="button"
+          [disabled]="busy()"
+          [attr.aria-pressed]="!history()"
+          (click)="load(1, false)"
+        >
+          Очередь
+        </button>
+        <button
+          type="button"
+          [disabled]="busy()"
+          [attr.aria-pressed]="history()"
+          (click)="load(1, true)"
+        >
+          История
+        </button>
+        <button type="button" [disabled]="busy()" (click)="load(page(), history())">
+          Обновить список
+        </button>
+      </div>
+      <ul class="queue-rows">
+        @for (item of items(); track item.id) {
+          <li>
+            <button type="button" [disabled]="busy()" (click)="open(item.id)">
+              {{ item.title }}
+            </button>
+            <span>Новых {{ item.pending }} · всего {{ item.total }}</span>
+          </li>
+        } @empty {
+          <li>{{ history() ? 'Решений пока нет.' : 'Новых жалоб нет.' }}</li>
+        }
+      </ul>
+      <nav class="queue-actions" aria-label="Страницы жалоб">
+        @if (page() > 1) {
+          <button type="button" [disabled]="busy()" (click)="load(page() - 1, history())">
+            Назад
+          </button>
+        }
+        @if (hasNext()) {
+          <button type="button" [disabled]="busy()" (click)="load(page() + 1, history())">
+            Далее
+          </button>
+        }
+      </nav>
+    } @else if (busy()) {
+      <p role="status">Загружаем жалобы…</p>
+    } @else {
+      <button type="button" (click)="load(1, false)">Повторить</button>
+    }
+  }
+</section>

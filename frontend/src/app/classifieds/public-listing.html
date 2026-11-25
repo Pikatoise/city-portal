@@ -31,6 +31,7 @@
         </dd>
       }
     </dl>
+    <app-report-form kind="classifieds" [targetId]="current.id" />
   } @else if (state() === 'missing') {
     <h1>Страница не найдена</h1>
     <p><a routerLink="/">На главную</a></p>

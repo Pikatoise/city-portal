@@ -90,6 +90,7 @@
               }}</time>
             </p>
           </footer>
+          <app-report-form kind="articles" [targetId]="article.id" />
         </article>
         @if (related().length) {
           <section aria-labelledby="related-heading">

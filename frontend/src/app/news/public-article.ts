@@ -19,9 +19,11 @@ import { PublicNewsApi } from './public-news-api';
 import { NewsCard } from './news-card';
 import { PublicArticleSummaryResponse } from '../api/models/public-article-summary-response';
 
+import { ReportForm } from '../reports/report-form';
+
 @Component({
   selector: 'app-public-article',
-  imports: [RouterLink, NewsCard],
+  imports: [RouterLink, NewsCard, ReportForm],
   templateUrl: './public-article.html',
   styleUrl: './public-article.css',
 })

@@ -5,6 +5,7 @@ using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
+using CityPortal.Reports;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -38,6 +39,7 @@ public partial class Program
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
         builder.Services.AddCitizenSubmissionsModule(database);
         builder.Services.AddClassifiedsModule(database);
+        builder.Services.AddReportsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
@@ -101,6 +103,7 @@ public partial class Program
             await app.Services.MigrateNewsAsync(CancellationToken.None);
             await app.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
             await app.Services.MigrateClassifiedsAsync(CancellationToken.None);
+            await app.Services.MigrateReportsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();

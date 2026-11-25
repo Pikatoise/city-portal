@@ -154,8 +154,23 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         reason = ArticleDocuments.Text(reason, 2000, "reason");
         string[] roles = action is "submit" or "recall" or "propose" ? ["Author"] : action == "publish" ? _roles : ["Editor", "Administrator"];
         await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, roles, cancellationToken);
+        ArticleResponse result = await ActAsync(scope, id, version, action, reason, reported: false, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        await FlushAfterCommitAsync();
+        return result;
+    }
+
+    internal async Task WithdrawReportedAsync(AuthorizedAccountScope scope, Guid id, long version, string reason, CancellationToken cancellationToken)
+    {
+        await ActAsync(scope, id, version, "withdraw", reason, reported: true, cancellationToken);
+    }
+
+    private async Task<ArticleResponse> ActAsync(AuthorizedAccountScope scope, Guid id, long version, string action,
+        string reason, bool reported, CancellationToken cancellationToken)
+    {
         await using NewsDbContext context = await NewsDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
-        NewsArticle article = await LockAsync(context, id, version, scope.Actor, action, cancellationToken);
+        Guid actorId = scope.Actor.Id;
+        NewsArticle article = await LockAsync(context, id, version, scope.Actor, reported ? "report-withdraw" : action, cancellationToken);
         ArticleRevision revision = await context.Revisions.SingleAsync(item => item.Id == article.WorkingRevisionId && item.ArticleId == id, cancellationToken);
         Guid? previousReviewer = article.ReviewerId;
         Guid? firstPublicationRecipient = action == "publish" && article.FirstPublishedAtUtc is null ? article.IdeaContributorId : null;
@@ -235,8 +250,6 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
             cancellationToken, firstPublicationRecipient);
         await RefreshMediaAsync(context, article, scope.Connection, scope.Transaction, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
-        await scope.CommitAsync(cancellationToken);
-        await FlushAfterCommitAsync();
         return ArticleOperations.Response(article, action == "withdraw" && !(actorId == article.AuthorId && scope.Actor.Roles.Contains("Author")) ? snapshot : working);
     }
 
@@ -371,7 +384,13 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
         if (article.DeletedAtUtc.HasValue)
             throw NewsDatabase.Missing();
         bool owner = article.AuthorId == actor.Id && actor.Roles.Contains("Author");
-        if (action is "submit" or "recall" or "propose" ? !owner : !owner && (!Editor(actor) || !article.LastSubmittedRevisionId.HasValue))
+        bool allowed = action switch
+        {
+            "report-withdraw" => article.AuthorId != actor.Id && actor.Roles.Any(role => role is "Moderator" or "Administrator"),
+            "submit" or "recall" or "propose" => owner,
+            _ => owner || Editor(actor) && article.LastSubmittedRevisionId.HasValue
+        };
+        if (!allowed)
             throw NewsDatabase.Missing();
         if (article.Version != version)
             throw NewsDatabase.Conflict();

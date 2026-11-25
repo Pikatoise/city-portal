@@ -207,7 +207,7 @@ public sealed partial class NewsTests : IClassFixture<MediaFixture>
         return (await response.Content.ReadFromJsonAsync<ArticleResponse>())!;
     }
 
-    private static async Task<TaxonomyResponse> TaxonomyAsync(HttpClient client, string kind, string name)
+    internal static async Task<TaxonomyResponse> TaxonomyAsync(HttpClient client, string kind, string name)
     {
         using HttpResponseMessage response = await client.PostAsJsonAsync($"/api/editorial/{kind}", new { name });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

@@ -1,5 +1,6 @@
 using CityPortal.Identity;
 using CityPortal.Media;
+using CityPortal.Reports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,7 @@ public static class ClassifiedsModule
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>()));
         services.AddScoped(provider => new ListingPublications(provider.GetRequiredService<ClassifiedsDbContext>(),
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<ListingImages>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped<IReportTarget, ListingReportTarget>();
         services.AddScoped<IAccountBlockObserver>(provider => provider.GetRequiredService<ListingPublications>());
         services.AddScoped(provider => new PublicListingSearch(provider.GetRequiredService<ClassifiedsDbContext>(), provider.GetRequiredService<TimeProvider>()));
         services.AddHealthChecks().AddDbContextCheck<ClassifiedsDbContext>("classifieds-database", tags: ["ready"],

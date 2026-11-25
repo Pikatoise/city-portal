@@ -39,6 +39,11 @@ public sealed class AccountAuthorization
             throw new AccountOperationException(403, "content_owner_blocked", "The content owner's account is blocked.");
     }
 
+    public static Task<int> LockRolesAsync(DbContext context, bool shared, CancellationToken cancellationToken) =>
+        shared
+            ? context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock_shared(hashtextextended({"administration:roles"}, 0))", cancellationToken)
+            : context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"administration:roles"}, 0))", cancellationToken);
+
     private static AccountOperationException Blocked() => new(403, "account_blocked", "The account is restricted to reading its content.");
 
     private async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, bool shareRoleLock, CancellationToken cancellationToken)
@@ -47,10 +52,7 @@ public sealed class AccountAuthorization
         try
         {
             // Match administration's serialization order; recheck the session and roles after waiting.
-            if (shareRoleLock)
-                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock_shared(hashtextextended({"administration:roles"}, 0))", cancellationToken);
-            else
-                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"administration:roles"}, 0))", cancellationToken);
+            await LockRolesAsync(_context, shareRoleLock, cancellationToken);
             string? email = await _context.Users.Where(account => account.Id == actorId).Select(account => account.NormalizedEmail).SingleOrDefaultAsync(cancellationToken);
             if (email is not null)
                 await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"email:" + email}, 0))", cancellationToken);

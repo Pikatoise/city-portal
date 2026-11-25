@@ -48,6 +48,16 @@ export const routes: Routes = [
         loadComponent: () => import('./classifieds/public-listing').then((m) => m.PublicListing),
       },
       {
+        path: 'staff/reports/articles',
+        data: { kind: 'articles' },
+        loadComponent: () => import('./staff/report-queue').then((m) => m.ReportQueue),
+      },
+      {
+        path: 'staff/reports/classifieds',
+        data: { kind: 'classifieds' },
+        loadComponent: () => import('./staff/report-queue').then((m) => m.ReportQueue),
+      },
+      {
         path: 'staff/classifieds/moderation',
         loadComponent: () =>
           import('./staff/classifieds-moderation').then((m) => m.ClassifiedsModeration),

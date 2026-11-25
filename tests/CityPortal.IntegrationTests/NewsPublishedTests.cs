@@ -574,7 +574,7 @@ public sealed partial class NewsTests
         return (await response.Content.ReadFromJsonAsync<TemplateResponse>())!;
     }
 
-    private static async Task<ArticleResponse> PublishedAsync(HttpClient owner, HttpClient editor, Guid categoryId, string title, ArticleImage? cover = null, Guid[]? tagIds = null)
+    internal static async Task<ArticleResponse> PublishedAsync(HttpClient owner, HttpClient editor, Guid categoryId, string title, ArticleImage? cover = null, Guid[]? tagIds = null)
     {
         ArticleResponse article = await SaveAsync(owner, await CreateAsync(owner), Complete(categoryId, title) with { Cover = cover, TagIds = tagIds ?? [] });
         article = await ActAsync(owner, article, "submit");

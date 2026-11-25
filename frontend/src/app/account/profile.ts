@@ -45,6 +45,8 @@ const roleLabels: Record<string, string> = {
           (account.roles.includes('Moderator') || account.roles.includes('Administrator'))
         ) {
           <p><a routerLink="/staff/suggestions/moderation">Модерация предложений</a></p>
+          <p><a routerLink="/staff/reports/articles">Жалобы на статьи</a></p>
+          <p><a routerLink="/staff/reports/classifieds">Жалобы на объявления</a></p>
           <p><a routerLink="/staff/classifieds/review">Модерация объявлений</a></p>
           <p><a routerLink="/staff/classifieds/moderation">Блокировки объявлений и аккаунтов</a></p>
         }

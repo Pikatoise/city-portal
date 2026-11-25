@@ -1,0 +1,46 @@
+.queue-nav,
+.queue-actions,
+.queue-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.queue-rows {
+  padding: 0;
+  list-style: none;
+}
+
+.queue-rows li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.queue-rows span,
+.queue-rows time {
+  color: var(--color-muted);
+}
+
+.reported-text {
+  flex-basis: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+button,
+h2 {
+  overflow-wrap: anywhere;
+}
+
+form {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 24px;
+  max-width: 32rem;
+}
+
+form textarea {
+  width: 100%;
+}

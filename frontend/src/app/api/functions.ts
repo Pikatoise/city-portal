@@ -187,6 +187,14 @@ export type { GetPublicListing$Params as GetPublicListing$Params } from './fn/pu
 export { getPublicListing as getPublicListing } from './fn/public-classifieds/get-public-listing';
 export type { OpenPublicListingPhoto$Params as OpenPublicListingPhoto$Params } from './fn/public-classifieds/open-public-listing-photo';
 export { openPublicListingPhoto as openPublicListingPhoto } from './fn/public-classifieds/open-public-listing-photo';
+export type { SubmitContentReport$Params as SubmitContentReport$Params } from './fn/public-reports/submit-content-report';
+export { submitContentReport as submitContentReport } from './fn/public-reports/submit-content-report';
+export type { ListReportedContent$Params as ListReportedContent$Params } from './fn/staff-reports/list-reported-content';
+export { listReportedContent as listReportedContent } from './fn/staff-reports/list-reported-content';
+export type { GetReportReview$Params as GetReportReview$Params } from './fn/staff-reports/get-report-review';
+export { getReportReview as getReportReview } from './fn/staff-reports/get-report-review';
+export type { DecideContentReports$Params as DecideContentReports$Params } from './fn/staff-reports/decide-content-reports';
+export { decideContentReports as decideContentReports } from './fn/staff-reports/decide-content-reports';
 export type { ListAuthorSuggestions$Params as ListAuthorSuggestions$Params } from './fn/staff-suggestions/list-author-suggestions';
 export { listAuthorSuggestions as listAuthorSuggestions } from './fn/staff-suggestions/list-author-suggestions';
 export type { ListModerationSuggestions$Params as ListModerationSuggestions$Params } from './fn/staff-suggestions/list-moderation-suggestions';

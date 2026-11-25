@@ -9,7 +9,8 @@ API are implemented. Staff can review, return, reject, and approve pending
 submissions. Approved listings have public detail pages. Staff can block an
 individual listing or an account. Published edits, comparison review,
 renewal, withdrawal and relisting are implemented. The public catalog and
-its homepage entry point are implemented.
+its homepage entry point are implemented. Visitors can report public articles
+and listings. Staff review them in separate queues.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -59,8 +60,9 @@ and/or Email.
   or staff action. Unblocking leaves listings hidden until the owner acts.
   Direct listing blocks still apply.
 - Reports leave listings visible until a moderator acts. The queue shows the
-  total count and report text. Staff may dismiss reports without a reason.
-  Decisions remain in history. A new report returns the listing to the queue.
+  total count per subject. Moderators and administrators open a subject to
+  review all reports and previous decisions. They can dismiss the reports
+  they saw or hide the subject with a reason. New reports stay pending.
 
 ### Draft form and starting catalog
 
@@ -263,6 +265,37 @@ The homepage provides one classifieds navigation button. The catalog links
 to public details and the existing owner creation workflow. Catalog and
 detail responses are served without storage in shared caches.
 
+### Article and advertisement reports
+
+Visitors choose a reason, then may add up to 500 characters of text. Article
+reasons are spam, fraud, inaccurate information, misleading headline,
+copyright infringement, personal data, insults, hate speech, inappropriate
+media and other. Advertisement reasons are spam, fraud, prohibited item or
+service, wrong category, inaccurate description, incorrect price,
+inappropriate photos, insults, personal data and other.
+
+The API uses the existing antiforgery flow and allows up to five attempts per
+hour per IP and per signed-in account. Reports can be submitted only for
+currently public content. Moderators and administrators use separate queues
+for other users' articles and advertisements. Each queue row groups the
+subject's reports. The preview shows the current publication if available,
+all reports, and prior decisions. Staff can dismiss the reports they saw or
+hide the subject with a trimmed reason of 1 to 500 characters. A hiding
+decision checks the subject version and applies editorial withdrawal or the
+direct listing block in the same transaction. Only reports up to the preview
+sequence are closed. The history view retains the ID, last reported title,
+reports and decisions after deletion. It omits IP addresses.
+
+| Route | Contract |
+| --- | --- |
+| POST `/api/reports/{kind}/{id}` | Submit a reason and optional text. Returns 204, 400 for invalid input, 403 for a blocked account, 404 for unavailable content, or 429 when rate limited. |
+| GET `/api/staff/reports/{kind}` | List grouped pending reports or resolved subjects when `history=true`. |
+| GET `/api/staff/reports/{kind}/{id}` | Review the subject, reports, and decisions. |
+| POST `/api/staff/reports/{kind}/{id}/decide` | Dismiss the reports shown or hide the subject. Returns 204 or 409 for a stale decision. |
+
+The two subject kinds are `articles` and `classifieds`. The staff pages
+are at `/staff/reports/articles` and `/staff/reports/classifieds`.
+
 ## Tools and technical contracts
 
 - Classifieds owns listing revisions, taxonomy, visibility, expiry and listing
@@ -449,15 +482,23 @@ inclusive price filters, exact expiry, withdrawal, both block types, and
 search updates after a live edit. The production Angular build, all 103
 Angular tests, changed-file Prettier, and both OpenAPI checks passed.
 
+On 2026-11-25, a live HTTPS Edge check submitted anonymous reports on an
+article and an advertisement using different categories. It checked that the
+optional comment appeared after category selection, that the two staff queues
+remained separate, and that dismissal left a later report pending. It also
+withdrew the article from the reports workspace and checked its public 404
+response. The staff preview fit 390 and 1440 pixel viewports.
+
+All 17 targeted PostgreSQL integration tests passed. They covered migration
+and readiness, anonymous CSRF and rate limiting, separate queues grouped by
+subject, dismissal up to the preview sequence, moderator withdrawal,
+rollback of a failed hiding decision, and history after listing deletion.
+All 103 Angular tests passed, along with the production build, formatting,
+and both OpenAPI checks.
+
 ## Open decisions
-
-### Moderation and visibility
-
-- Confirm whether administrators also handle advertisement reports.
 
 ### Reports and notifications
 
-- Set report input, abuse controls, and how a staff decision applies when a new
-  report arrives concurrently. Agree the history retained after listing deletion.
 - Agree notification events, recipients and default channels. Reuse the existing
   account and Email preferences and delivery rules when applicable.

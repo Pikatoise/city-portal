@@ -1,6 +1,7 @@
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.Notifications;
+using CityPortal.Reports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ public static class NewsModule
         services.AddScoped(provider => new PublicArticleOperations(provider.GetRequiredService<NewsDbContext>(), provider.GetRequiredService<AccountOperations>()));
         services.AddScoped(provider => new PublicNewsDiscoveryOperations(provider.GetRequiredService<NewsDbContext>(), provider.GetRequiredService<SiteInstallation>(), provider.GetRequiredService<TimeZoneInfo>(), provider.GetRequiredService<AccountOperations>()));
         services.AddScoped(provider => new CurationOperations(provider.GetRequiredService<NewsDbContext>(), provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddScoped<IReportTarget, ArticleReportTarget>();
         services.AddScoped<IAccountRoleChangeObserver>(provider => provider.GetRequiredService<ReviewOperations>());
         services.AddScoped(provider => new TaxonomyOperations(provider.GetRequiredService<NewsDbContext>(), provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>()));
         services.AddHealthChecks().AddDbContextCheck<NewsDbContext>("news-database", tags: ["ready"], customTestQuery: async (context, token) => await context.Database.CanConnectAsync(token) && !(await context.Database.GetPendingMigrationsAsync(token)).Any() && !await context.Articles.AnyAsync(item => item.FirstPublishedAtUtc != null && (item.PublicAddress == null || item.FirstPublishedLocalDate == null), token));

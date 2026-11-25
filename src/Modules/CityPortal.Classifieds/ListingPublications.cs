@@ -157,14 +157,21 @@ public sealed class ListingPublications : IAccountBlockObserver
 
     public async Task BlockAsync(Guid actorId, Guid sessionId, Guid id, DecideListingReviewRequest request, CancellationToken cancellationToken)
     {
-        string reason = request.Reason.Trim();
+        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, _roles, cancellationToken);
+        await BlockAsync(scope, id, request.Version, request.Reason, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+    }
+
+    internal async Task BlockAsync(AuthorizedAccountScope scope, Guid id, int version, string reason, CancellationToken cancellationToken)
+    {
+        reason = reason.Trim();
         if (reason.Length is < 1 or > 500 || reason.Contains('\0'))
             throw new AccountOperationException(400, "invalid_listing_block_reason", "Enter a reason of up to 500 characters.");
 
-        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, _roles, cancellationToken);
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
+        Guid actorId = scope.Actor.Id;
         ListingDraft draft = await FindOtherDraftAsync(context, actorId, id, cancellationToken);
-        ListingDraftOperations.RequireVersion(draft, request.Version);
+        ListingDraftOperations.RequireVersion(draft, version);
         ListingPublication publication = await context.Publications.SingleOrDefaultAsync(item => item.ListingId == id, cancellationToken) ?? throw Missing();
         if (publication.HiddenByListingBlock)
             throw new AccountOperationException(409, "listing_already_blocked", "The listing is already blocked.");
@@ -184,7 +191,6 @@ public sealed class ListingPublications : IAccountBlockObserver
         draft.UpdatedAtUtc = now;
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
-        await scope.CommitAsync(cancellationToken);
     }
 
     public async Task HideForAccountBlockAsync(Guid accountId, AuthorizedAccountScope scope, CancellationToken cancellationToken)

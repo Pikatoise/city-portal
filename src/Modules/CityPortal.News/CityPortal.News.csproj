@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../CityPortal.Reports/CityPortal.Reports.csproj" />
     <ProjectReference Include="../CityPortal.Identity/CityPortal.Identity.csproj" />
     <ProjectReference Include="../CityPortal.Media/CityPortal.Media.csproj" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />

@@ -4,6 +4,7 @@ using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
+using CityPortal.Reports;
 using DotNet.Testcontainers.Containers;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -58,6 +59,7 @@ public sealed class RegistrationFixture : IAsyncLifetime
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
         await factory.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
         await factory.Services.MigrateClassifiedsAsync(CancellationToken.None);
+        await factory.Services.MigrateReportsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();
         if (installed)
         {

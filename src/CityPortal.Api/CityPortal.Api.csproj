@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
+    <ProjectReference Include="../Modules/CityPortal.Reports/CityPortal.Reports.csproj" />
     <ProjectReference Include="../Modules/CityPortal.CitizenSubmissions/CityPortal.CitizenSubmissions.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Classifieds/CityPortal.Classifieds.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />

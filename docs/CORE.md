@@ -134,6 +134,17 @@ including staff publication. Design lock ordering around the acting account
 and listing owner and verify it with PostgreSQL. See the
 [product rules](VALUE.md#account-blocking).
 
+### Content Reports
+
+Reports owns the shared submission, queue and decision model in its own
+PostgreSQL schema. News and Classifieds supply the current publication preview
+and apply their existing withdrawal or direct block in the staff decision
+transaction. Anonymous writes use the shared Identity administration lock
+and a per-subject transaction lock. The subject lock keeps report sequence
+order consistent with commit order. Staff decisions take the exclusive
+administration lock and cover reports up to the sequence returned by the
+preview. The report, target snapshot and decision history survive deletion.
+
 ### Comments
 
 Define reporting and abuse controls before implementation. Follow the

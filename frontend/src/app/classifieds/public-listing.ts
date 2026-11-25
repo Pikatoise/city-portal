@@ -15,9 +15,11 @@ import { Api } from '../api/api';
 import { getPublicListing, openPublicListingPhoto } from '../api/functions';
 import { PublicListingResponse } from '../api/models';
 
+import { ReportForm } from '../reports/report-form';
+
 @Component({
   selector: 'app-public-listing',
-  imports: [RouterLink],
+  imports: [RouterLink, ReportForm],
   templateUrl: './public-listing.html',
   styleUrl: './public-listing.css',
 })

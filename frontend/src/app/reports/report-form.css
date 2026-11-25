@@ -1,0 +1,25 @@
+:host {
+  display: block;
+  margin-block: 24px;
+}
+
+form {
+  max-width: 32rem;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+}
+
+select,
+textarea {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

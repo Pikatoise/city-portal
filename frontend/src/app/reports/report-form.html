@@ -1,0 +1,43 @@
+@if (sent()) {
+  <p role="status">Жалоба отправлена.</p>
+} @else if (open()) {
+  <form (ngSubmit)="submit()">
+    <div class="field">
+      <label for="report-category">Причина жалобы</label>
+      <select
+        id="report-category"
+        name="category"
+        [(ngModel)]="category"
+        required
+        [disabled]="busy()"
+      >
+        <option value="">Выбери причину</option>
+        @for (item of categories(); track item[0]) {
+          <option [value]="item[0]">{{ item[1] }}</option>
+        }
+      </select>
+    </div>
+    @if (category) {
+      <div class="field">
+        <label for="report-text">Комментарий (необязательно)</label>
+        <textarea
+          id="report-text"
+          name="reportText"
+          [(ngModel)]="text"
+          rows="3"
+          maxlength="500"
+          [readOnly]="busy()"
+        ></textarea>
+      </div>
+    }
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    <div class="actions">
+      <button type="submit" [disabled]="busy() || !category">Отправить жалобу</button>
+      <button type="button" [disabled]="busy()" (click)="cancel()">Отмена</button>
+    </div>
+  </form>
+} @else {
+  <button type="button" (click)="open.set(true)">Пожаловаться</button>
+}
