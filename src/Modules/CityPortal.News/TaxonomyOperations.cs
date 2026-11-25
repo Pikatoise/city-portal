@@ -18,7 +18,9 @@ public sealed class TaxonomyOperations
 
     public async Task<NewsPage<TaxonomyResponse>> ListAsync(Guid actorId, Guid sessionId, string kind, int page, int pageSize, CancellationToken cancellationToken)
     {
-        await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Administrator"], cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Administrator"], cancellationToken, allowBlockedOwnerRead: true);
+        if (actor.BlockReason is not null && !actor.Roles.Contains("Author"))
+            throw new AccountOperationException(403, "account_blocked", "Staff actions are unavailable while the account is blocked.");
         Kind(kind);
         NewsDatabase.Page(page, pageSize);
         IQueryable<TaxonomyEntry> query = _context.Taxonomy.AsNoTracking().Where(item => item.Kind == kind);

@@ -37,9 +37,11 @@ export class MediaLibrary implements OnInit {
   readonly author = computed(
     () => !!this.profile()?.emailConfirmed && !!this.profile()?.roles.includes('Author'),
   );
+  readonly accountBlocked = computed(() => !!this.profile()?.blockReason);
   readonly moderator = computed(
     () =>
       !!this.profile()?.emailConfirmed &&
+      !this.accountBlocked() &&
       !!this.profile()?.roles.some((role) => ['Moderator', 'Administrator'].includes(role)),
   );
   readonly section = signal('uploads');

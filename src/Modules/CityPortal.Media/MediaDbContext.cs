@@ -11,6 +11,7 @@ internal sealed class MediaDbContext : DbContext
     public DbSet<ImageReference> References => Set<ImageReference>();
     public DbSet<SuggestionImageReference> SuggestionImages => Set<SuggestionImageReference>();
     public DbSet<ListingImageReference> ListingImages => Set<ListingImageReference>();
+    public DbSet<PublishedListingImageReference> PublishedListingImages => Set<PublishedListingImageReference>();
     public DbSet<ImageTemplate> Templates => Set<ImageTemplate>();
     public DbSet<TemplateEvent> Events => Set<TemplateEvent>();
     public DbSet<TemplateRemovalRequest> RemovalRequests => Set<TemplateRemovalRequest>();
@@ -41,6 +42,9 @@ internal sealed class MediaDbContext : DbContext
         model.Entity<ListingImageReference>().Property(item => item.AlternativeText).HasMaxLength(300);
         model.Entity<ListingImageReference>().HasOne<MediaImage>().WithMany().HasForeignKey(item => item.ImageId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<ImageTemplate>().Property(x => x.Name).HasMaxLength(200);
+        model.Entity<PublishedListingImageReference>().HasKey(item => new { item.RevisionId, item.ImageId });
+        model.Entity<PublishedListingImageReference>().Property(item => item.AlternativeText).HasMaxLength(300);
+        model.Entity<PublishedListingImageReference>().HasOne<MediaImage>().WithMany().HasForeignKey(item => item.ImageId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<ImageTemplate>().Property(x => x.Approval).HasMaxLength(20);
         model.Entity<ImageTemplate>().Property(x => x.Reason).HasMaxLength(2000);
         model.Entity<ImageTemplate>().Property(x => x.Version).IsConcurrencyToken();

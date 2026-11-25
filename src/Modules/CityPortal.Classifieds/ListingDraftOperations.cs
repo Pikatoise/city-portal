@@ -92,6 +92,7 @@ public sealed class ListingDraftOperations
         ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
         RequireVersion(draft, version);
         RequireOutsideReview(draft);
+        RequireUnpublished(draft);
         await _images.ReplaceAsync(scope, draft.Id, [], cancellationToken);
         context.Drafts.Remove(draft);
         await context.SaveChangesAsync(cancellationToken);
@@ -182,8 +183,15 @@ public sealed class ListingDraftOperations
     private static void RequireEditing(ListingDraft draft)
     {
         RequireOutsideReview(draft);
+        RequireUnpublished(draft);
         if (draft.ReviewOutcome == ListingReviewOperations.Rejected)
             throw new AccountOperationException(409, "listing_rejected", "A rejected listing cannot be edited or submitted again.");
+    }
+
+    private static void RequireUnpublished(ListingDraft draft)
+    {
+        if (draft.ReviewOutcome is "Published" or "Blocked" or "Hidden")
+            throw new AccountOperationException(409, "listing_already_published", "A published listing cannot be changed through the draft workflow.");
     }
 
     private static void RequireOutsideReview(ListingDraft draft)
@@ -202,7 +210,7 @@ public sealed class ListingDraftOperations
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static async Task<string?> ReadReviewReasonAsync(ClassifiedsDbContext context, ListingDraft draft, CancellationToken cancellationToken) =>
-        draft.ReviewOutcome is null ? null : await context.ReviewDecisions
+        draft.ReviewOutcome is not ("Returned" or "Rejected") ? null : await context.ReviewDecisions
             .Where(decision => decision.ListingId == draft.Id && decision.SubmittedVersion < draft.Version)
             .OrderByDescending(decision => decision.SubmittedVersion).Select(decision => decision.Reason).FirstOrDefaultAsync(cancellationToken);
 

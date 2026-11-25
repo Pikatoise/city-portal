@@ -97,6 +97,8 @@ export function accountProblem(error: unknown): AccountProblem {
 
 export function errorMessage(error: unknown): string {
   const problem = accountProblem(error);
+  if (problem.code === 'account_blocked')
+    return 'Контент доступен только для чтения. Причина блокировки указана в профиле.';
   if (problem.code === 'version_conflict')
     return 'Профиль изменился. Проверьте актуальные данные и повторите изменение.';
   if (problem.code === 'invalid_current_password') return 'Текущий пароль указан неверно.';

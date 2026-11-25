@@ -61,6 +61,30 @@ namespace CityPortal.Classifieds.Migrations
                     b.ToTable("Catalog", "classifieds");
                 });
 
+            modelBuilder.Entity("CityPortal.Classifieds.ListingBlockDecision", b =>
+                {
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("ListingId", "Version");
+
+                    b.ToTable("ListingBlockDecisions", "classifieds");
+                });
+
             modelBuilder.Entity("CityPortal.Classifieds.ListingDraft", b =>
                 {
                     b.Property<Guid>("Id")
@@ -92,8 +116,8 @@ namespace CityPortal.Classifieds.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("ReviewOutcome")
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
 
                     b.Property<DateTimeOffset?>("SubmittedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -124,6 +148,63 @@ namespace CityPortal.Classifieds.Migrations
                     b.ToTable("Drafts", "classifieds");
                 });
 
+            modelBuilder.Entity("CityPortal.Classifieds.ListingPublication", b =>
+                {
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HiddenByAccountBlock")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HiddenByListingBlock")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<long?>("Price")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("ListingId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Publications", "classifieds");
+                });
+
             modelBuilder.Entity("CityPortal.Classifieds.ListingReviewDecision", b =>
                 {
                     b.Property<Guid>("ListingId")
@@ -144,7 +225,6 @@ namespace CityPortal.Classifieds.Migrations
                         .HasColumnType("character varying(8)");
 
                     b.Property<string>("Reason")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -164,6 +244,15 @@ namespace CityPortal.Classifieds.Migrations
                         .WithMany()
                         .HasForeignKey("DistrictId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("CityPortal.Classifieds.ListingPublication", b =>
+                {
+                    b.HasOne("CityPortal.Classifieds.ListingDraft", null)
+                        .WithOne()
+                        .HasForeignKey("CityPortal.Classifieds.ListingPublication", "ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

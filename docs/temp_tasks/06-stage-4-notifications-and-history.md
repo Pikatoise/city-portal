@@ -3,7 +3,7 @@
 ## Dependencies
 
 [Staff review and owner feedback](../stages/STAGE_4.md#staff-review-and-owner-feedback),
-[02 First publication and atomic blocking](02-stage-4-first-publication-and-blocking.md),
+[First publication and public detail](../stages/STAGE_4.md#first-publication-and-public-detail),
 [03 Published revisions and listing lifecycle](03-stage-4-listing-lifecycle.md), and
 [05 Advertisement reports and staff resolution](05-stage-4-advertisement-reports.md).
 

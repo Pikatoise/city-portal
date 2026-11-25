@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-[02 First publication and atomic blocking](02-stage-4-first-publication-and-blocking.md).
+[First publication and public detail](../stages/STAGE_4.md#first-publication-and-public-detail).
 Run the combined discovery and lifecycle checks after
 [03 Published revisions and listing lifecycle](03-stage-4-listing-lifecycle.md).
 

@@ -5,6 +5,208 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/staff/account-blocks": {
+      "get": {
+        "tags": [
+          "AccountBlocking"
+        ],
+        "operationId": "listAccountsForBlocking",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountBlockPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/account-blocks/{id}/block": {
+      "post": {
+        "tags": [
+          "AccountBlocking"
+        ],
+        "operationId": "blockAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/account-blocks/{id}/unblock": {
+      "post": {
+        "tags": [
+          "AccountBlocking"
+        ],
+        "operationId": "unblockAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnblockAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/account": {
       "get": {
         "tags": [
@@ -2050,6 +2252,116 @@
         }
       }
     },
+    "/api/staff/classifieds/published": {
+      "get": {
+        "tags": [
+          "ClassifiedsModeration"
+        ],
+        "operationId": "listListingsForModeration",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedsPageOfListingModerationItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/classifieds/published/{id}/block": {
+      "post": {
+        "tags": [
+          "ClassifiedsModeration"
+        ],
+        "operationId": "blockListing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideListingReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/staff/classifieds/review": {
       "get": {
         "tags": [
@@ -2421,6 +2733,91 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/classifieds/review/{id}/approve": {
+      "post": {
+        "tags": [
+          "ClassifiedsReview"
+        ],
+        "operationId": "approveListingReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingDraftVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
             }
           },
           "401": {
@@ -4267,6 +4664,99 @@
         }
       }
     },
+    "/api/classifieds/{id}": {
+      "get": {
+        "tags": [
+          "PublicClassifieds"
+        ],
+        "operationId": "getPublicListing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicListingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/classifieds/{id}/images/{imageId}": {
+      "get": {
+        "tags": [
+          "PublicClassifieds"
+        ],
+        "operationId": "openPublicListingPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/staff/suggestions/queue": {
       "get": {
         "tags": [
@@ -4980,6 +5470,61 @@
   },
   "components": {
     "schemas": {
+      "AccountBlockPage": {
+        "required": [
+          "items",
+          "hasNextPage"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountBlockSummary"
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AccountBlockSummary": {
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "version",
+          "blockReason"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "blockReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "Account state visible in the moderation workspace."
+      },
       "AccountNotificationPage": {
         "required": [
           "items",
@@ -5136,6 +5681,12 @@
               "string"
             ],
             "format": "int64"
+          },
+          "blockReason": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "confirmationDelivery": {
             "$ref": "#/components/schemas/ConfirmationDeliveryResponse"
@@ -5443,6 +5994,29 @@
         },
         "description": "A summary from the current author's workspace."
       },
+      "BlockAccountRequest": {
+        "required": [
+          "version",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "description": "Blocks the specified version of an account with a mandatory reason."
+      },
       "CatalogEntryResponse": {
         "required": [
           "id",
@@ -5576,6 +6150,25 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ListingDraftResponse"
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        },
+        "description": "A page of up to 20 records and an indication that more records exist."
+      },
+      "ClassifiedsPageOfListingModerationItem": {
+        "required": [
+          "items",
+          "hasNextPage"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingModerationItem"
             }
           },
           "hasNextPage": {
@@ -6244,6 +6837,36 @@
           }
         },
         "description": "Changes the draft's review status using the last version read."
+      },
+      "ListingModerationItem": {
+        "required": [
+          "id",
+          "title",
+          "version",
+          "blocked"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "blocked": {
+            "type": "boolean"
+          }
+        },
+        "description": "Published listing and current moderation version."
       },
       "ListingPhotoInput": {
         "required": [
@@ -6992,6 +7615,69 @@
         },
         "description": "Bounded, current-publication-only homepage blocks."
       },
+      "PublicListingResponse": {
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "district",
+          "price",
+          "phone",
+          "publishedAtUtc",
+          "expiresAtUtc",
+          "photos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publishedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublishedListingPhoto"
+            }
+          }
+        },
+        "description": "Approved listing fields exposed to anonymous visitors."
+      },
       "PublicTaxonomyResponse": {
         "required": [
           "id",
@@ -7008,6 +7694,23 @@
           }
         },
         "description": "A taxonomy name without private counts or staff metadata."
+      },
+      "PublishedListingPhoto": {
+        "required": [
+          "id",
+          "alternativeText"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "alternativeText": {
+            "type": "string"
+          }
+        },
+        "description": "Photo information safe to include in a published listing."
       },
       "RegisterRequest": {
         "type": "object",
@@ -7898,6 +8601,25 @@
         },
         "description": "An image proposal or authorized shared-library entry."
       },
+      "UnblockAccountRequest": {
+        "required": [
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "Removes an account block using its current version."
+      },
       "UpdateClassifiedsCatalogEntryRequest": {
         "required": [
           "version",
@@ -7971,6 +8693,9 @@
   },
   "tags": [
     {
+      "name": "AccountBlocking"
+    },
+    {
       "name": "Account"
     },
     {
@@ -7989,6 +8714,9 @@
       "name": "ClassifiedsDrafts"
     },
     {
+      "name": "ClassifiedsModeration"
+    },
+    {
       "name": "ClassifiedsReview"
     },
     {
@@ -8002,6 +8730,9 @@
     },
     {
       "name": "News"
+    },
+    {
+      "name": "PublicClassifieds"
     },
     {
       "name": "StaffSuggestions"

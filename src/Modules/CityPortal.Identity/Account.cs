@@ -10,5 +10,7 @@ internal sealed class Account : IdentityUser<Guid>
 
     public DateTimeOffset CreatedAtUtc { get; set; }
 
+    public string? BlockReason { get; set; }
+
     public Guid? LatestConfirmationMessageId { get; set; }
 }

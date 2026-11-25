@@ -22,7 +22,7 @@ public sealed class TemplateOperations
 
     public async Task<MediaPage<TemplateResponse>> ListAsync(Guid actorId, Guid sessionId, string scope, int page, int pageSize, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, scope is "queue" or "moderation" ? _moderationRoles : ["Author"], cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, scope is "queue" or "moderation" ? _moderationRoles : ["Author"], cancellationToken, allowBlockedOwnerRead: scope == "mine");
         MediaDatabase.Page(page, pageSize);
         IQueryable<ImageTemplate> query = _context.Templates.AsNoTracking();
         query = scope switch
@@ -40,8 +40,10 @@ public sealed class TemplateOperations
 
     public async Task<TemplateResponse> GetAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _readRoles, cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _readRoles, cancellationToken, allowBlockedOwnerRead: true);
         ImageTemplate template = await _context.Templates.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw MediaDatabase.Missing();
+        if (actor.BlockReason is not null && template.OwnerId != actorId)
+            throw MediaDatabase.Missing();
         if (!Moderator(actor) && !(actor.Roles.Contains("Author") && (template.OwnerId == actorId || template.Approval == "Approved" && !template.Archived && !template.Blocked)))
             throw MediaDatabase.Missing();
         return Response(template, actor);
@@ -182,10 +184,10 @@ public sealed class TemplateOperations
 
     public async Task<MediaPage<TemplateHistoryResponse>> HistoryAsync(Guid actorId, Guid sessionId, Guid id, int page, int pageSize, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _readRoles, cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _readRoles, cancellationToken, allowBlockedOwnerRead: true);
         MediaDatabase.Page(page, pageSize);
         ImageTemplate template = await _context.Templates.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw MediaDatabase.Missing();
-        if (!Moderator(actor) && !(actor.Roles.Contains("Author") && template.OwnerId == actorId))
+        if ((actor.BlockReason is not null || !Moderator(actor)) && !(actor.Roles.Contains("Author") && template.OwnerId == actorId))
             throw MediaDatabase.Missing();
         IQueryable<TemplateEvent> query = _context.Events.AsNoTracking().Where(entry => entry.TemplateId == id);
         int total = await query.CountAsync(cancellationToken);

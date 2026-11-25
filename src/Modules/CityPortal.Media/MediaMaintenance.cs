@@ -68,7 +68,8 @@ public sealed class MediaMaintenance
         Guid[] candidates = await _context.Images.AsNoTracking().Where(image => image.State == "Deleting"
             || (!image.EverAttached || image.ForSuggestion && !_context.References.Any(item => item.ImageId == image.Id))
             && image.CreatedAtUtc <= cutoff && !_context.SuggestionImages.Any(item => item.ImageId == image.Id)
-            && !_context.ListingImages.Any(item => item.ImageId == image.Id))
+            && !_context.ListingImages.Any(item => item.ImageId == image.Id)
+            && !_context.PublishedListingImages.Any(item => item.ImageId == image.Id))
             .OrderBy(image => image.CreatedAtUtc).Select(image => image.Id).Take(50).ToArrayAsync(cancellationToken);
         foreach (Guid id in candidates)
         {
@@ -78,6 +79,7 @@ public sealed class MediaMaintenance
                 MediaImage? image = (await _context.Images.FromSqlInterpolated($"SELECT * FROM media.\"Images\" WHERE \"Id\" = {id} FOR UPDATE").ToListAsync(cancellationToken)).SingleOrDefault();
                 if (image is null || image.EverAttached && !image.ForSuggestion || image.State != "Deleting" && image.CreatedAtUtc > cutoff
                     || await _context.SuggestionImages.AnyAsync(reference => reference.ImageId == id, cancellationToken)
+                    || await _context.PublishedListingImages.AnyAsync(reference => reference.ImageId == id, cancellationToken)
                     || await _context.ListingImages.AnyAsync(reference => reference.ImageId == id, cancellationToken)
                     || await _context.References.AnyAsync(reference => reference.ImageId == id, cancellationToken)
                     || await _context.Events.AnyAsync(entry => entry.ImageId == id, cancellationToken))

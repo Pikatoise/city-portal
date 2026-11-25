@@ -78,14 +78,17 @@ export class AuthorWorkspace implements OnInit, OnDestroy {
     () =>
       !!this.profile()?.emailConfirmed &&
       (this.correctionMode
-        ? !!this.profile()?.roles.some((role) => role === 'Editor' || role === 'Administrator')
+        ? !this.profile()?.blockReason &&
+          !!this.profile()?.roles.some((role) => role === 'Editor' || role === 'Administrator')
         : !!this.profile()?.roles.includes('Author')),
   );
   readonly article = signal<ArticleResponse | null>(null);
-  readonly editable = computed(() =>
-    this.correctionMode
-      ? this.article()?.publicationState === 'Published'
-      : ['Draft', 'Approved'].includes(this.article()?.state ?? ''),
+  readonly editable = computed(
+    () =>
+      !this.profile()?.blockReason &&
+      (this.correctionMode
+        ? this.article()?.publicationState === 'Published'
+        : ['Draft', 'Approved'].includes(this.article()?.state ?? '')),
   );
   readonly history = signal<ArticleHistoryResponse[]>([]);
   readonly historyPage = signal(1);

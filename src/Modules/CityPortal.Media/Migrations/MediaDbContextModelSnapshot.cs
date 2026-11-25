@@ -217,6 +217,29 @@ namespace CityPortal.Media.Migrations
                     b.ToTable("Images", "media");
                 });
 
+            modelBuilder.Entity("CityPortal.Media.PublishedListingImageReference", b =>
+                {
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ImageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlternativeText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.HasKey("RevisionId", "ImageId");
+
+                    b.HasIndex("ImageId");
+
+                    b.ToTable("PublishedListingImages", "media");
+                });
+
             modelBuilder.Entity("CityPortal.Media.SuggestionImageReference", b =>
                 {
                     b.Property<Guid>("ImageId")
@@ -357,6 +380,15 @@ namespace CityPortal.Media.Migrations
                 });
 
             modelBuilder.Entity("CityPortal.Media.ListingImageReference", b =>
+                {
+                    b.HasOne("CityPortal.Media.MediaImage", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CityPortal.Media.PublishedListingImageReference", b =>
                 {
                     b.HasOne("CityPortal.Media.MediaImage", null)
                         .WithMany()

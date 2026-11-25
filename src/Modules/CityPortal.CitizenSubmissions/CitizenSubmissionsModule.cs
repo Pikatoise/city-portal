@@ -14,7 +14,7 @@ public static class CitizenSubmissionsModule
         services.AddDbContext<SuggestionsDbContext>(options => options.UseNpgsql(connectionString,
             postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "citizen_submissions")));
         services.AddScoped(provider => new SuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
-            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>(), provider.GetRequiredService<SuggestionImages>()));
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>(), provider.GetRequiredService<SuggestionImages>()));
         services.AddScoped(provider => new StaffSuggestionOperations(provider.GetRequiredService<SuggestionsDbContext>(),
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ArticleOperations>(), provider.GetRequiredService<SuggestionImages>()));
         services.AddScoped<IArticleDraftDeletionObserver, SuggestionDraftDeletion>();

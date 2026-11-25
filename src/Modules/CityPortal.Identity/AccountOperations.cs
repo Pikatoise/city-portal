@@ -320,6 +320,7 @@ public sealed class AccountOperations
             DisplayName = account.DisplayName,
             EmailConfirmed = account.EmailConfirmed,
             Roles = roles,
+            BlockReason = account.BlockReason,
             Version = account.Version,
             ConfirmationDelivery = await DeliveryAsync(account, cancellationToken)
         };

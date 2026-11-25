@@ -12,5 +12,5 @@ internal sealed class ListingReviewDecision
 
     public required string Outcome { get; init; }
 
-    public required string Reason { get; init; }
+    public string? Reason { get; init; }
 }

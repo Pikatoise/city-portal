@@ -2,7 +2,6 @@ using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CityPortal.CitizenSubmissions;
 
@@ -10,13 +9,15 @@ public sealed class SuggestionOperations
 {
     private const int _pageSize = 20;
     private readonly SuggestionsDbContext _context;
+    private readonly AccountAuthorization _authorization;
     private readonly TimeProvider _time;
     private readonly ArticleOperations _articles;
     private readonly SuggestionImages _images;
 
-    internal SuggestionOperations(SuggestionsDbContext context, TimeProvider time, ArticleOperations articles, SuggestionImages images)
+    internal SuggestionOperations(SuggestionsDbContext context, AccountAuthorization authorization, TimeProvider time, ArticleOperations articles, SuggestionImages images)
     {
         _context = context;
+        _authorization = authorization;
         _time = time;
         _articles = articles;
         _images = images;
@@ -48,7 +49,7 @@ public sealed class SuggestionOperations
         return await _images.OpenAsync(suggestionId, imageId, cancellationToken);
     }
 
-    public async Task<SuggestionResponse> CreateAsync(Guid residentId, SuggestionInput input, CancellationToken cancellationToken)
+    public async Task<SuggestionResponse> CreateAsync(Guid residentId, Guid sessionId, SuggestionInput input, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _time.GetUtcNow();
         var item = new Suggestion
@@ -63,42 +64,45 @@ public sealed class SuggestionOperations
             CreatedAtUtc = now,
             ExpiresAtUtc = now.AddHours(72)
         };
-        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        _context.Suggestions.Add(item);
-        await _context.SaveChangesAsync(cancellationToken);
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(residentId, sessionId, ["RegularUser"], cancellationToken);
+        await using SuggestionsDbContext context = await SuggestionDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        context.Suggestions.Add(item);
+        await context.SaveChangesAsync(cancellationToken);
         ImageResponse[] attached = input.ImageIds?.Length > 0
-            ? await _images.ReplaceAsync(item.Id, residentId, input.ImageIds, _context.Database.GetDbConnection(), transaction.GetDbTransaction(), cancellationToken)
+            ? await _images.ReplaceAsync(item.Id, residentId, input.ImageIds, scope.Connection, scope.Transaction, cancellationToken)
             : [];
-        await transaction.CommitAsync(cancellationToken);
+        await scope.CommitAsync(cancellationToken);
         return ToResponse(item, null) with { Images = attached };
     }
 
-    public async Task<SuggestionResponse> UpdateAsync(Guid residentId, Guid id, UpdateSuggestionRequest request, CancellationToken cancellationToken)
+    public async Task<SuggestionResponse> UpdateAsync(Guid residentId, Guid sessionId, Guid id, UpdateSuggestionRequest request, CancellationToken cancellationToken)
     {
         SuggestionInput details = request.Details;
         string title = details.Title.Trim();
         string description = details.Description.Trim();
         string? location = Optional(details.Location);
         string? contact = Optional(details.Contact);
-        await using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        int updated = await Active(residentId).Where(item => item.Id == id && item.Version == request.Version && item.FirstClaimedAtUtc == null)
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(residentId, sessionId, ["RegularUser"], cancellationToken);
+        await using SuggestionsDbContext context = await SuggestionDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        IQueryable<Suggestion> active = SuggestionDatabase.Active(context, _time.GetUtcNow()).Where(item => item.ResidentId == residentId);
+        int updated = await active.Where(item => item.Id == id && item.Version == request.Version && item.FirstClaimedAtUtc == null)
             .ExecuteUpdateAsync(update => update.SetProperty(item => item.Title, title)
                 .SetProperty(item => item.Description, description).SetProperty(item => item.EventDate, details.EventDate)
                 .SetProperty(item => item.Location, location).SetProperty(item => item.Contact, contact)
                 .SetProperty(item => item.Version, item => item.Version + 1), cancellationToken);
         if (updated == 0)
         {
-            if (!await Active(residentId).AnyAsync(item => item.Id == id, cancellationToken))
+            if (!await active.AnyAsync(item => item.Id == id, cancellationToken))
                 throw Missing();
             throw new AccountOperationException(409, "suggestion_conflict", "The suggestion changed or can no longer be edited.");
         }
 
-        Suggestion item = await Active(residentId).AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken) ?? throw Missing();
+        Suggestion item = await active.AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken) ?? throw Missing();
         ImageResponse[] attached = details.ImageIds is null
             ? await _images.ReadAsync(id, cancellationToken)
-            : await _images.ReplaceAsync(id, residentId, details.ImageIds, _context.Database.GetDbConnection(), transaction.GetDbTransaction(), cancellationToken);
+            : await _images.ReplaceAsync(id, residentId, details.ImageIds, scope.Connection, scope.Transaction, cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
+        await scope.CommitAsync(cancellationToken);
         return ToResponse(item, null) with { Images = attached };
     }
 

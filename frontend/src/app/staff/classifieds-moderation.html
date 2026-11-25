@@ -1,0 +1,116 @@
+<section class="staff-panel" aria-labelledby="moderation-title">
+  <p><a routerLink="/staff/classifieds/review">Очередь объявлений</a></p>
+  <h1 id="moderation-title">Блокировки объявлений и аккаунтов</h1>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (target(); as selected) {
+    <form (ngSubmit)="submit()" id="block-form">
+      @if (selected.type === 'account') {
+        <h2>Заблокировать аккаунт {{ selected.item.displayName }}</h2>
+        <p>{{ selected.item.email }}</p>
+      } @else {
+        <h2>Скрыть объявление «{{ selected.item.title }}»</h2>
+      }
+      <label for="block-reason">Причина блокировки</label>
+      <textarea
+        id="block-reason"
+        name="reason"
+        [(ngModel)]="reason"
+        rows="4"
+        maxlength="500"
+        required
+      ></textarea>
+      <button type="submit" [disabled]="busy() || !reason.trim()">Подтвердить блокировку</button>
+      <button type="button" [disabled]="busy()" (click)="select(null)">Отмена</button>
+    </form>
+  }
+  @if (loaded()) {
+    <h2>Опубликованные объявления</h2>
+    <ul class="moderation-list">
+      @for (item of listings(); track item.id) {
+        <li>
+          {{ item.title }}
+          @if (item.blocked) {
+            <span>Скрыто модератором</span>
+          } @else {
+            <button type="button" [disabled]="busy()" (click)="select({ type: 'listing', item })">
+              Скрыть объявление
+            </button>
+          }
+        </li>
+      } @empty {
+        <li>Объявлений нет.</li>
+      }
+    </ul>
+    <nav class="staff-pagination" aria-label="Страницы опубликованных объявлений">
+      <button
+        type="button"
+        [disabled]="busy() || listingPage() === 1"
+        (click)="loadListings(listingPage() - 1)"
+      >
+        Назад
+      </button>
+      <button
+        type="button"
+        [disabled]="busy() || !moreListings()"
+        (click)="loadListings(listingPage() + 1)"
+      >
+        Дальше
+      </button>
+      <button type="button" [disabled]="busy()" (click)="loadListings(listingPage())">
+        Обновить объявления
+      </button>
+    </nav>
+
+    <h2>Аккаунты</h2>
+    <form (ngSubmit)="findAccounts()">
+      <label for="block-search">Имя или Email</label>
+      <input id="block-search" name="search" [(ngModel)]="search" maxlength="254" />
+      <button type="submit" [disabled]="busy()">Найти</button>
+    </form>
+    <ul class="moderation-list">
+      @for (item of accounts(); track item.id) {
+        <li>
+          {{ item.displayName }} ({{ item.email }})
+          @if (item.blockReason) {
+            <span>Заблокирован. Причина: {{ item.blockReason }}</span>
+            <button type="button" [disabled]="busy()" (click)="unblock(item)">
+              Разблокировать
+            </button>
+          } @else {
+            <button type="button" [disabled]="busy()" (click)="select({ type: 'account', item })">
+              Заблокировать аккаунт
+            </button>
+          }
+        </li>
+      } @empty {
+        <li>Аккаунты не найдены.</li>
+      }
+    </ul>
+    <nav class="staff-pagination" aria-label="Страницы аккаунтов">
+      <button
+        type="button"
+        [disabled]="busy() || accountPage() === 1"
+        (click)="loadAccounts(accountPage() - 1)"
+      >
+        Назад
+      </button>
+      <button
+        type="button"
+        [disabled]="busy() || !moreAccounts()"
+        (click)="loadAccounts(accountPage() + 1)"
+      >
+        Дальше
+      </button>
+      <button type="button" [disabled]="busy()" (click)="loadAccounts(accountPage())">
+        Обновить аккаунты
+      </button>
+    </nav>
+  } @else if (busy()) {
+    <p role="status">Загружаем данные…</p>
+  }
+</section>

@@ -90,7 +90,7 @@ public sealed class AccountAdministration
         if (target.Version != version)
             throw new AccountOperationException(409, "version_conflict", "The account changed. Reload it.");
         string[] old = await RolesAsync(targetId, cancellationToken);
-        if (old.Contains("Administrator") && !desired.Contains("Administrator") && await AdministratorIds().CountAsync(cancellationToken) == 1)
+        if (old.Contains("Administrator") && !desired.Contains("Administrator") && await WouldRemoveLastAdministratorAsync(target, cancellationToken))
             throw new AccountOperationException(409, "last_administrator", "The last administrator cannot lose the role.");
         if (!old.SequenceEqual(desired))
         {
@@ -136,9 +136,18 @@ public sealed class AccountAdministration
         DateTimeOffset now = _time.GetUtcNow();
         if (!await _context.Sessions.AnyAsync(session => session.Id == sessionId && session.AccountId == actorId && !session.Revoked && session.ExpiresAtUtc > now, cancellationToken))
             throw new AccountOperationException(401, "invalid_session", "Log in again.");
-        if (!await _context.Users.AnyAsync(account => account.Id == actorId && account.EmailConfirmed, cancellationToken)
+        if (!await _context.Users.AnyAsync(account => account.Id == actorId && account.EmailConfirmed && account.BlockReason == null, cancellationToken)
             || !await AdministratorIds().AnyAsync(id => id == actorId, cancellationToken))
             throw new AccountOperationException(403, "administrator_required", "A confirmed administrator is required.");
+    }
+
+    private async Task<bool> WouldRemoveLastAdministratorAsync(Account target, CancellationToken cancellationToken)
+    {
+        IQueryable<Guid> administrators = AdministratorIds();
+        return await administrators.CountAsync(cancellationToken) == 1
+            || target.EmailConfirmed && target.BlockReason is null
+            && await _context.Users.CountAsync(account => account.EmailConfirmed && account.BlockReason == null
+                && administrators.Contains(account.Id), cancellationToken) == 1;
     }
 
     private IQueryable<Guid> AdministratorIds() => from assignment in _context.UserRoles

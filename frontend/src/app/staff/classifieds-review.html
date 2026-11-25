@@ -1,5 +1,6 @@
 <section class="staff-panel" aria-labelledby="review-title">
   <p><a routerLink="/account">Личный кабинет</a></p>
+  <p><a routerLink="/staff/classifieds/moderation">Блокировки объявлений и аккаунтов</a></p>
   <h1 id="review-title">Модерация объявлений</h1>
   @if (error()) {
     <p class="error" role="alert">{{ error() }}</p>
@@ -40,6 +41,11 @@
           <dd>{{ email }}</dd>
         }
       </dl>
+      <p>
+        <button type="button" [disabled]="busy()" (click)="approve()">
+          Одобрить и опубликовать
+        </button>
+      </p>
       <div class="field">
         <label for="review-reason">Причина решения</label>
         <textarea

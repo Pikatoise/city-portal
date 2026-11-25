@@ -14,13 +14,15 @@ public sealed class AccountAuthorization
         _accounts = accounts;
     }
 
-    public async Task<AccountResponse> RequireAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken)
+    public async Task<AccountResponse> RequireAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken, bool allowBlockedOwnerRead = false)
     {
         AccountResponse? actor = await _accounts.FindSessionAsync(sessionId, cancellationToken);
         if (actor is null || actor.Id != actorId)
             throw new AccountOperationException(401, "invalid_session", "Log in again.");
         if (!actor.EmailConfirmed || !roles.Intersect(actor.Roles, StringComparer.Ordinal).Any())
             throw new AccountOperationException(403, "media_permission_required", "A confirmed account with the required role is needed.");
+        if (actor.BlockReason is not null && !allowBlockedOwnerRead)
+            throw Blocked();
         return actor;
     }
 
@@ -30,6 +32,14 @@ public sealed class AccountAuthorization
     /// <summary>Allows concurrent writes that serialize their own resources while excluding role changes.</summary>
     public Task<AuthorizedAccountScope> BeginSharedAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken) =>
         BeginAsync(actorId, sessionId, roles, shareRoleLock: true, cancellationToken);
+
+    public async Task RequireUnblockedOwnerAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        if (!await _context.Users.AnyAsync(account => account.Id == ownerId && account.BlockReason == null, cancellationToken))
+            throw new AccountOperationException(403, "content_owner_blocked", "The content owner's account is blocked.");
+    }
+
+    private static AccountOperationException Blocked() => new(403, "account_blocked", "The account is restricted to reading its content.");
 
     private async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, bool shareRoleLock, CancellationToken cancellationToken)
     {

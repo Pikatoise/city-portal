@@ -46,6 +46,8 @@ internal static class AccountSecurity
                     return;
                 }
                 var claims = new List<Claim> { new("session", sessionId.ToString()), new(ClaimTypes.NameIdentifier, account.Id.ToString()), new("email_confirmed", account.EmailConfirmed.ToString()) };
+                if (account.BlockReason is not null)
+                    claims.Add(new Claim("account_blocked", bool.TrueString));
                 claims.AddRange(account.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
                 context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
             };

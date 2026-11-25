@@ -3,6 +3,7 @@
 
 import { ConfirmationDeliveryResponse } from '../models/confirmation-delivery-response';
 export interface AccountResponse {
+  blockReason?: (string | null);
   confirmationDelivery: ConfirmationDeliveryResponse;
   displayName: string;
   email: string;

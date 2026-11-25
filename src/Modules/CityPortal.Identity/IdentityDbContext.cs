@@ -12,6 +12,7 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
     public DbSet<AccountLink> Links => Set<AccountLink>();
     public DbSet<AccountSession> Sessions => Set<AccountSession>();
     public DbSet<RequestAttempt> RequestAttempts => Set<RequestAttempt>();
+    public DbSet<AccountBlockDecision> BlockDecisions => Set<AccountBlockDecision>();
     public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
     public DbSet<SiteConfiguration> Sites => Set<SiteConfiguration>();
 
@@ -24,6 +25,9 @@ internal sealed class IdentityDbContext : Microsoft.AspNetCore.Identity.EntityFr
         builder.Entity<Account>().Property(account => account.Email).HasMaxLength(254);
         builder.Entity<Account>().Property(account => account.NormalizedEmail).HasMaxLength(254);
         builder.Entity<Account>().HasIndex(account => account.NormalizedEmail).IsUnique();
+        builder.Entity<Account>().Property(account => account.BlockReason).HasMaxLength(500);
+        builder.Entity<AccountBlockDecision>().Property(decision => decision.Reason).HasMaxLength(500);
+        builder.Entity<AccountBlockDecision>().HasIndex(decision => new { decision.TargetId, decision.DecidedAtUtc });
         builder.Entity<Account>().Property(account => account.Version).IsConcurrencyToken();
         builder.Entity<AccountLink>().HasIndex(link => new { link.AccountId, link.CreatedAtUtc });
         builder.Entity<AccountLink>().Property(link => link.TokenHash).HasMaxLength(64);

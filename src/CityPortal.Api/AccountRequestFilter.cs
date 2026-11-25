@@ -13,6 +13,9 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
         HttpContext http = context.HttpContext;
         if (http.Request.Path.StartsWithSegments("/api/news"))
             http.Response.Headers.CacheControl = "no-store";
+        if (http.User.HasClaim("account_blocked", bool.TrueString)
+            && (http.Request.Path.StartsWithSegments("/api/admin") || http.Request.Path.StartsWithSegments("/api/staff")))
+            throw new AccountOperationException(403, "account_blocked", "Staff actions are unavailable while the account is blocked.");
         if (HttpMethods.IsGet(http.Request.Method) || HttpMethods.IsHead(http.Request.Method) || HttpMethods.IsOptions(http.Request.Method))
         {
             await next();

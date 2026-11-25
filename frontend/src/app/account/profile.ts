@@ -27,22 +27,38 @@ const roleLabels: Record<string, string> = {
       <p class="eyebrow">Личный кабинет</p>
       <h1 id="profile-title">Профиль</h1>
       @if (profile(); as account) {
+        @if (account.blockReason) {
+          <section class="confirmation-card" aria-labelledby="account-block-title">
+            <h2 id="account-block-title">Контент доступен только для чтения</h2>
+            <p><strong>Причина блокировки</strong></p>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ account.blockReason }}</p>
+          </section>
+        }
         @if (account.roles.includes('Author')) {
           <p><a routerLink="/account/articles">Мои статьи</a></p>
-          <p><a routerLink="/staff/suggestions">Предложения жителей</a></p>
+          @if (!account.blockReason) {
+            <p><a routerLink="/staff/suggestions">Предложения жителей</a></p>
+          }
         }
-        @if (account.roles.includes('Moderator') || account.roles.includes('Administrator')) {
+        @if (
+          !account.blockReason &&
+          (account.roles.includes('Moderator') || account.roles.includes('Administrator'))
+        ) {
           <p><a routerLink="/staff/suggestions/moderation">Модерация предложений</a></p>
           <p><a routerLink="/staff/classifieds/review">Модерация объявлений</a></p>
+          <p><a routerLink="/staff/classifieds/moderation">Блокировки объявлений и аккаунтов</a></p>
         }
-        @if (account.roles.includes('Editor') || account.roles.includes('Administrator')) {
+        @if (
+          !account.blockReason &&
+          (account.roles.includes('Editor') || account.roles.includes('Administrator'))
+        ) {
           <p><a routerLink="/staff/reviews">Редакция</a></p>
           <p><a routerLink="/staff/taxonomy">Категории и теги</a></p>
         }
         <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>
         <p><a routerLink="/account/suggestions">Мои предложения новостей</a></p>
         <p><a routerLink="/account/classifieds">Мои объявления</a></p>
-        @if (account.roles.includes('Administrator')) {
+        @if (!account.blockReason && account.roles.includes('Administrator')) {
           <p><a routerLink="/staff/classifieds/catalog">Категории и районы объявлений</a></p>
         }
         @if (

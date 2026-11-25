@@ -61,7 +61,7 @@ public sealed class MediaOperations
 
     public async Task<MediaPage<ImageResponse>> ListAsync(Guid actorId, Guid sessionId, int page, int pageSize, CancellationToken cancellationToken)
     {
-        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken);
+        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken, allowBlockedOwnerRead: true);
         MediaDatabase.Page(page, pageSize);
         IQueryable<MediaImage> query = _context.Images.AsNoTracking().Where(image => image.OwnerId == actorId && !image.ForSuggestion && !image.ForListing && image.State != "Deleting");
         int total = await query.CountAsync(cancellationToken);
@@ -71,7 +71,7 @@ public sealed class MediaOperations
 
     public async Task<ImageResponse> GetAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Moderator", "Administrator"], cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Moderator", "Administrator"], cancellationToken, allowBlockedOwnerRead: true);
         MediaImage image = await _context.Images.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id && !item.ForListing && item.State != "Deleting", cancellationToken) ?? throw MediaDatabase.Missing();
         if (!await ProtectedAccessAsync(image, actor, cancellationToken))
             throw MediaDatabase.Missing();
@@ -92,7 +92,7 @@ public sealed class MediaOperations
             AccountResponse actor;
             try
             {
-                actor = await _authorization.RequireAsync(actorId.Value, sessionId.Value, ["Author", "Editor", "Moderator", "Administrator"], cancellationToken);
+                actor = await _authorization.RequireAsync(actorId.Value, sessionId.Value, ["Author", "Editor", "Moderator", "Administrator"], cancellationToken, allowBlockedOwnerRead: true);
             }
             catch (AccountOperationException exception) when (exception.Status is 401 or 403)
             {
@@ -108,6 +108,10 @@ public sealed class MediaOperations
     private async Task<bool> ProtectedAccessAsync(MediaImage image, AccountResponse actor, CancellationToken cancellationToken)
     {
         bool author = actor.Roles.Contains("Author");
+        if (actor.BlockReason is not null)
+            return author && (image.OwnerId == actor.Id && !image.ForSuggestion
+                || await _context.References.AnyAsync(reference => reference.ImageId == image.Id && reference.AuthorId == actor.Id
+                    && reference.AuthorVisible, cancellationToken));
         bool administrator = actor.Roles.Contains("Administrator");
         if (author && image.OwnerId == actor.Id && !image.ForSuggestion)
             return true;

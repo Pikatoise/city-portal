@@ -5,8 +5,9 @@
 In development. Stage 3 was accepted on 2026-11-19. The account's My
 Advertisements page supports private drafts, their photo carousel, and
 submission and recall. The category and district administration screen and
-API are implemented. Staff can review, return, and reject pending submissions.
-First publication, direct blocks, and public listing pages remain pending.
+API are implemented. Staff can review, return, reject, and approve pending
+submissions. Approved listings have public detail pages. Staff can block an
+individual listing or an account. Published revisions and renewal are next.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -30,8 +31,8 @@ and/or Email.
 | --- | --- |
 | Visitor | Browse available listings, search and filter by category, price, location and relevant attributes, and submit a report without logging in. |
 | Owner | With confirmed Email, create and save drafts, submit, edit, withdraw, delete and renew own listings subject to their current state. See listing status and review feedback in the account. |
-| Moderator | Review other users' submitted versions and reports, block listings with a reason, and block or unblock ordinary accounts. Corrections belong to the listing owner. |
-| Administrator | Review other users' submitted versions, configure the catalog, and block or unblock accounts, including staff, subject to the account safeguards to be agreed below. |
+| Moderator | Review other users' submitted versions and reports, block their listings with a reason, and block or unblock accounts whose only role is Regular User. Corrections belong to the listing owner. |
+| Administrator | Review other users' submitted versions, block their listings with a reason, configure the catalog, and block or unblock accounts, including staff. Self-blocking and blocking the last active administrator are unavailable. |
 
 - First publication requires approval. Changes await moderation while the
   last published revision remains visible for its current publication period.
@@ -40,12 +41,16 @@ and/or Email.
 - Publication lasts seven days. The owner can renew unchanged active or expired
   content for seven days from renewal without a new review. Expiry hides the
   listing publicly and leaves it in the owner's account.
-- A direct listing block hides the listing and prevents renewal and relisting.
+- A direct listing block requires a reason of up to 500 characters. It hides
+  the listing and prevents renewal and relisting.
   The owner corrects and resubmits it for approval.
 - Account blocking requires a reason and persists until staff remove it. The
-  block and hiding all of the account's listings commit together. A blocked
-  owner cannot publish or renew through an owner or staff action. Unblocking
-  leaves listings hidden until the owner acts. Direct listing blocks still apply.
+  owner retains account access and sees the reason in their profile. Blocking
+  restricts existing content to reading and disables new content and staff
+  actions. The block and hiding all the account's listings
+  commit together. A blocked owner cannot publish or renew through an owner
+  or staff action. Unblocking leaves listings hidden until the owner acts.
+  Direct listing blocks still apply.
 - Reports leave listings visible until a moderator acts. The queue shows the
   total count and report text. Staff may dismiss reports without a reason.
   Decisions remain in history. A new report returns the listing to the queue.
@@ -168,6 +173,35 @@ opens a new review without deleting the prior decision record. Classifieds
 stores the decision, reason, actor, UTC time, and submitted version together
 with the draft state change. Staff decisions use the exclusive administration
 lock to serialize with owner writes and recheck the current version.
+
+### First publication and public detail
+
+Staff approval publishes the submitted version and starts its seven-day
+window. The public detail page at `/classifieds/{id}` displays the approved
+phone number when present. The seller's Email remains private. Unavailable
+listings return the standard HTTP 404 page. Public detail and photo endpoints
+use the same visibility rule and exclude unapproved revisions.
+
+| Routes | Contract |
+| --- | --- |
+| POST `/api/staff/classifieds/review/{id}/approve` | Approve another account's pending submission by version. Return 204, 403 for a blocked owner, or 409 for a stale or closed submission. |
+| GET `/api/classifieds/{id}` and `/{id}/images/{imageId}` | Anonymous reads of the visible revision and its ready photos. Use the same exact expiry and block checks on both routes. |
+| GET `/api/staff/classifieds/published`, POST `/{id}/block` | List other accounts' published listings and hide a listing using its current version and a reason. |
+| GET `/api/staff/account-blocks`, POST `/{id}/block` or `/{id}/unblock` | Search eligible accounts by name or Email and apply versioned block decisions. Blocking requires a reason of 1 to 500 characters after trimming. |
+
+The browser-rendered `/staff/classifieds/moderation` page hosts the listing
+and account block operations. The owner's profile displays the current account
+block reason. The working draft and its photos remain readable to their owner.
+Publication keeps a separate snapshot and Media photo references. Public
+responses and SSR HTML use `Cache-Control: no-store`.
+
+Staff approval and account blocking take the exclusive Identity administration
+lock. Approval checks the owner's block state under that lock. On account
+blocking, Identity records the decision and Classifieds hides the account's
+publications on the same database connection and transaction. Unblocking
+removes the Identity restriction and leaves the hidden publication flags in place.
+Public photo access rechecks visibility after opening the object. A response
+already admitted at that check may finish streaming.
 
 ## Tools and technical contracts
 
@@ -295,7 +329,8 @@ recall.
 The staff review change passed the solution format check, live OpenAPI
 comparison, generated client comparison, production Angular build, and all
 103 Angular tests. All six targeted Classifieds tests passed with PostgreSQL,
-RabbitMQ, and RustFS. They cover role and ownership checks, queue order,
+RabbitMQ, and RustFS. The complete .NET suite passed all 201 tests with one
+xUnit worker. The targeted tests cover role and ownership checks, queue order,
 reason validation, concurrent staff decisions and owner recall, and photo
 access across recall and resubmission. Changed Angular files passed Prettier.
 The workspace-wide Prettier check flagged 34 files outside this change.
@@ -306,6 +341,22 @@ both decision records after deletion, with their submitted versions, staff
 actors, and UTC decision timestamps. The browser fixture seeded the owner's
 Email confirmation before exercising the advertisement workflow.
 
+First publication and atomic account blocking passed 36 targeted integration
+tests with one xUnit worker. The checks forced both PostgreSQL commit orders
+between approval and a block, forced rollback during an account block, and
+verified the exact expiry boundary and photo access. They also exercised
+Classifieds, suggestions, account administration, and API foundation behavior.
+The four publication tests passed again after adding a distinct blocked-owner
+approval error. The solution format check, live OpenAPI comparison, generated
+client comparison, production Angular build, and all 103 Angular tests passed.
+
+On 2026-11-25, a live HTTPS Edge check exercised approval, phone-only SSR,
+public photo delivery, account blocking, and unblocking. The same owner
+session kept profile and read-only listing access during the block. The
+profile showed the reason, and the public page and photo returned 404.
+Unblocking restored content writes and kept the listing hidden. The browser
+fixture seeded Email confirmation before exercising the flow.
+
 ## Open decisions
 
 ### Moderation and visibility
@@ -313,10 +364,7 @@ Email confirmation before exercising the advertisement workflow.
 - Confirm whether administrators also handle advertisement reports.
 - Define how renewal interacts with a pending revision, and which relisting
   operations are available after withdrawal, expiry or an account unblock.
-- Agree public contact display, URL and unavailable-page behavior, search order,
-  homepage size and listing deletion and image retention rules.
-- Agree moderator authority over mixed-role accounts, safeguards for self-block
-  and the last administrator, and how active sessions behave after unblock.
+- Agree search order, homepage size, listing deletion, and image retention rules.
 
 ### Reports and notifications
 

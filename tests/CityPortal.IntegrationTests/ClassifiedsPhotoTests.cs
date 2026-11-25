@@ -133,6 +133,54 @@ public sealed class ClassifiedsPhotoTests : IClassFixture<MediaFixture>
         Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync($"{ownerPath}/images/{photo.Id}")).StatusCode);
     }
 
+    [Fact]
+    public async Task PublishedPhoto_IsAvailableOnlyWhileTheListingIsPublicAsync()
+    {
+        (ApiFactory factory, string database, _) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "Owner", confirmed: true);
+        using HttpClient admin = await CitizenSuggestionTests.LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        using HttpClient visitor = factory.CreateClient();
+        ImageResponse uploaded = await UploadAsync(owner);
+        CatalogEntryResponse category = (await owner.GetFromJsonAsync<ClassifiedsPage<CatalogEntryResponse>>(_account + "/catalog/categories"))!.Items[0];
+        CatalogEntryResponse district = await CitizenSuggestionTests.ReadAsync<CatalogEntryResponse>(
+            await admin.PostAsJsonAsync("/api/admin/classifieds/catalog/districts", new SaveClassifiedsCatalogEntryRequest { Name = "Central" }));
+        ListingDraftResponse draft = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(_drafts, new ListingDraftInput
+        {
+            Title = "Desk",
+            Description = "Solid wood.",
+            CategoryId = category.Id,
+            DistrictId = district.Id,
+            Phone = "+7 999 000 00 00",
+            Price = 0,
+            Photos = [new ListingPhotoInput { ImageId = uploaded.Id, AlternativeText = "Wooden desk" }]
+        }));
+        await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<MediaMaintenance>().ProcessPendingAsync(CancellationToken.None);
+        string publicPath = $"/api/classifieds/{draft.Id}";
+        string photoPath = $"{publicPath}/images/{uploaded.Id}";
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(photoPath)).StatusCode);
+        ListingDraftResponse submitted = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(
+            $"{_drafts}/{draft.Id}/submit", new ListingDraftVersionRequest { Version = draft.Version }));
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/staff/classifieds/review/{draft.Id}/approve",
+            new ListingDraftVersionRequest { Version = submitted.Version })).StatusCode);
+
+        PublicListingResponse published = (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!;
+        PublishedListingPhoto photo = Assert.Single(published.Photos);
+        Assert.Equal(uploaded.Id, photo.Id);
+        Assert.Equal("Wooden desk", photo.AlternativeText);
+        using HttpResponseMessage opened = await visitor.GetAsync(photoPath);
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        Assert.Equal("image/webp", opened.Content.Headers.ContentType?.MediaType);
+        Assert.True(opened.Headers.CacheControl?.NoStore);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync($"{publicPath}/images/{Guid.NewGuid()}")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/staff/classifieds/published/{draft.Id}/block",
+            new DecideListingReviewRequest { Version = submitted.Version + 1, Reason = "Prohibited listing" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(photoPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync($"{_drafts}/{draft.Id}/images/{uploaded.Id}")).StatusCode);
+    }
+
     private static async Task AssertMediaCountAsync(string database, ListingPhotoInput[] photos, long expected)
     {
         await using var connection = new NpgsqlConnection(database);

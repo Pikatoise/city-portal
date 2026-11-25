@@ -31,7 +31,7 @@
             [class.current]="section() === item[0]"
             [attr.aria-current]="section() === item[0] ? 'page' : null"
             (click)="changeSection(item[0])"
-            [disabled]="busy()"
+            [disabled]="busy() || (accountBlocked() && item[0] === 'shared')"
           >
             {{ item[1] }}
           </button>
@@ -87,7 +87,7 @@
         </p>
       </div>
       <div class="actions">
-        @if (section() === 'uploads') {
+        @if (section() === 'uploads' && !accountBlocked()) {
           <label class="upload-label" [class.disabled]="busy()"
             >Загрузить изображение<input
               type="file"
@@ -137,7 +137,7 @@
                 }}
               </p>
             }
-            @if (image.state === 'Ready') {
+            @if (image.state === 'Ready' && !accountBlocked()) {
               <button (click)="begin('propose', undefined, image.id)" [disabled]="busy()">
                 Предложить в общие шаблоны
               </button>
@@ -170,7 +170,7 @@
               <p class="feedback">{{ template.reason }}</p>
             }
             <div class="card-actions">
-              @if (author() && template.own) {
+              @if (author() && template.own && !accountBlocked()) {
                 @if (template.approval !== 'Approved' && !template.submitted) {
                   <button (click)="begin('submit', template)" [disabled]="busy()">
                     {{

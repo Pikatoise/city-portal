@@ -1,0 +1,42 @@
+<main class="listing-detail">
+  @if (listing(); as current) {
+    <h1>{{ current.title }}</h1>
+    @if (photo(); as selected) {
+      <section aria-label="Фотографии объявления" class="publication-photos">
+        <img [src]="photoUrl(current, selected.id)" [alt]="selected.alternativeText" />
+        @if (current.photos.length > 1) {
+          <div class="photo-controls">
+            <button type="button" (click)="changePhoto(-1)">Предыдущее фото</button>
+            <span aria-live="polite">{{ photoIndex() + 1 }} из {{ current.photos.length }}</span>
+            <button type="button" (click)="changePhoto(1)">Следующее фото</button>
+          </div>
+        }
+      </section>
+    }
+    <p class="description">{{ current.description }}</p>
+    <dl>
+      <dt>Категория</dt>
+      <dd>{{ current.category }}</dd>
+      <dt>Район</dt>
+      <dd>{{ current.district }}</dd>
+      @if (current.price != null) {
+        <dt>Цена</dt>
+        <dd>{{ current.price === 0 || current.price === '0' ? 'Бесплатно' : current.price }}</dd>
+      }
+      @if (current.phone; as phone) {
+        <dt>Телефон</dt>
+        <dd>
+          <a [href]="'tel:' + phone">{{ phone }}</a>
+        </dd>
+      }
+    </dl>
+  } @else if (state() === 'missing') {
+    <h1>Страница не найдена</h1>
+    <p><a routerLink="/">На главную</a></p>
+  } @else if (state() === 'failed') {
+    <h1>Не удалось загрузить объявление</h1>
+    <p>Попробуй обновить страницу.</p>
+  } @else {
+    <p role="status">Загружаем объявление…</p>
+  }
+</main>

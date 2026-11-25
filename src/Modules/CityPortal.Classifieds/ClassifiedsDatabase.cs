@@ -14,6 +14,9 @@ internal static class ClassifiedsDatabase
         return (page - 1) * PageSize;
     }
 
+    internal static IQueryable<ListingPublication> Visible(ClassifiedsDbContext context, DateTimeOffset now) =>
+        context.Publications.AsNoTracking().Where(item => !item.HiddenByAccountBlock && !item.HiddenByListingBlock && item.ExpiresAtUtc > now);
+
     internal static async Task<ClassifiedsDbContext> JoinAsync(AuthorizedAccountScope scope, CancellationToken cancellationToken)
     {
         var context = new ClassifiedsDbContext(new DbContextOptionsBuilder<ClassifiedsDbContext>().UseNpgsql(scope.Connection).Options);

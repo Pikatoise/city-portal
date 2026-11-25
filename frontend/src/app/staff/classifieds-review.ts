@@ -6,6 +6,7 @@ import { errorMessage } from '../account/account-api';
 import { ApiWrite } from '../api-write';
 import { Api } from '../api/api';
 import {
+  approveListingReview,
   getListingReview,
   listListingReviews,
   openListingReviewPhoto,
@@ -61,6 +62,16 @@ export class ClassifiedsReview implements OnInit {
     return this.api.rootUrl + path + '?version=' + version;
   }
 
+  protected async approve(): Promise<void> {
+    const preview = this.preview();
+    if (!preview) return;
+    await this.run(async () => {
+      const { id, version } = preview.submission;
+      await this.write.invoke(approveListingReview, { id, body: { version } });
+      await this.complete(id, 'Объявление опубликовано.');
+    });
+  }
+
   protected async decide(reject: boolean): Promise<void> {
     const preview = this.preview();
     const reason = this.reason.trim();
@@ -70,11 +81,18 @@ export class ClassifiedsReview implements OnInit {
       const { id, version } = preview.submission;
       const operation = reject ? rejectListingReview : returnListingReview;
       await this.write.invoke(operation, { id, body: { version, reason } });
-      this.close();
-      this.items.update((items) => items.filter((item) => item.id !== id));
-      this.notice.set(reject ? 'Объявление отклонено.' : 'Объявление возвращено на доработку.');
-      await this.readPage(1);
+      await this.complete(
+        id,
+        reject ? 'Объявление отклонено.' : 'Объявление возвращено на доработку.',
+      );
     });
+  }
+
+  private async complete(id: string, notice: string): Promise<void> {
+    this.close();
+    this.items.update((items) => items.filter((item) => item.id !== id));
+    this.notice.set(notice);
+    await this.readPage(1);
   }
 
   private async readPage(page: number): Promise<void> {
@@ -94,6 +112,10 @@ export class ClassifiedsReview implements OnInit {
       await operation();
     } catch (error) {
       const status = error instanceof HttpErrorResponse ? error.status : 0;
+      if (error instanceof HttpErrorResponse && error.error?.code === 'content_owner_blocked') {
+        this.error.set('Публикация недоступна, пока аккаунт владельца заблокирован.');
+        return;
+      }
       if (status === 401 || status === 403) {
         this.close();
         this.items.set([]);

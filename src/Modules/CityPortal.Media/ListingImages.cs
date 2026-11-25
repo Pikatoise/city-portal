@@ -35,6 +35,11 @@ public sealed class ListingImages
                             select image.Id).AnyAsync(cancellationToken);
         if (!ready)
             throw MediaDatabase.Missing();
+        return await OpenStoredAsync(imageId, cancellationToken);
+    }
+
+    private async Task<Stream> OpenStoredAsync(Guid imageId, CancellationToken cancellationToken)
+    {
         try
         {
             return await _storage().OpenAsync(imageId, "1280", cancellationToken);
@@ -43,6 +48,39 @@ public sealed class ListingImages
         {
             throw MediaDatabase.Missing();
         }
+    }
+
+    public Task<PublishedListingPhoto[]> ReadPublishedAsync(Guid revisionId, CancellationToken cancellationToken) =>
+        _context.PublishedListingImages.AsNoTracking().Where(reference => reference.RevisionId == revisionId)
+            .OrderBy(reference => reference.Position).Select(reference => new PublishedListingPhoto(reference.ImageId, reference.AlternativeText))
+            .ToArrayAsync(cancellationToken);
+
+    public async Task CopyForPublicationAsync(AuthorizedAccountScope scope, Guid draftId, Guid revisionId, CancellationToken cancellationToken)
+    {
+        await using MediaDbContext context = await MediaDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        ListingImageReference[] references = await context.ListingImages.AsNoTracking().Where(reference => reference.DraftId == draftId)
+            .OrderBy(reference => reference.ImageId).ToArrayAsync(cancellationToken);
+        foreach (ListingImageReference reference in references)
+        {
+            MediaImage image = await MediaDatabase.LockImageAsync(context, reference.ImageId, cancellationToken);
+            if (image.State != "Ready")
+                throw new AccountOperationException(409, "listing_photo_unavailable", "A submitted photo is unavailable.");
+            context.PublishedListingImages.Add(new PublishedListingImageReference
+            {
+                RevisionId = revisionId,
+                ImageId = reference.ImageId,
+                AlternativeText = reference.AlternativeText,
+                Position = reference.Position
+            });
+        }
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<Stream> OpenPublishedAsync(Guid revisionId, Guid imageId, CancellationToken cancellationToken)
+    {
+        if (!await _context.PublishedListingImages.AnyAsync(reference => reference.RevisionId == revisionId && reference.ImageId == imageId, cancellationToken))
+            throw MediaDatabase.Missing();
+        return await OpenStoredAsync(imageId, cancellationToken);
     }
 
     public async Task<ListingPhotoResponse[]> ReplaceAsync(AuthorizedAccountScope scope, Guid draftId, ListingPhotoInput[] photos, CancellationToken cancellationToken)
@@ -68,8 +106,11 @@ public sealed class ListingImages
             {
                 if (reference is not null)
                     context.ListingImages.Remove(reference);
-                image.State = "Deleting";
-                image.Version++;
+                if (!await context.PublishedListingImages.AnyAsync(item => item.ImageId == id, cancellationToken))
+                {
+                    image.State = "Deleting";
+                    image.Version++;
+                }
                 continue;
             }
 

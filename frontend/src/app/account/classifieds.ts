@@ -56,7 +56,13 @@ export class Classifieds implements OnInit {
   protected readonly current = signal<ListingDraftResponse | null>(null);
   protected readonly inReview = computed(() => this.current()?.state === 'InReview');
   protected readonly rejected = computed(() => this.current()?.state === 'Rejected');
-  protected readonly readOnly = computed(() => this.inReview() || this.rejected());
+  protected readonly published = computed(() =>
+    ['Published', 'Hidden', 'Blocked'].includes(this.current()?.state ?? ''),
+  );
+  protected readonly accountBlocked = signal(false);
+  protected readonly readOnly = computed(
+    () => this.accountBlocked() || this.inReview() || this.rejected() || this.published(),
+  );
   protected readonly photos = signal<ListingPhotoResponse[]>([]);
   protected readonly photoIndex = signal(0);
   protected readonly photo = computed(() => this.photos()[this.photoIndex()]);
@@ -88,6 +94,7 @@ export class Classifieds implements OnInit {
   protected async load(): Promise<void> {
     await this.run(async () => {
       const profile = await this.account.profile();
+      this.accountBlocked.set(!!profile.blockReason);
       if (!profile.emailConfirmed) {
         this.denied.set(403);
         return;
@@ -114,7 +121,7 @@ export class Classifieds implements OnInit {
   }
 
   protected newDraft(): void {
-    if (this.canLeave()) this.edit(null);
+    if (!this.accountBlocked() && this.canLeave()) this.edit(null);
   }
 
   protected async upload(event: Event): Promise<void> {
@@ -227,7 +234,13 @@ export class Classifieds implements OnInit {
 
   protected async removeDraft(): Promise<void> {
     const draft = this.current();
-    if (!draft || this.inReview() || !window.confirm('Удалить объявление и его фотографии?'))
+    if (
+      !draft ||
+      this.inReview() ||
+      this.published() ||
+      this.accountBlocked() ||
+      !window.confirm('Удалить объявление и его фотографии?')
+    )
       return;
     await this.run(async () => {
       await this.write.invoke(deleteListingDraft, { id: draft.id, version: draft.version });
@@ -239,7 +252,8 @@ export class Classifieds implements OnInit {
 
   protected async toggleReview(): Promise<void> {
     const draft = this.current();
-    if (!draft || this.dirty || this.rejected()) return;
+    if (!draft || this.dirty || this.rejected() || this.published() || this.accountBlocked())
+      return;
     await this.run(async () => {
       const recalling = this.inReview();
       const operation = recalling ? recallListingDraft : submitListingDraft;

@@ -22,7 +22,12 @@
           <p class="muted">Авторская</p>
           <h1 id="author-title">Мои статьи</h1>
         </div>
-        <button type="button" class="primary-button" (click)="create()" [disabled]="busy()">
+        <button
+          type="button"
+          class="primary-button"
+          (click)="create()"
+          [disabled]="busy() || !!profile()?.blockReason"
+        >
           Новая статья
         </button>
       </div>

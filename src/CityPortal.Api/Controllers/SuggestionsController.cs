@@ -67,7 +67,7 @@ public sealed class SuggestionsController : ControllerBase
     public async Task<ActionResult<SuggestionResponse>> CreateAsync(SuggestionInput input,
         [FromHeader(Name = "X-CSRF-TOKEN")] string csrf, CancellationToken cancellationToken)
     {
-        SuggestionResponse item = await _suggestions.CreateAsync(ResidentId(requireConfirmation: true), input, cancellationToken);
+        SuggestionResponse item = await _suggestions.CreateAsync(ResidentId(requireConfirmation: true), SessionId, input, cancellationToken);
         return CreatedAtRoute("getMySuggestion", new { id = item.Id }, item);
     }
 
@@ -80,7 +80,9 @@ public sealed class SuggestionsController : ControllerBase
     [ProducesResponseType(409)]
     public Task<SuggestionResponse> UpdateAsync(Guid id, UpdateSuggestionRequest request,
         [FromHeader(Name = "X-CSRF-TOKEN")] string csrf, CancellationToken cancellationToken) =>
-        _suggestions.UpdateAsync(ResidentId(requireConfirmation: true), id, request, cancellationToken);
+        _suggestions.UpdateAsync(ResidentId(requireConfirmation: true), SessionId, id, request, cancellationToken);
+
+    private Guid SessionId => Guid.Parse(User.FindFirstValue("session")!);
 
     private Guid ResidentId(bool requireConfirmation = false)
     {

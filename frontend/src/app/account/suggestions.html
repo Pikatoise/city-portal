@@ -14,11 +14,16 @@
     @if (!selected()) {
       <p>Если по предложению выйдет статья, рядом с автором укажем ваше имя из профиля.</p>
     }
+    @if (accountBlocked()) {
+      <p>Предложения доступны только для чтения. <a routerLink="/account">Причина блокировки</a></p>
+    }
     @if (!confirmed()) {
       <p>Чтобы отправить предложение, подтвердите Email в личном кабинете.</p>
     }
     <form (ngSubmit)="save()" #form="ngForm">
-      <fieldset [disabled]="busy() || !confirmed() || selected()?.canEdit === false">
+      <fieldset
+        [disabled]="busy() || !confirmed() || accountBlocked() || selected()?.canEdit === false"
+      >
         <div class="field">
           <label for="suggestion-title">Заголовок</label>
           <input id="suggestion-title" name="title" [(ngModel)]="title" required maxlength="200" />

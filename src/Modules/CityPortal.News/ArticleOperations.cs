@@ -30,7 +30,7 @@ public sealed class ArticleOperations
 
     public async Task<NewsPage<ArticleSummaryResponse>> ListAsync(Guid actorId, Guid sessionId, int page, int pageSize, string? search, CancellationToken cancellationToken)
     {
-        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken);
+        await _authorization.RequireAsync(actorId, sessionId, ["Author"], cancellationToken, allowBlockedOwnerRead: true);
         NewsDatabase.Page(page, pageSize);
         string queryText = ArticleDocuments.Text(search, 200, "search");
         var query = from article in _context.Articles.AsNoTracking()
@@ -45,7 +45,7 @@ public sealed class ArticleOperations
 
     public async Task<ArticleResponse> GetAsync(Guid actorId, Guid sessionId, Guid id, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Administrator"], cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, ["Author", "Editor", "Administrator"], cancellationToken, allowBlockedOwnerRead: true);
         NewsArticle? article = await _context.Articles.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id && item.AuthorId == actorId && item.DeletedAtUtc == null, cancellationToken);
         if (article is null || !actor.Roles.Contains("Author"))
             return (await _reviews.GetAsync(actorId, sessionId, id, cancellationToken)).Article;

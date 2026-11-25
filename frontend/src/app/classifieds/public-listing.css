@@ -1,0 +1,40 @@
+.listing-detail {
+  margin: 0 8vw;
+  padding-block: 32px 48px;
+  overflow-wrap: anywhere;
+}
+
+.publication-photos img {
+  display: block;
+  max-width: 100%;
+  max-height: min(60vh, 720px);
+  border-radius: 6px;
+}
+
+.photo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.description {
+  max-width: 72ch;
+  white-space: pre-wrap;
+}
+
+dt {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+dd {
+  margin-inline-start: 0;
+}
+
+@media (max-width: 600px) {
+  .listing-detail {
+    margin-inline: 5vw;
+  }
+}

@@ -76,6 +76,20 @@ public sealed class ClassifiedsReviewController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/approve", Name = "approveListingReview")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4096)]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> ApproveAsync(Guid id, ListingDraftVersionRequest request,
+        [FromServices] ListingPublications publications, [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken)
+    {
+        await publications.PublishAsync(ActorId, SessionId, id, request.Version, cancellationToken);
+        return NoContent();
+    }
+
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private Guid SessionId => Guid.Parse(User.FindFirstValue("session")!);

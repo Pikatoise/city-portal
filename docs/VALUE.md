@@ -51,9 +51,10 @@ Detailed account constraints, link and session lifetimes, abuse limits, administ
 
 ### Account Blocking
 
-- Moderators can block and unblock only ordinary users; administrators can block and unblock any user, including staff.
+- Moderators can block and unblock accounts whose only role is Regular User. Administrators can block and unblock staff accounts. Staff cannot block themselves or the last active administrator.
 - Blocks require a reason and remain until manually removed. History records the reason and responsible staff member.
-- Successful blocking prevents subsequent account actions and immediately hides all its advertisements, including direct pages and cached results. A committed block prevents publication or renewal of that account's listings, including publication by staff. If blocking and hiding cannot both complete, roll back both changes and report the failure to staff. Published articles remain available unless separately withdrawn by an editor.
+- Blocking limits an account to reading its existing content. It prevents content creation, editing, deletion, submission, publication, renewal, and staff actions. The owner keeps access to the account and can sign in or view the block reason in their profile. Existing sessions remain valid.
+- Successful blocking immediately hides all the account's advertisements, including direct pages and cached results. A committed block prevents publication or renewal of that account's listings, including publication by staff. If blocking and hiding cannot both complete, roll back both changes and report the failure to staff. Published articles remain available unless separately withdrawn by an editor.
 - After unblocking, advertisements remain hidden until the owner manually relists or renews each one. Direct advertisement blocks still require the correction and approval process described below.
 
 ## Public Website
@@ -173,13 +174,13 @@ Photos are optional. Each photo requires alternative text and must be a JPEG, PN
 
 The initial flat category list covers electronics and belongings, real estate, vehicles, services, jobs, animals and lost pets, and miscellaneous listings. Administrators configure categories and their attributes. Archived categories remain on existing advertisements and drafts and cannot be assigned to other advertisements. The first version uses the common listing fields. Visitors search and filter by category, price, location, and relevant attributes.
 
-Seller contacts are limited to phone and/or Email. There is no advertisement messaging, live chat, or Telegram contact option.
+Seller contacts are limited to phone and/or Email. The public listing displays the approved phone number when present. Visitors open available advertisements at `/classifieds/{id}`. Unavailable advertisements return the standard 404 page. There is no advertisement messaging, live chat, or Telegram contact option.
 
 Advertisements require approval before publication. Moderators and administrators can review other users' advertisements. Approval publishes the listing immediately. Return for corrections and rejection require a reason. Owners recall a pending submission before editing it. After a return, the owner can correct and resubmit the listing or delete it. Final rejection closes the listing to editing and resubmission. The owner can still read or delete it and can create a separate draft. Changes to a published advertisement await moderation while its approved version remains public.
 
 Publication lasts seven days. Owners may renew active or expired listings for seven days from renewal. Unchanged content needs no new review. Expired listings leave the public catalog but remain in the owner's account.
 
-Moderators can block advertisements with a mandatory reason, including after publication. Blocked advertisements cannot be relisted or renewed. Owners may correct and resubmit them; they remain hidden until approved.
+Moderators and administrators can block another user's advertisements with a mandatory reason of up to 500 characters, including after publication. Blocked advertisements cannot be relisted or renewed. Owners may correct and resubmit them; they remain hidden until approved.
 
 ### Advertisement Reports
 

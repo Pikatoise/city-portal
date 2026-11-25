@@ -22,6 +22,8 @@ public sealed class AccountResponse
     [JsonRequired]
     public long Version { get; init; }
 
+    public string? BlockReason { get; init; }
+
     [JsonRequired]
     public ConfirmationDeliveryResponse ConfirmationDelivery { get; init; } = new();
 }

@@ -127,12 +127,16 @@ public sealed class ReviewOperations : IAccountRoleChangeObserver
 
     public async Task<NewsPage<ArticleHistoryResponse>> HistoryAsync(Guid actorId, Guid sessionId, Guid id, int page, int pageSize, CancellationToken cancellationToken)
     {
-        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken);
+        AccountResponse actor = await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken, allowBlockedOwnerRead: true);
         NewsDatabase.Page(page, pageSize);
         NewsArticle article = await _context.Articles.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw NewsDatabase.Missing();
         bool owner = actor.Roles.Contains("Author") && article.AuthorId == actorId && !article.DeletedAtUtc.HasValue;
         if (!owner)
+        {
+            if (actor.BlockReason is not null)
+                throw NewsDatabase.Missing();
             RequireHistory(actor, article);
+        }
         var query = from entry in _context.History.AsNoTracking()
                     join revision in _context.Revisions.AsNoTracking() on entry.RevisionId equals revision.Id
                     where entry.ArticleId == id && (owner || revision.SubmittedAtUtc != null || article.DeletedAtUtc != null)

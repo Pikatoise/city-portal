@@ -29,6 +29,7 @@ export class Suggestions implements OnInit {
   protected readonly images = signal<ImageResponse[]>([]);
   protected readonly selected = signal<SuggestionResponse | null>(null);
   protected readonly confirmed = signal(false);
+  protected readonly accountBlocked = signal(false);
   protected readonly signedOut = signal(false);
   protected readonly busy = signal(false);
   protected readonly loaded = signal(false);
@@ -55,6 +56,7 @@ export class Suggestions implements OnInit {
     await this.run(async () => {
       const profile = await this.account.profile();
       this.confirmed.set(profile.emailConfirmed);
+      this.accountBlocked.set(!!profile.blockReason);
       await this.readPage(page);
     });
   }

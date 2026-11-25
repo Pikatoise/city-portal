@@ -54,6 +54,12 @@ changes apply to subsequent requests. Define in-flight behavior for each
 transaction. See [VALUE.md](VALUE.md#users-and-accounts) for role rules and
 the relevant stage for its permissions matrix.
 
+An account block restricts content operations. Authentication, existing
+sessions, and profile access remain available. Identity includes the current
+block reason in the owner's profile and checks the committed block state when
+authorizing content writes and staff operations. Owners can read their existing
+content during a block.
+
 The API issues and validates a separate CSRF token for every HTTP write,
 including anonymous writes. Angular's browser-only `ApiWrite` uses the
 generated `GET /api/auth/csrf` operation and the configured same-origin API
