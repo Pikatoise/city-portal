@@ -40,6 +40,10 @@ internal sealed class ClassifiedsDbContext : DbContext
             publication.HasIndex(item => item.OwnerId);
             publication.Property(item => item.Title).HasMaxLength(200);
             publication.Property(item => item.Description).HasMaxLength(10000);
+            publication.Property(item => item.SearchVector).HasComputedColumnSql(
+                """setweight(to_tsvector('russian', "Title"), 'A') || setweight(to_tsvector('russian', "Description"), 'B')""", stored: true);
+            publication.HasIndex(item => item.SearchVector).HasMethod("GIN");
+            publication.HasIndex(item => new { item.PublishedAtUtc, item.ListingId }).IsDescending(true, false);
             publication.Property(item => item.Phone).HasMaxLength(50);
             publication.Property(item => item.Email).HasMaxLength(254);
             publication.HasOne<ListingDraft>().WithOne().HasForeignKey<ListingPublication>(item => item.ListingId).OnDelete(DeleteBehavior.Restrict);

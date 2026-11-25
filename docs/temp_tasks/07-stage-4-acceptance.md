@@ -3,7 +3,7 @@
 ## Dependencies
 
 [Published revisions and listing lifecycle](../stages/STAGE_4.md#published-revisions-and-listing-lifecycle),
-[04 Public catalog, search, and homepage](04-stage-4-public-discovery.md), and
+[Public catalog and homepage entry point](../stages/STAGE_4.md#public-catalog-and-homepage-entry-point), and
 [06 Decision history and workflow notifications](06-stage-4-notifications-and-history.md),
 including their prerequisites.
 

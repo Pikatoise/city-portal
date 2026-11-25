@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 
 #nullable disable
 
@@ -205,6 +206,12 @@ namespace CityPortal.Classifieds.Migrations
                     b.Property<Guid>("RevisionId")
                         .HasColumnType("uuid");
 
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("setweight(to_tsvector('russian', \"Title\"), 'A') || setweight(to_tsvector('russian', \"Description\"), 'B')", true);
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -216,6 +223,13 @@ namespace CityPortal.Classifieds.Migrations
                     b.HasKey("ListingId");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
+
+                    b.HasIndex("PublishedAtUtc", "ListingId")
+                        .IsDescending(true, false);
 
                     b.ToTable("Publications", "classifieds");
                 });

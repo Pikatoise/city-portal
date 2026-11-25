@@ -4931,6 +4931,124 @@
         }
       }
     },
+    "/api/classifieds": {
+      "get": {
+        "tags": [
+          "PublicClassifieds"
+        ],
+        "operationId": "listPublicListings",
+        "parameters": [
+          {
+            "name": "Query",
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "CategoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "DistrictId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "MinPrice",
+            "in": "query",
+            "schema": {
+              "maximum": 999999999999,
+              "minimum": 0,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "MaxPrice",
+            "in": "query",
+            "schema": {
+              "maximum": 999999999999,
+              "minimum": 0,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "maximum": 100000,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedsPageOfPublicListingSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/classifieds/filters": {
+      "get": {
+        "tags": [
+          "PublicClassifieds"
+        ],
+        "operationId": "getPublicListingFilters",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicListingFilters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/classifieds/{id}": {
       "get": {
         "tags": [
@@ -6463,6 +6581,25 @@
         },
         "description": "A page of up to 20 records and an indication that more records exist."
       },
+      "ClassifiedsPageOfPublicListingSummary": {
+        "required": [
+          "items",
+          "hasNextPage"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicListingSummary"
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        },
+        "description": "A page of up to 20 records and an indication that more records exist."
+      },
       "ConfirmationDeliveryResponse": {
         "required": [
           "state",
@@ -7938,6 +8075,43 @@
         },
         "description": "Bounded, current-publication-only homepage blocks."
       },
+      "PublicListingFilterOption": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicListingFilters": {
+        "required": [
+          "categories",
+          "districts"
+        ],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicListingFilterOption"
+            }
+          },
+          "districts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicListingFilterOption"
+            }
+          }
+        }
+      },
       "PublicListingResponse": {
         "required": [
           "id",
@@ -8000,6 +8174,40 @@
           }
         },
         "description": "Approved listing fields exposed to anonymous visitors."
+      },
+      "PublicListingSummary": {
+        "required": [
+          "id",
+          "title",
+          "category",
+          "district",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
       },
       "PublicTaxonomyResponse": {
         "required": [

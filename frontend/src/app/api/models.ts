@@ -23,6 +23,7 @@ export type { ClassifiedsPageOfCatalogEntryResponse } from './models/classifieds
 export type { ClassifiedsPageOfListingDraftResponse } from './models/classifieds-page-of-listing-draft-response';
 export type { ClassifiedsPageOfListingModerationItem } from './models/classifieds-page-of-listing-moderation-item';
 export type { ClassifiedsPageOfListingReviewQueueItem } from './models/classifieds-page-of-listing-review-queue-item';
+export type { ClassifiedsPageOfPublicListingSummary } from './models/classifieds-page-of-public-listing-summary';
 export type { ConfirmationDeliveryResponse } from './models/confirmation-delivery-response';
 export type { ConfirmEmailRequest } from './models/confirm-email-request';
 export type { ConfirmEmailResponse } from './models/confirm-email-response';
@@ -69,7 +70,10 @@ export type { PublicArticleResponse } from './models/public-article-response';
 export type { PublicArticleSummaryResponse } from './models/public-article-summary-response';
 export type { PublicCategoryBlock } from './models/public-category-block';
 export type { PublicHomepageResponse } from './models/public-homepage-response';
+export type { PublicListingFilterOption } from './models/public-listing-filter-option';
+export type { PublicListingFilters } from './models/public-listing-filters';
 export type { PublicListingResponse } from './models/public-listing-response';
+export type { PublicListingSummary } from './models/public-listing-summary';
 export type { PublicTaxonomyResponse } from './models/public-taxonomy-response';
 export type { PublishedListingPhoto } from './models/published-listing-photo';
 export type { RegisterRequest } from './models/register-request';

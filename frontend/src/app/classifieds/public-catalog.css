@@ -1,0 +1,113 @@
+:host {
+  display: block;
+  margin-inline: calc(-1 * var(--gutter-page));
+}
+
+.catalog {
+  padding: 32px var(--gutter-news, 8vw) 80px;
+}
+
+.catalog-heading,
+.filter-actions,
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.catalog-heading {
+  justify-content: space-between;
+}
+
+.catalog-heading h1,
+.listings h2,
+.listings p {
+  margin: 0;
+}
+
+.create-listing,
+.filter-actions button[type='submit'] {
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-control);
+  background: var(--color-action);
+  color: var(--color-surface);
+  text-decoration: none;
+  padding: 8px 14px;
+}
+
+.create-listing:hover,
+.filter-actions button[type='submit']:hover {
+  background: var(--color-action-hover);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+  margin: 24px 0 32px;
+}
+
+.filters > label,
+.filter-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  min-width: 0;
+}
+
+.listings {
+  border-top: 2px solid var(--color-ink);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.listings li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-divider);
+  overflow-wrap: anywhere;
+}
+
+.listings h2 {
+  font-size: 20px;
+}
+
+.listing-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding-top: 4px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+}
+
+.pagination {
+  margin-top: 24px;
+}
+
+@media (max-width: 720px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters .query,
+  .filter-actions {
+    grid-column: 1 / -1;
+  }
+}

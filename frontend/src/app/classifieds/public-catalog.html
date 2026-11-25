@@ -1,0 +1,107 @@
+<section class="catalog" aria-labelledby="catalog-title">
+  <header class="catalog-heading">
+    <h1 id="catalog-title">Объявления</h1>
+    <a class="create-listing" routerLink="/account/classifieds">Подать объявление</a>
+  </header>
+
+  <form class="filters" role="search" aria-label="Поиск объявлений" (ngSubmit)="search()">
+    <label class="query">
+      Поиск
+      <input type="search" name="query" [(ngModel)]="query" maxlength="200" />
+    </label>
+    <div class="filter-field">
+      <label for="catalog-category">Категория</label>
+      <select id="catalog-category" name="category" [(ngModel)]="categoryId">
+        <option value="">Все категории</option>
+        @for (option of filters().categories; track option.id) {
+          <option [value]="option.id">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="filter-field">
+      <label for="catalog-district">Район</label>
+      <select id="catalog-district" name="district" [(ngModel)]="districtId">
+        <option value="">Все районы</option>
+        @for (option of filters().districts; track option.id) {
+          <option [value]="option.id">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+    <label>
+      Цена от
+      <input
+        type="number"
+        name="minPrice"
+        [(ngModel)]="minPrice"
+        min="0"
+        max="999999999999"
+        step="1"
+      />
+    </label>
+    <label>
+      Цена до
+      <input
+        type="number"
+        name="maxPrice"
+        [(ngModel)]="maxPrice"
+        min="0"
+        max="999999999999"
+        step="1"
+      />
+    </label>
+    <div class="filter-actions">
+      <button type="submit">Найти</button>
+      <button type="button" (click)="reset()">Сбросить</button>
+    </div>
+  </form>
+
+  @if (loading()) {
+    <p role="status">Загружаем объявления…</p>
+  } @else if (error()) {
+    <p role="alert">{{ error() }}</p>
+    <button type="button" (click)="retry()">Повторить</button>
+  } @else if (result(); as listings) {
+    @if (listings.items.length) {
+      <ul class="listings" aria-label="Объявления">
+        @for (listing of listings.items; track listing.id) {
+          <li>
+            <div>
+              <h2>
+                <a [routerLink]="['/classifieds', listing.id]">{{ listing.title }}</a>
+              </h2>
+              <p class="listing-meta">
+                <span>{{ listing.category }}</span><span>{{ listing.district }}</span>
+              </p>
+            </div>
+            @if (listing.price != null) {
+              <p class="price">{{ priceLabel(listing.price) }}</p>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p>Объявления не найдены. Измени запрос или сбрось фильтры.</p>
+    }
+    @if (page() > 1 || listings.hasNextPage) {
+      <nav class="pagination" aria-label="Страницы объявлений">
+        @if (page() > 1) {
+          <a
+            routerLink="/classifieds"
+            [queryParams]="{ page: page() > 2 ? page() - 1 : null }"
+            queryParamsHandling="merge"
+            >Назад</a
+          >
+        }
+        <span aria-current="page">Страница {{ page() }}</span>
+        @if (listings.hasNextPage) {
+          <a
+            routerLink="/classifieds"
+            [queryParams]="{ page: page() + 1 }"
+            queryParamsHandling="merge"
+            >Далее</a
+          >
+        }
+      </nav>
+    }
+  }
+</section>

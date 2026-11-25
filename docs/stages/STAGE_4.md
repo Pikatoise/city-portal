@@ -8,7 +8,8 @@ submission and recall. The category and district administration screen and
 API are implemented. Staff can review, return, reject, and approve pending
 submissions. Approved listings have public detail pages. Staff can block an
 individual listing or an account. Published edits, comparison review,
-renewal, withdrawal and relisting are implemented. The public catalog is next.
+renewal, withdrawal and relisting are implemented. The public catalog and
+its homepage entry point are implemented.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -21,8 +22,8 @@ Residents can manage advertisements in their accounts. Visitors can browse
 and report public listings. Staff can review listings and reports, block
 listings, and restrict accounts within their permissions.
 
-Deliver configurable categories and attributes, listing images, the public
-catalog and detail pages, recent listings on the homepage, owner and staff
+Deliver configurable categories, listing images, the public
+catalog and detail pages, a homepage link to the catalog, owner and staff
 workspaces, decision history, and notifications. Listing contacts are phone
 and/or Email.
 
@@ -30,7 +31,7 @@ and/or Email.
 
 | Actor | Agreed behavior |
 | --- | --- |
-| Visitor | Browse available listings, search and filter by category, price, location and relevant attributes, and submit a report without logging in. |
+| Visitor | Browse available listings, search and filter by category, price and district, and submit a report without logging in. |
 | Owner | With confirmed Email, create and save drafts, submit, edit, withdraw, delete and renew own listings subject to their current state. See listing status and review feedback in the account. |
 | Moderator | Review other users' submitted versions and reports, block their listings with a reason, and block or unblock accounts whose only role is Regular User. Corrections belong to the listing owner. |
 | Administrator | Review other users' submitted versions, block their listings with a reason, configure the catalog, and block or unblock accounts, including staff. Self-blocking and blocking the last active administrator are unavailable. |
@@ -242,6 +243,26 @@ cannot write. The first publication's photos are retained for comparison until
 the listing is deleted. Media releases intermediate photos once they have no
 remaining references.
 
+### Public catalog and homepage entry point
+
+The anonymous SSR page at `/classifieds` shows 20 current public listings
+per page. Listings sort by first publication, newest first, then by ID.
+Search uses PostgreSQL Russian full-text search over titles and descriptions,
+weighting the title higher. Search ranks descend, with the default sort as
+the tie-breaker. Edits and renewals preserve the first-publication order.
+Category, district and inclusive price bounds combine with each other and
+search. Listings without a price match only when neither price bound is set.
+Category-specific attributes are deferred.
+
+| Routes | Contract |
+| --- | --- |
+| GET `/api/classifieds` | Anonymous page with `query`, `categoryId`, `districtId`, `minPrice`, `maxPrice` and `page`. Results include listing ID, title, category, district and price. |
+| GET `/api/classifieds/filters` | Anonymous filter options. Include active entries and archived entries used by currently visible listings. |
+
+The homepage provides one classifieds navigation button. The catalog links
+to public details and the existing owner creation workflow. Catalog and
+detail responses are served without storage in shared caches.
+
 ## Tools and technical contracts
 
 - Classifieds owns listing revisions, taxonomy, visibility, expiry and listing
@@ -255,7 +276,7 @@ remaining references.
   before generating the Angular client.
 - Use Angular SSR for catalog and detail pages and browser rendering for the
   account and staff workspaces. Apply the same visibility predicate to the
-  catalog, homepage, direct pages, public images and any cached results. Compare
+  catalog, direct pages, public images and any cached results. Compare
   expiry at read time independently of scheduled work. Store timestamps in UTC.
 - Reuse Media's private upload, processing and object storage pipeline. Public
   variant access follows the current public listing revision. Coordinate image
@@ -275,7 +296,7 @@ remaining references.
    catalog. Deliver private drafts and image uploads.
 2. Agree moderation permissions and deliver submission, review, published
    revisions, expiry and renewal. Add
-   the public catalog, detail pages and homepage listings once public
+   the public catalog, detail pages and homepage link once public
    visibility and account-blocking behavior work together.
 3. Deliver reports, decision history and notifications. Verify the combined
    owner and staff workflows.
@@ -291,7 +312,7 @@ remaining references.
 - The owner selects a configured district and an active category. Archiving a
   category preserves existing associations and prevents new ones.
 - First approval and subsequent valid owner edits appear anonymously in the
-  catalog, homepage and detail page while the listing is visible. Search and
+  catalog and detail page while the listing is visible. Search and
   filters use the current public revision. Staff compare the first published
   revision with the latest edit and can block it or finish the review.
   Corrections to a directly blocked listing remain private until approved.
@@ -415,12 +436,24 @@ unavailable listings returned 404. The isolated stand used
 PostgreSQL, RabbitMQ, RustFS and the Worker. The browser fixture seeded Email
 confirmation for the owner.
 
+On 2026-11-25, a live HTTPS Edge check verified the catalog with 21 listings.
+It checked the homepage button, server-rendered results, pagination with the
+district retained in the URL, Russian word-form search with combined filters,
+navigation to the detail page and owner form, and removal after withdrawal.
+The catalog fit viewports of 390 and 1440 pixels. The disposable stand
+published two listings through the API and seeded the remaining rows.
+
+All 19 targeted Classifieds integration tests passed. The catalog checks
+cover first-publication ordering across pages, relevance, Russian word forms,
+inclusive price filters, exact expiry, withdrawal, both block types, and
+search updates after a live edit. The production Angular build, all 103
+Angular tests, changed-file Prettier, and both OpenAPI checks passed.
+
 ## Open decisions
 
 ### Moderation and visibility
 
 - Confirm whether administrators also handle advertisement reports.
-- Agree search order and homepage size.
 
 ### Reports and notifications
 

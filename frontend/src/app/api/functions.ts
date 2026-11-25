@@ -179,6 +179,10 @@ export type { ListPublicTaxonomy$Params as ListPublicTaxonomy$Params } from './f
 export { listPublicTaxonomy as listPublicTaxonomy } from './fn/news/list-public-taxonomy';
 export type { GetPublicArticle$Params as GetPublicArticle$Params } from './fn/news/get-public-article';
 export { getPublicArticle as getPublicArticle } from './fn/news/get-public-article';
+export type { ListPublicListings$Params as ListPublicListings$Params } from './fn/public-classifieds/list-public-listings';
+export { listPublicListings as listPublicListings } from './fn/public-classifieds/list-public-listings';
+export type { GetPublicListingFilters$Params as GetPublicListingFilters$Params } from './fn/public-classifieds/get-public-listing-filters';
+export { getPublicListingFilters as getPublicListingFilters } from './fn/public-classifieds/get-public-listing-filters';
 export type { GetPublicListing$Params as GetPublicListing$Params } from './fn/public-classifieds/get-public-listing';
 export { getPublicListing as getPublicListing } from './fn/public-classifieds/get-public-listing';
 export type { OpenPublicListingPhoto$Params as OpenPublicListingPhoto$Params } from './fn/public-classifieds/open-public-listing-photo';

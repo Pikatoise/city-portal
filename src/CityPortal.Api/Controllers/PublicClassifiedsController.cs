@@ -18,6 +18,17 @@ public sealed class PublicClassifiedsController : ControllerBase
         _publications = publications;
     }
 
+    [HttpGet(Name = "listPublicListings")]
+    [ProducesResponseType<ClassifiedsPage<PublicListingSummary>>(200)]
+    [ProducesResponseType(400)]
+    public Task<ClassifiedsPage<PublicListingSummary>> ListAsync([FromQuery(Name = "")] PublicListingsQuery request,
+        [FromServices] PublicListingSearch search, CancellationToken cancellationToken) => search.ListAsync(request, cancellationToken);
+
+    [HttpGet("filters", Name = "getPublicListingFilters")]
+    [ProducesResponseType<PublicListingFilters>(200)]
+    public Task<PublicListingFilters> FiltersAsync([FromServices] PublicListingSearch search, CancellationToken cancellationToken) =>
+        search.FiltersAsync(cancellationToken);
+
     [HttpGet("{id:guid}", Name = "getPublicListing")]
     [ProducesResponseType<PublicListingResponse>(200)]
     [ProducesResponseType(404)]

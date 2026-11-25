@@ -1,3 +1,5 @@
+using NpgsqlTypes;
+
 namespace CityPortal.Classifieds;
 
 internal sealed class ListingPublication
@@ -11,6 +13,8 @@ internal sealed class ListingPublication
     public required string Title { get; set; }
 
     public required string Description { get; set; }
+
+    public NpgsqlTsVector SearchVector { get; set; } = NpgsqlTsVector.Empty;
 
     public Guid CategoryId { get; set; }
 

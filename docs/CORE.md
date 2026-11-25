@@ -125,7 +125,9 @@ Media owns working and publication photo references. Classifieds and Media
 commit revision changes and photo references in the same transaction.
 See [Stage 4](stages/STAGE_4.md) for API contracts and delivery status.
 
-Store expiry and enforce it in public reads independently of cleanup. Account
+Store expiry and enforce it in public reads independently of cleanup. The
+public catalog searches only current publication snapshots. PostgreSQL keeps
+the generated Russian full-text search vector in sync with edits. Account
 blocking and hiding its listings commit or roll back together. Stage 4 must
 verify both commit orders for a block racing with publication or renewal,
 including staff publication. Design lock ordering around the acting account

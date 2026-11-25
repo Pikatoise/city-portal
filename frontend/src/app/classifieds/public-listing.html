@@ -1,5 +1,6 @@
 <main class="listing-detail">
   @if (listing(); as current) {
+    <a routerLink="/classifieds">Все объявления</a>
     <h1>{{ current.title }}</h1>
     @if (photo(); as selected) {
       <section aria-label="Фотографии объявления" class="publication-photos">

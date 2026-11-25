@@ -20,6 +20,7 @@ public static class ClassifiedsModule
         services.AddScoped(provider => new ListingPublications(provider.GetRequiredService<ClassifiedsDbContext>(),
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<ListingImages>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IAccountBlockObserver>(provider => provider.GetRequiredService<ListingPublications>());
+        services.AddScoped(provider => new PublicListingSearch(provider.GetRequiredService<ClassifiedsDbContext>(), provider.GetRequiredService<TimeProvider>()));
         services.AddHealthChecks().AddDbContextCheck<ClassifiedsDbContext>("classifieds-database", tags: ["ready"],
             customTestQuery: async (context, token) => await context.Database.CanConnectAsync(token)
                 && !(await context.Database.GetPendingMigrationsAsync(token)).Any());
