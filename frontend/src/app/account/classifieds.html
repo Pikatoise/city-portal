@@ -35,12 +35,26 @@
     }
     @if (current()?.reviewReason; as reason) {
       <p class="field-hint">
-        {{ rejected() ? 'Причина отклонения' : 'Возвращено на доработку' }}
+        {{
+          rejected()
+            ? 'Причина отклонения'
+            : current()?.state === 'Blocked'
+              ? 'Причина блокировки объявления'
+              : 'Возвращено на доработку'
+        }}
       </p>
       <p class="review-reason">{{ reason }}</p>
     }
     @if (current()?.state === 'Published') {
       <p><a [routerLink]="['/classifieds', current()?.id]">Открыть публичную страницу</a></p>
+      @if (current()?.expiresAtUtc; as expiry) {
+        <p>
+          Опубликовано до <time [attr.datetime]="expiry">{{ clock.format(expiry) }}</time>.
+        </p>
+      }
+      @if (!accountBlocked()) {
+        <p>Сохранённые правки сразу появятся на публичной странице.</p>
+      }
     }
     @if (!accountBlocked() || current()) {
       <form (ngSubmit)="save()" (input)="dirty = true">
@@ -96,7 +110,7 @@
                 @if (!readOnly()) {
                   <button type="button" (click)="removePhoto(photoIndex())">Убрать фото</button>
                 }
-                @if (current() && selectedPhoto.image.state === 'Processing') {
+                @if (selectedPhoto.image.state === 'Processing') {
                   <button type="button" (click)="refreshPhotos()">Обновить фото</button>
                 }
               </div>
@@ -204,23 +218,39 @@
           </div>
           <div class="listing-actions">
             @if (!readOnly()) {
-              <button type="submit">Сохранить черновик</button>
+              <button type="submit">
+                {{ current()?.canRenew ? 'Сохранить правки' : 'Сохранить черновик' }}
+              </button>
             }
             @if (current()) {
-              @if (!rejected() && !published() && !accountBlocked()) {
+              @if ((inReview() || current()?.canSubmit) && !accountBlocked()) {
                 <button type="button" (click)="toggleReview()" [disabled]="dirty">
                   {{ inReview() ? 'Отозвать с проверки' : 'Отправить на проверку' }}
                 </button>
               }
               @if (!accountBlocked()) {
+                @if (current()?.canRenew) {
+                  <button type="button" (click)="changeVisibility(false)" [disabled]="dirty">
+                    {{
+                      current()?.state === 'Published'
+                        ? 'Продлить на 7 дней'
+                        : 'Опубликовать на 7 дней'
+                    }}
+                  </button>
+                }
+                @if (current()?.canWithdraw) {
+                  <button type="button" (click)="changeVisibility(true)" [disabled]="dirty">
+                    Снять с публикации
+                  </button>
+                }
                 <button type="button" (click)="newDraft()">Новый черновик</button>
               }
-              @if (!inReview() && !published() && !accountBlocked()) {
+              @if (!inReview() && !accountBlocked()) {
                 <button type="button" (click)="removeDraft()">Удалить объявление</button>
               }
             }
           </div>
-          @if (current() && dirty && !inReview()) {
+          @if (current()?.canSubmit && dirty) {
             <p class="field-hint">Чтобы отправить объявление, сначала сохрани правки.</p>
           }
         </fieldset>
@@ -246,6 +276,12 @@
               }
               @case ('Hidden') {
                 <span>Скрыто</span>
+              }
+              @case ('Expired') {
+                <span>Срок публикации истёк</span>
+              }
+              @case ('Withdrawn') {
+                <span>Снято с публикации</span>
               }
               @case ('Blocked') {
                 <span>Заблокировано</span>

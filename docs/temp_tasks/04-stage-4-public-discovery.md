@@ -4,7 +4,7 @@
 
 [First publication and public detail](../stages/STAGE_4.md#first-publication-and-public-detail).
 Run the combined discovery and lifecycle checks after
-[03 Published revisions and listing lifecycle](03-stage-4-listing-lifecycle.md).
+[Published revisions and listing lifecycle](../stages/STAGE_4.md#published-revisions-and-listing-lifecycle).
 
 ## Outcome
 

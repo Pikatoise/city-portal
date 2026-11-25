@@ -41,9 +41,9 @@ public sealed class ClassifiedsReviewController : ControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> OpenImageAsync(Guid id, Guid imageId, [FromQuery, BindRequired, Range(1, int.MaxValue)] int version,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool original = false)
     {
-        Stream image = await _reviews.OpenImageAsync(ActorId, SessionId, id, imageId, version, cancellationToken);
+        Stream image = await _reviews.OpenImageAsync(ActorId, SessionId, id, imageId, version, original, cancellationToken);
         Response.Headers.XContentTypeOptions = "nosniff";
         return File(image, "image/webp");
     }

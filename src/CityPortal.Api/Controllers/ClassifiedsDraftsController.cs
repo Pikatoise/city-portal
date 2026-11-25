@@ -66,6 +66,12 @@ public sealed class ClassifiedsDraftsController : ControllerBase
         return Accepted(await media.UploadListingAsync(RequireOwner(), SessionId, file.FileName, file.ContentType, input, cancellationToken));
     }
 
+    [HttpGet("uploads/{imageId:guid}", Name = "getListingPhotoUpload")]
+    [ProducesResponseType<ImageResponse>(200)]
+    [ProducesResponseType(404)]
+    public Task<ImageResponse> GetUploadAsync(Guid imageId, [FromServices] ListingImages images, CancellationToken cancellationToken) =>
+        images.GetUploadAsync(RequireOwner(), imageId, cancellationToken);
+
     [HttpGet("drafts/{id:guid}/images/{imageId:guid}", Name = "openMyListingPhoto")]
     [Produces("image/webp")]
     [ProducesResponseType(typeof(byte[]), 200)]
@@ -122,6 +128,28 @@ public sealed class ClassifiedsDraftsController : ControllerBase
     public Task<ListingDraftResponse> RecallAsync(Guid id, ListingDraftVersionRequest request,
         [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
         _drafts.RecallAsync(RequireOwner(), SessionId, id, request.Version, cancellationToken);
+
+    [HttpPost("drafts/{id:guid}/renew", Name = "renewListing")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4096)]
+    [ProducesResponseType<ListingDraftResponse>(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<ListingDraftResponse> RenewAsync(Guid id, ListingDraftVersionRequest request,
+        [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
+        _drafts.ChangeVisibilityAsync(RequireOwner(), SessionId, id, request.Version, withdraw: false, cancellationToken);
+
+    [HttpPost("drafts/{id:guid}/withdraw", Name = "withdrawListing")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(4096)]
+    [ProducesResponseType<ListingDraftResponse>(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<ListingDraftResponse> WithdrawAsync(Guid id, ListingDraftVersionRequest request,
+        [FromHeader(Name = "X-CSRF-TOKEN"), Required] string csrf, CancellationToken cancellationToken) =>
+        _drafts.ChangeVisibilityAsync(RequireOwner(), SessionId, id, request.Version, withdraw: true, cancellationToken);
 
     [HttpDelete("drafts/{id:guid}", Name = "deleteListingDraft")]
     [ProducesResponseType(204)]

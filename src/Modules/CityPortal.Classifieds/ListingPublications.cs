@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CityPortal.Identity;
 using CityPortal.Media;
 using Microsoft.EntityFrameworkCore;
@@ -26,57 +27,101 @@ public sealed class ListingPublications : IAccountBlockObserver
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
         ListingDraft draft = await FindOtherDraftAsync(context, actorId, id, cancellationToken);
         ListingDraftOperations.RequireVersion(draft, version);
+        DateTimeOffset now = _time.GetUtcNow();
+        if (draft.EditReviewQueuedAtUtc.HasValue)
+        {
+            draft.EditReviewQueuedAtUtc = null;
+            context.ReviewDecisions.Add(Decision(draft, actorId, "Reviewed", now));
+            draft.Version++;
+            await context.SaveChangesAsync(cancellationToken);
+            await scope.CommitAsync(cancellationToken);
+            return;
+        }
         if (draft.SubmittedAtUtc is null)
             throw new AccountOperationException(409, "listing_not_in_review", "The review has already closed.");
         await _authorization.RequireUnblockedOwnerAsync(draft.OwnerId, cancellationToken);
 
-        DateTimeOffset now = _time.GetUtcNow();
-        var publication = new ListingPublication
+        ListingPublication? existing = await context.Publications.FindAsync([id], cancellationToken);
+        if (existing is not null)
         {
-            ListingId = id,
-            RevisionId = Guid.NewGuid(),
-            OwnerId = draft.OwnerId,
-            Title = draft.Title ?? throw InvalidSubmission(),
-            Description = draft.Description ?? throw InvalidSubmission(),
-            CategoryId = draft.CategoryId ?? throw InvalidSubmission(),
-            DistrictId = draft.DistrictId ?? throw InvalidSubmission(),
-            Price = draft.Price,
-            Phone = draft.Phone,
-            Email = draft.Email,
-            PublishedAtUtc = now,
-            ExpiresAtUtc = now.AddDays(7)
-        };
-        context.Publications.Add(publication);
-        context.ReviewDecisions.Add(new ListingReviewDecision
+            if (!existing.HiddenByListingBlock)
+                throw new AccountOperationException(409, "listing_not_in_review", "The review has already closed.");
+            await ReplaceRevisionAsync(_images, scope, existing, draft, cancellationToken);
+            existing.HiddenByListingBlock = false;
+        }
+        else
         {
-            ListingId = id,
-            SubmittedVersion = version,
-            ActorId = actorId,
-            Outcome = "Approved",
-            DecidedAtUtc = now
-        });
+            var publication = new ListingPublication
+            {
+                ListingId = id,
+                RevisionId = Guid.NewGuid(),
+                OwnerId = draft.OwnerId,
+                Title = draft.Title ?? throw InvalidSubmission(),
+                Description = draft.Description ?? throw InvalidSubmission(),
+                CategoryId = draft.CategoryId ?? throw InvalidSubmission(),
+                DistrictId = draft.DistrictId ?? throw InvalidSubmission(),
+                Price = draft.Price,
+                Phone = draft.Phone,
+                Email = draft.Email,
+                PublishedAtUtc = now,
+                ExpiresAtUtc = now.AddDays(7)
+            };
+            context.Publications.Add(publication);
+            await _images.CopyForPublicationAsync(scope, id, publication.RevisionId, cancellationToken);
+        }
+        context.ReviewDecisions.Add(Decision(draft, actorId, "Approved", now));
         draft.SubmittedAtUtc = null;
         draft.ReviewOutcome = "Published";
         draft.UpdatedAtUtc = now;
         draft.Version++;
-        await _images.CopyForPublicationAsync(scope, id, publication.RevisionId, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
     }
 
+    internal static async Task ReplaceRevisionAsync(ListingImages images, AuthorizedAccountScope scope, ListingPublication publication,
+        ListingDraft draft, CancellationToken cancellationToken)
+    {
+        Guid previousRevision = publication.RevisionId;
+        if (!publication.OriginalRevisionId.HasValue)
+        {
+            publication.OriginalRevisionId = previousRevision;
+            publication.OriginalDetails = JsonSerializer.Serialize(publication.Details());
+        }
+        publication.RevisionId = Guid.NewGuid();
+        publication.Title = draft.Title ?? throw InvalidSubmission();
+        publication.Description = draft.Description ?? throw InvalidSubmission();
+        publication.CategoryId = draft.CategoryId ?? throw InvalidSubmission();
+        publication.DistrictId = draft.DistrictId ?? throw InvalidSubmission();
+        publication.Price = draft.Price;
+        publication.Phone = draft.Phone;
+        publication.Email = draft.Email;
+        await images.CopyForPublicationAsync(scope, draft.Id, publication.RevisionId, cancellationToken);
+        if (previousRevision != publication.OriginalRevisionId)
+            await images.ReleasePublicationAsync(scope, previousRevision, cancellationToken);
+    }
+
+    private static ListingReviewDecision Decision(ListingDraft draft, Guid actorId, string outcome, DateTimeOffset now) =>
+        new() { ListingId = draft.Id, SubmittedVersion = draft.Version, ActorId = actorId, Outcome = outcome, DecidedAtUtc = now };
+
     public async Task<PublicListingResponse> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        var item = await (from publication in ClassifiedsDatabase.Visible(_context, _time.GetUtcNow())
-                          join category in _context.Catalog on publication.CategoryId equals category.Id
-                          join district in _context.Catalog on publication.DistrictId equals district.Id
-                          where publication.ListingId == id
-                          select new { Publication = publication, Category = category.Name, District = district.Name })
-            .SingleOrDefaultAsync(cancellationToken) ?? throw Missing();
-        ListingPublication current = item.Publication;
-        PublishedListingPhoto[] photos = await _images.ReadPublishedAsync(current.RevisionId, cancellationToken);
-        await RequireVisibleRevisionAsync(id, current.RevisionId, cancellationToken);
-        return new PublicListingResponse(id, current.Title, current.Description, item.Category, item.District, current.Price,
-            current.Phone, current.PublishedAtUtc, current.ExpiresAtUtc, photos);
+        while (true)
+        {
+            var item = await (from publication in ClassifiedsDatabase.Visible(_context, _time.GetUtcNow())
+                              join category in _context.Catalog on publication.CategoryId equals category.Id
+                              join district in _context.Catalog on publication.DistrictId equals district.Id
+                              where publication.ListingId == id
+                              select new { Publication = publication, Category = category.Name, District = district.Name })
+                .SingleOrDefaultAsync(cancellationToken) ?? throw Missing();
+            ListingPublication current = item.Publication;
+            PublishedListingPhoto[] photos = await _images.ReadPublishedAsync(current.RevisionId, cancellationToken);
+            // Reload a replaced revision without returning a transient 404 for a still-visible listing.
+            if (await ClassifiedsDatabase.Visible(_context, _time.GetUtcNow()).AnyAsync(
+                publication => publication.ListingId == id && publication.RevisionId == current.RevisionId
+                    && publication.ExpiresAtUtc == current.ExpiresAtUtc, cancellationToken))
+                return new PublicListingResponse(id, current.Title, current.Description, item.Category, item.District, current.Price,
+                    current.Phone, current.PublishedAtUtc, current.ExpiresAtUtc, photos);
+        }
     }
 
     public async Task<Stream> OpenImageAsync(Guid id, Guid imageId, CancellationToken cancellationToken)
@@ -134,6 +179,7 @@ public sealed class ListingPublications : IAccountBlockObserver
             Reason = reason
         });
         publication.HiddenByListingBlock = true;
+        draft.EditReviewQueuedAtUtc = null;
         draft.ReviewOutcome = "Blocked";
         draft.UpdatedAtUtc = now;
         draft.Version++;

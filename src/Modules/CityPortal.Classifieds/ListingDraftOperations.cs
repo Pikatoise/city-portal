@@ -22,19 +22,26 @@ public sealed class ListingDraftOperations
 
     public async Task<ClassifiedsPage<ListingDraftResponse>> ListAsync(Guid ownerId, int page, CancellationToken cancellationToken)
     {
-        ListingDraft[] rows = await _context.Drafts.AsNoTracking().Where(draft => draft.OwnerId == ownerId)
-            .OrderByDescending(draft => draft.UpdatedAtUtc).ThenByDescending(draft => draft.Id)
+        var rows = await (from draft in _context.Drafts.AsNoTracking()
+                          where draft.OwnerId == ownerId
+                          join publication in _context.Publications.AsNoTracking() on draft.Id equals publication.ListingId into publications
+                          from publication in publications.DefaultIfEmpty()
+                          orderby draft.UpdatedAtUtc descending, draft.Id descending
+                          select new { Draft = draft, Publication = publication })
             .Skip(ClassifiedsDatabase.Offset(page)).Take(ClassifiedsDatabase.PageSize + 1).ToArrayAsync(cancellationToken);
-        return new ClassifiedsPage<ListingDraftResponse>(rows.Take(ClassifiedsDatabase.PageSize).Select(Response).ToArray(), rows.Length > ClassifiedsDatabase.PageSize);
+        DateTimeOffset now = _time.GetUtcNow();
+        return new ClassifiedsPage<ListingDraftResponse>(rows.Take(ClassifiedsDatabase.PageSize)
+            .Select(row => OwnerResponse(row.Draft, row.Publication, now)).ToArray(), rows.Length > ClassifiedsDatabase.PageSize);
     }
 
     public async Task<ListingDraftResponse> GetAsync(Guid ownerId, Guid id, CancellationToken cancellationToken)
     {
         ListingDraft draft = await FindAsync(_context, ownerId, id, cancellationToken);
-        return Response(draft) with
+        ListingPublication? publication = await _context.Publications.FindAsync([id], cancellationToken);
+        return OwnerResponse(draft, publication, _time.GetUtcNow()) with
         {
             Photos = await _images.ReadAsync(id, cancellationToken),
-            ReviewReason = await ReadReviewReasonAsync(_context, draft, cancellationToken)
+            ReviewReason = await ReadReviewReasonAsync(_context, draft, publication, cancellationToken)
         };
     }
 
@@ -47,14 +54,18 @@ public sealed class ListingDraftOperations
 
     public async Task<ListingDraftResponse> SaveAsync(Guid ownerId, Guid sessionId, Guid? id, int version, ListingDraftInput details, CancellationToken cancellationToken)
     {
-        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
+        await using AuthorizedAccountScope scope = id.HasValue
+            ? await _authorization.BeginAsync(ownerId, sessionId, ["RegularUser"], cancellationToken)
+            : await _authorization.BeginSharedAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
         ListingDraft draft;
+        ListingPublication? publication = null;
         if (id.HasValue)
         {
             draft = await FindAsync(context, ownerId, id.Value, cancellationToken);
             RequireVersion(draft, version);
             RequireEditing(draft);
+            publication = await context.Publications.FindAsync([draft.Id], cancellationToken);
             draft.Version++;
         }
         else
@@ -75,25 +86,42 @@ public sealed class ListingDraftOperations
         draft.Price = details.Price;
         draft.Phone = Optional(details.Phone);
         draft.Email = Optional(details.Email);
-        draft.UpdatedAtUtc = _time.GetUtcNow();
-        await context.SaveChangesAsync(cancellationToken);
+        DateTimeOffset now = _time.GetUtcNow();
+        draft.UpdatedAtUtc = now;
         ListingPhotoResponse[] photos = details.Photos is null
             ? await _images.ReadAsync(draft.Id, cancellationToken)
             : await _images.ReplaceAsync(scope, draft.Id, details.Photos, cancellationToken);
-        string? reason = await ReadReviewReasonAsync(context, draft, cancellationToken);
+        if (publication is { HiddenByListingBlock: false })
+        {
+            await ValidateSubmissionAsync(context, draft, photos, cancellationToken);
+            if (await HasChangesAsync(publication, draft, photos, cancellationToken))
+            {
+                await ListingPublications.ReplaceRevisionAsync(_images, scope, publication, draft, cancellationToken);
+                draft.EditReviewQueuedAtUtc ??= now;
+            }
+        }
+        await context.SaveChangesAsync(cancellationToken);
+        string? reason = await ReadReviewReasonAsync(context, draft, publication, cancellationToken);
         await scope.CommitAsync(cancellationToken);
-        return Response(draft) with { Photos = photos, ReviewReason = reason };
+        return OwnerResponse(draft, publication, now) with { Photos = photos, ReviewReason = reason };
     }
 
     public async Task DeleteAsync(Guid ownerId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
     {
-        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
+        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
         await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
         ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
         RequireVersion(draft, version);
         RequireOutsideReview(draft);
-        RequireUnpublished(draft);
         await _images.ReplaceAsync(scope, draft.Id, [], cancellationToken);
+        ListingPublication? publication = await context.Publications.FindAsync([id], cancellationToken);
+        if (publication is not null)
+        {
+            await _images.ReleasePublicationAsync(scope, publication.RevisionId, cancellationToken);
+            if (publication.OriginalRevisionId is Guid originalRevision)
+                await _images.ReleasePublicationAsync(scope, originalRevision, cancellationToken);
+            context.Publications.Remove(publication);
+        }
         context.Drafts.Remove(draft);
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
@@ -106,8 +134,13 @@ public sealed class ListingDraftOperations
         ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
         RequireVersion(draft, version);
         RequireEditing(draft);
+        ListingPublication? publication = await context.Publications.FindAsync([id], cancellationToken);
+        if (publication is { HiddenByListingBlock: false })
+            throw new AccountOperationException(409, "listing_already_published", "Save the changes to update the published listing.");
         ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
         await ValidateSubmissionAsync(context, draft, photos, cancellationToken);
+        if (publication is not null && !await HasChangesAsync(publication, draft, photos, cancellationToken))
+            throw new AccountOperationException(409, "listing_correction_required", "Change the listing before submitting it for review.");
 
         DateTimeOffset now = _time.GetUtcNow();
         draft.SubmittedAtUtc = now;
@@ -116,7 +149,7 @@ public sealed class ListingDraftOperations
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
         await scope.CommitAsync(cancellationToken);
-        return Response(draft) with { Photos = photos };
+        return OwnerResponse(draft, publication, now) with { Photos = photos };
     }
 
     public async Task<ListingDraftResponse> RecallAsync(Guid ownerId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
@@ -132,9 +165,45 @@ public sealed class ListingDraftOperations
         draft.UpdatedAtUtc = _time.GetUtcNow();
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
+        ListingPublication? publication = await context.Publications.FindAsync([id], cancellationToken);
+        ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
+        string? reason = await ReadReviewReasonAsync(context, draft, publication, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        return OwnerResponse(draft, publication, draft.UpdatedAtUtc) with
+        {
+            Photos = photos,
+            ReviewReason = reason
+        };
+    }
+
+    public async Task<ListingDraftResponse> ChangeVisibilityAsync(Guid ownerId, Guid sessionId, Guid id, int version,
+        bool withdraw, CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope scope = await _authorization.BeginAsync(ownerId, sessionId, ["RegularUser"], cancellationToken);
+        await using ClassifiedsDbContext context = await ClassifiedsDatabase.JoinAsync(scope, cancellationToken);
+        ListingDraft draft = await FindAsync(context, ownerId, id, cancellationToken);
+        RequireVersion(draft, version);
+        ListingPublication publication = await context.Publications.FindAsync([id], cancellationToken)
+            ?? throw new AccountOperationException(409, "listing_not_published", "The listing has never been published.");
+        DateTimeOffset now = _time.GetUtcNow();
+        ListingDraftResponse current = OwnerResponse(draft, publication, now);
+        if (withdraw ? !current.CanWithdraw : !current.CanRenew)
+            throw new AccountOperationException(409, "listing_visibility_conflict", "The listing cannot be withdrawn or renewed in its current state.");
+
+        publication.WithdrawnByOwner = withdraw;
+        if (!withdraw)
+        {
+            publication.HiddenByAccountBlock = false;
+            // PostgreSQL timestamps have microsecond precision.
+            publication.ExpiresAtUtc = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMicrosecond)).AddDays(7);
+        }
+        draft.ReviewOutcome = "Published";
+        draft.UpdatedAtUtc = now;
+        draft.Version++;
+        await context.SaveChangesAsync(cancellationToken);
         ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
         await scope.CommitAsync(cancellationToken);
-        return Response(draft) with { Photos = photos };
+        return OwnerResponse(draft, publication, now) with { Photos = photos };
     }
 
     private static async Task ValidateSubmissionAsync(ClassifiedsDbContext context, ListingDraft draft, ListingPhotoResponse[] photos, CancellationToken cancellationToken)
@@ -168,6 +237,15 @@ public sealed class ListingDraftOperations
             throw new AccountOperationException(400, "listing_not_ready", "Complete the required fields before submitting.", errors);
     }
 
+    private async Task<bool> HasChangesAsync(ListingPublication publication, ListingDraft draft, ListingPhotoResponse[] photos,
+        CancellationToken cancellationToken)
+    {
+        if (Response(draft).Details != publication.Details())
+            return true;
+        PublishedListingPhoto[] currentPhotos = await _images.ReadPublishedAsync(publication.RevisionId, cancellationToken);
+        return !currentPhotos.SequenceEqual(photos.Select(photo => new PublishedListingPhoto(photo.Image.Id, photo.AlternativeText)));
+    }
+
     private static async Task<ListingDraft> FindAsync(ClassifiedsDbContext context, Guid ownerId, Guid id, CancellationToken cancellationToken) =>
         await context.Drafts.SingleOrDefaultAsync(draft => draft.Id == id && draft.OwnerId == ownerId, cancellationToken)
             ?? throw Missing();
@@ -183,15 +261,8 @@ public sealed class ListingDraftOperations
     private static void RequireEditing(ListingDraft draft)
     {
         RequireOutsideReview(draft);
-        RequireUnpublished(draft);
         if (draft.ReviewOutcome == ListingReviewOperations.Rejected)
             throw new AccountOperationException(409, "listing_rejected", "A rejected listing cannot be edited or submitted again.");
-    }
-
-    private static void RequireUnpublished(ListingDraft draft)
-    {
-        if (draft.ReviewOutcome is "Published" or "Blocked" or "Hidden")
-            throw new AccountOperationException(409, "listing_already_published", "A published listing cannot be changed through the draft workflow.");
     }
 
     private static void RequireOutsideReview(ListingDraft draft)
@@ -209,10 +280,35 @@ public sealed class ListingDraftOperations
 
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static async Task<string?> ReadReviewReasonAsync(ClassifiedsDbContext context, ListingDraft draft, CancellationToken cancellationToken) =>
-        draft.ReviewOutcome is not ("Returned" or "Rejected") ? null : await context.ReviewDecisions
-            .Where(decision => decision.ListingId == draft.Id && decision.SubmittedVersion < draft.Version)
-            .OrderByDescending(decision => decision.SubmittedVersion).Select(decision => decision.Reason).FirstOrDefaultAsync(cancellationToken);
+    private static async Task<string?> ReadReviewReasonAsync(ClassifiedsDbContext context, ListingDraft draft, ListingPublication? publication,
+        CancellationToken cancellationToken)
+    {
+        if (draft.ReviewOutcome is "Returned" or "Rejected")
+            return await context.ReviewDecisions.Where(decision => decision.ListingId == draft.Id && decision.SubmittedVersion < draft.Version)
+                .OrderByDescending(decision => decision.SubmittedVersion).Select(decision => decision.Reason).FirstOrDefaultAsync(cancellationToken);
+        if (publication is { HiddenByListingBlock: true } && !draft.SubmittedAtUtc.HasValue)
+            return await context.ListingBlockDecisions.Where(decision => decision.ListingId == draft.Id)
+                .OrderByDescending(decision => decision.Version).Select(decision => decision.Reason).FirstOrDefaultAsync(cancellationToken);
+        return null;
+    }
+
+    private static ListingDraftResponse OwnerResponse(ListingDraft draft, ListingPublication? publication, DateTimeOffset now)
+    {
+        ListingDraftResponse response = Response(draft);
+        if (publication is null)
+            return response with { CanSubmit = response.State is "Draft" or "Returned" };
+        if (publication.HiddenByListingBlock)
+            return response with
+            {
+                State = response.State == "Draft" ? "Blocked" : response.State,
+                CanSubmit = response.State is "Draft" or "Blocked" or "Returned",
+                ExpiresAtUtc = publication.ExpiresAtUtc
+            };
+
+        string state = publication.HiddenByAccountBlock ? "Hidden" : publication.WithdrawnByOwner ? "Withdrawn"
+            : publication.ExpiresAtUtc <= now ? "Expired" : "Published";
+        return response with { State = state, ExpiresAtUtc = publication.ExpiresAtUtc, CanRenew = true, CanWithdraw = state == "Published" };
+    }
 
     internal static ListingDraftResponse Response(ListingDraft draft) =>
         new(draft.Id, new ListingDraftInput

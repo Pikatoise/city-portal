@@ -144,6 +144,182 @@ public sealed class ClassifiedsPublicationTests : IClassFixture<RegistrationFixt
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync($"/api/classifieds/{submitted.Id}")).StatusCode);
     }
 
+    [Fact]
+    public async Task PublishedEdits_AppearImmediatelyAndCompareFirstPublicationWithLatestVersionAsync()
+    {
+        var clock = new AdjustableTimeProvider();
+        (ApiFactory factory, string database) = await _fixture.CreateAsync(clock);
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "Owner", confirmed: true, role: "Moderator");
+        using HttpClient admin = await CitizenSuggestionTests.LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        using HttpClient visitor = factory.CreateClient();
+        ListingDraftResponse submission = await SubmitAsync(owner, admin, "East");
+        Assert.Equal(HttpStatusCode.NoContent, (await ApproveAsync(admin, submission)).StatusCode);
+        string ownerPath = $"{_drafts}/{submission.Id}";
+        string reviewPath = $"{_review}/{submission.Id}";
+        string publicPath = $"/api/classifieds/{submission.Id}";
+        ListingDraftResponse published = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        clock.Advance(TimeSpan.FromDays(2));
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.PutAsJsonAsync(ownerPath,
+            new UpdateListingDraftRequest { Version = published.Version, Details = published.Details with { Title = "" } })).StatusCode);
+        Assert.Equal("Desk", (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!.Title);
+        ListingDraftResponse unchanged = await SaveTitleAsync(owner, published, "Desk");
+        Assert.Empty((await admin.GetFromJsonAsync<ClassifiedsPage<ListingReviewQueueItem>>(_review))!.Items);
+
+        ListingDraftResponse firstEdit = await SaveTitleAsync(owner, unchanged, "First edit");
+        Assert.Equal(published.ExpiresAtUtc, firstEdit.ExpiresAtUtc);
+        Assert.Equal("First edit", (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!.Title);
+        ListingDraftResponse latest = await SaveTitleAsync(owner, firstEdit, "Latest edit");
+        ListingReviewQueueItem pending = Assert.Single((await admin.GetFromJsonAsync<ClassifiedsPage<ListingReviewQueueItem>>(_review))!.Items);
+        Assert.Equal(submission.Id, pending.Id);
+        Assert.True(pending.PublishedEdit);
+        Assert.Equal("Latest edit", pending.Title);
+        Assert.Empty((await owner.GetFromJsonAsync<ClassifiedsPage<ListingReviewQueueItem>>(_review))!.Items);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await visitor.GetAsync(reviewPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.GetAsync(reviewPath)).StatusCode);
+        ListingReviewPreview comparison = (await admin.GetFromJsonAsync<ListingReviewPreview>(reviewPath))!;
+        Assert.Equal("Desk", comparison.Original?.Details.Title);
+        Assert.Equal("Latest edit", comparison.Submission.Details.Title);
+        Assert.Equal(latest.Version, comparison.Submission.Version);
+        Assert.Equal(HttpStatusCode.Conflict, (await ApproveAsync(admin, firstEdit)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsJsonAsync($"{_published}/{submission.Id}/block",
+            new DecideListingReviewRequest { Version = firstEdit.Version, Reason = "Stale" })).StatusCode);
+
+        ListingDraftResponse renewed = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await RenewAsync(owner, latest));
+        Assert.Equal(clock.GetUtcNow().AddDays(7).ToUnixTimeMilliseconds(), renewed.ExpiresAtUtc!.Value.ToUnixTimeMilliseconds());
+        Assert.Equal(HttpStatusCode.NoContent, (await ApproveAsync(admin, renewed)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(reviewPath)).StatusCode);
+        Assert.Equal(renewed.ExpiresAtUtc, (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!.ExpiresAtUtc);
+        ListingDraftResponse reviewed = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        ListingDraftResponse editedAgain = await SaveTitleAsync(owner, reviewed, "Another edit");
+        Assert.Equal("Desk", (await admin.GetFromJsonAsync<ListingReviewPreview>(reviewPath))!.Original?.Details.Title);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"{_published}/{submission.Id}/block",
+            new DecideListingReviewRequest { Version = editedAgain.Version, Reason = "Needs correction" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(reviewPath)).StatusCode);
+        ListingDraftResponse blocked = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        Assert.Equal("Needs correction", blocked.ReviewReason);
+        Assert.Equal(HttpStatusCode.Conflict, (await RenewAsync(owner, blocked)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await owner.PostAsJsonAsync($"{ownerPath}/submit",
+            new ListingDraftVersionRequest { Version = blocked.Version })).StatusCode);
+
+        ListingDraftResponse corrected = await SaveTitleAsync(owner, blocked, "Corrected");
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(reviewPath)).StatusCode);
+        ListingDraftResponse correction = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(
+            $"{ownerPath}/submit", new ListingDraftVersionRequest { Version = corrected.Version }));
+        Assert.Equal(HttpStatusCode.NoContent, (await ApproveAsync(admin, correction)).StatusCode);
+        PublicListingResponse restored = (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!;
+        Assert.Equal("Corrected", restored.Title);
+        Assert.Equal(renewed.ExpiresAtUtc, restored.ExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task PublishedListing_CanBeWithdrawnRelistedRenewedAfterExpiryAndDeletedAsync()
+    {
+        var clock = new AdjustableTimeProvider();
+        (ApiFactory factory, string database) = await _fixture.CreateAsync(clock);
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "Owner", confirmed: true);
+        using HttpClient admin = await CitizenSuggestionTests.LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        using HttpClient visitor = factory.CreateClient();
+        ListingDraftResponse submission = await SubmitAsync(owner, admin, "West");
+        Assert.Equal(HttpStatusCode.NoContent, (await ApproveAsync(admin, submission)).StatusCode);
+        string ownerPath = $"{_drafts}/{submission.Id}";
+        string publicPath = $"/api/classifieds/{submission.Id}";
+        ListingDraftResponse withdrawn = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync(
+            $"{ownerPath}/withdraw", new ListingDraftVersionRequest { Version = submission.Version + 1 }));
+        Assert.Equal("Withdrawn", withdrawn.State);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        ListingDraftResponse hiddenEdit = await SaveTitleAsync(owner, withdrawn, "Edited while withdrawn");
+        Assert.Equal("Withdrawn", hiddenEdit.State);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        ListingDraftResponse relisted = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await RenewAsync(owner, hiddenEdit));
+        Assert.Equal("Published", relisted.State);
+        Assert.Equal("Edited while withdrawn", (await visitor.GetFromJsonAsync<PublicListingResponse>(publicPath))!.Title);
+        clock.Advance(TimeSpan.FromDays(7));
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        Assert.Equal("Expired", (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!.State);
+        ListingDraftResponse renewed = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await RenewAsync(owner, relisted));
+        Assert.Equal("Published", renewed.State);
+        Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"{ownerPath}?version={renewed.Version}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.GetAsync(ownerPath)).StatusCode);
+        Assert.Empty((await admin.GetFromJsonAsync<ClassifiedsPage<ListingReviewQueueItem>>(_review))!.Items);
+
+        await using var connection = new NpgsqlConnection(database);
+        await connection.OpenAsync();
+        await using var history = new NpgsqlCommand("""SELECT "Outcome" FROM classifieds."ReviewDecisions" WHERE "ListingId" = @id""", connection);
+        history.Parameters.AddWithValue("id", submission.Id);
+        Assert.Equal("Approved", await history.ExecuteScalarAsync());
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task AccountBlockRacingWithListingWrite_LeavesListingHiddenAsync(bool renew, bool writeFirst)
+    {
+        (ApiFactory factory, string database) = await _fixture.CreateAsync();
+        await using ApiFactory lifetime = factory;
+        using HttpClient owner = await CitizenSuggestionTests.LoginAsync(factory, database, "Owner", confirmed: true);
+        using HttpClient admin = await CitizenSuggestionTests.LoginAsync(factory, database, "Admin", confirmed: true, role: "Administrator");
+        using HttpClient visitor = factory.CreateClient();
+        AccountResponse account = (await owner.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+        ListingDraftResponse submitted = await SubmitAsync(owner, admin, "Central");
+        Assert.Equal(HttpStatusCode.NoContent, (await ApproveAsync(admin, submitted)).StatusCode);
+        string ownerPath = $"{_drafts}/{submitted.Id}";
+        ListingDraftResponse listing = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+        if (!renew)
+        {
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"{_published}/{submitted.Id}/block",
+                new DecideListingReviewRequest { Version = listing.Version, Reason = "Needs a correction" })).StatusCode);
+            ListingDraftResponse blocked = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+            ListingDraftResponse corrected = await SaveTitleAsync(owner, blocked, "Corrected");
+            listing = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PostAsJsonAsync($"{ownerPath}/submit",
+                new ListingDraftVersionRequest { Version = corrected.Version }));
+        }
+
+        await using var connection = new NpgsqlConnection(database);
+        await connection.OpenAsync();
+        await using NpgsqlTransaction barrier = await connection.BeginTransactionAsync();
+        await using var acquire = new NpgsqlCommand("SELECT pg_advisory_xact_lock(hashtextextended('administration:roles', 0))", connection, barrier);
+        await acquire.ExecuteNonQueryAsync();
+        Task<HttpResponseMessage> WriteAsync() => renew ? RenewAsync(owner, listing) : ApproveAsync(admin, listing);
+
+        Task<HttpResponseMessage> first = writeFirst ? WriteAsync() : BlockAsync(admin, account);
+        await WaitForTransactionsAsync(connection, barrier, 1);
+        Task<HttpResponseMessage> second = writeFirst ? BlockAsync(admin, account) : WriteAsync();
+        await WaitForTransactionsAsync(connection, barrier, 2);
+        await barrier.CommitAsync();
+
+        using HttpResponseMessage firstResponse = await first;
+        using HttpResponseMessage secondResponse = await second;
+        Assert.Equal(HttpStatusCode.NoContent, (writeFirst ? secondResponse : firstResponse).StatusCode);
+        Assert.Equal(writeFirst ? renew ? HttpStatusCode.OK : HttpStatusCode.NoContent : HttpStatusCode.Forbidden,
+            (writeFirst ? firstResponse : secondResponse).StatusCode);
+        string publicPath = $"/api/classifieds/{submitted.Id}";
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        AccountResponse blockedAccount = (await owner.GetFromJsonAsync<AccountResponse>("/api/account"))!;
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"{_blocks}/{account.Id}/unblock", new { blockedAccount.Version })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        if (renew || writeFirst)
+        {
+            ListingDraftResponse hidden = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;
+            Assert.Equal("Hidden", hidden.State);
+            Assert.Equal(HttpStatusCode.OK, (await RenewAsync(owner, hidden)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await visitor.GetAsync(publicPath)).StatusCode);
+        }
+    }
+
+    private static Task<HttpResponseMessage> RenewAsync(HttpClient owner, ListingDraftResponse listing) =>
+        owner.PostAsJsonAsync($"{_drafts}/{listing.Id}/renew", new ListingDraftVersionRequest { Version = listing.Version });
+
+    private static async Task<ListingDraftResponse> SaveTitleAsync(HttpClient owner, ListingDraftResponse listing, string title) =>
+        await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PutAsJsonAsync($"{_drafts}/{listing.Id}",
+            new UpdateListingDraftRequest { Version = listing.Version, Details = listing.Details with { Title = title } }));
+
     private static async Task WaitForTransactionsAsync(NpgsqlConnection connection, NpgsqlTransaction barrier, int count)
     {
         await using var waiting = new NpgsqlCommand("""

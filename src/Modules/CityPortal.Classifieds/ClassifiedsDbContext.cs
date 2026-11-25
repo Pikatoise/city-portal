@@ -53,6 +53,7 @@ internal sealed class ClassifiedsDbContext : DbContext
         {
             draft.HasIndex(item => new { item.OwnerId, item.UpdatedAtUtc, item.Id }).IsDescending(false, true, true);
             draft.HasIndex(item => new { item.SubmittedAtUtc, item.Id }).HasFilter("\"SubmittedAtUtc\" IS NOT NULL");
+            draft.HasIndex(item => new { item.EditReviewQueuedAtUtc, item.Id }).HasFilter("\"EditReviewQueuedAtUtc\" IS NOT NULL");
             draft.Property(item => item.ReviewOutcome).HasMaxLength(12);
             draft.Property(item => item.Title).HasMaxLength(200);
             draft.Property(item => item.Description).HasMaxLength(10000);

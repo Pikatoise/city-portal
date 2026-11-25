@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CityPortal.Identity;
 using CityPortal.Media;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +26,10 @@ public sealed class ListingReviewOperations
     public async Task<ClassifiedsPage<ListingReviewQueueItem>> ListAsync(Guid actorId, Guid sessionId, int page, CancellationToken cancellationToken)
     {
         await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken);
-        ListingReviewQueueItem[] rows = await Pending(actorId).OrderBy(draft => draft.SubmittedAtUtc).ThenBy(draft => draft.Id)
+        ListingReviewQueueItem[] rows = await Pending(actorId).OrderBy(draft => draft.SubmittedAtUtc ?? draft.EditReviewQueuedAtUtc).ThenBy(draft => draft.Id)
             .Skip(ClassifiedsDatabase.Offset(page)).Take(ClassifiedsDatabase.PageSize + 1)
-            .Select(draft => new ListingReviewQueueItem(draft.Id, draft.Title ?? string.Empty, draft.SubmittedAtUtc.GetValueOrDefault()))
+            .Select(draft => new ListingReviewQueueItem(draft.Id, draft.Title ?? string.Empty,
+                (draft.SubmittedAtUtc ?? draft.EditReviewQueuedAtUtc).GetValueOrDefault(), draft.EditReviewQueuedAtUtc.HasValue))
             .ToArrayAsync(cancellationToken);
         return new ClassifiedsPage<ListingReviewQueueItem>(rows.Take(ClassifiedsDatabase.PageSize).ToArray(), rows.Length > ClassifiedsDatabase.PageSize);
     }
@@ -36,20 +38,45 @@ public sealed class ListingReviewOperations
     {
         await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken);
         ListingDraft draft = await Pending(actorId).SingleOrDefaultAsync(draft => draft.Id == id, cancellationToken) ?? throw Missing();
-        Dictionary<Guid, string> names = await _context.Catalog.Where(entry => entry.Id == draft.CategoryId || entry.Id == draft.DistrictId)
+        ListingPublication? publication = draft.EditReviewQueuedAtUtc.HasValue
+            ? await _context.Publications.AsNoTracking().SingleOrDefaultAsync(item => item.ListingId == id, cancellationToken)
+            : null;
+        ListingDraftInput? original = publication?.OriginalDetails is string json ? JsonSerializer.Deserialize<ListingDraftInput>(json) : null;
+        Guid?[] catalogIds = [draft.CategoryId, draft.DistrictId, original?.CategoryId, original?.DistrictId];
+        Dictionary<Guid, string> names = await _context.Catalog.Where(entry => catalogIds.Contains(entry.Id))
             .ToDictionaryAsync(entry => entry.Id, entry => entry.Name, cancellationToken);
         ListingPhotoResponse[] photos = await _images.ReadAsync(id, cancellationToken);
+        ListingReviewOriginal? comparison = original is not null && publication?.OriginalRevisionId is Guid revisionId
+            ? new ListingReviewOriginal(original, Name(original.CategoryId), Name(original.DistrictId),
+                await _images.ReadPublishedAsync(revisionId, cancellationToken))
+            : null;
         await RequirePendingVersionAsync(actorId, id, draft.Version, cancellationToken);
         return new ListingReviewPreview(ListingDraftOperations.Response(draft) with { Photos = photos },
-            names.GetValueOrDefault(draft.CategoryId.GetValueOrDefault(), string.Empty),
-            names.GetValueOrDefault(draft.DistrictId.GetValueOrDefault(), string.Empty));
+            Name(draft.CategoryId), Name(draft.DistrictId))
+        {
+            Original = comparison
+        };
+
+        string Name(Guid? key) => names.GetValueOrDefault(key.GetValueOrDefault(), string.Empty);
     }
 
-    public async Task<Stream> OpenImageAsync(Guid actorId, Guid sessionId, Guid id, Guid imageId, int version, CancellationToken cancellationToken)
+    public async Task<Stream> OpenImageAsync(Guid actorId, Guid sessionId, Guid id, Guid imageId, int version, bool original, CancellationToken cancellationToken)
     {
         await _authorization.RequireAsync(actorId, sessionId, _roles, cancellationToken);
         await RequirePendingVersionAsync(actorId, id, version, cancellationToken);
-        Stream image = await _images.OpenAsync(id, imageId, cancellationToken);
+        Stream image;
+        if (original)
+        {
+            Guid? revisionId = await (from draft in Pending(actorId)
+                                      join publication in _context.Publications on draft.Id equals publication.ListingId
+                                      where draft.Id == id && draft.Version == version && draft.EditReviewQueuedAtUtc.HasValue
+                                      select publication.OriginalRevisionId).SingleOrDefaultAsync(cancellationToken);
+            if (revisionId is not Guid revision)
+                throw Missing();
+            image = await _images.OpenPublishedAsync(revision, imageId, cancellationToken);
+        }
+        else
+            image = await _images.OpenAsync(id, imageId, cancellationToken);
         try
         {
             await RequirePendingVersionAsync(actorId, id, version, cancellationToken);
@@ -96,7 +123,8 @@ public sealed class ListingReviewOperations
     }
 
     private IQueryable<ListingDraft> Pending(Guid actorId) =>
-        _context.Drafts.AsNoTracking().Where(draft => draft.OwnerId != actorId && draft.SubmittedAtUtc.HasValue);
+        _context.Drafts.AsNoTracking().Where(draft => draft.OwnerId != actorId
+            && (draft.SubmittedAtUtc.HasValue || draft.EditReviewQueuedAtUtc.HasValue));
 
     private async Task RequirePendingVersionAsync(Guid actorId, Guid id, int version, CancellationToken cancellationToken)
     {

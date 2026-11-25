@@ -9,41 +9,51 @@
     <p role="status">{{ notice() }}</p>
   }
   @if (preview(); as review) {
-    <article aria-labelledby="submission-title">
-      <h2 id="submission-title">{{ review.submission.details.title }}</h2>
-      @if (review.submission.photos?.length) {
-        <div class="review-photos">
-          @for (photo of review.submission.photos; track photo.image.id) {
-            <img [src]="imageUrl(review, photo.image.id)" [alt]="photo.alternativeText" />
-          }
-        </div>
-      }
-      <p class="listing-text">{{ review.submission.details.description }}</p>
-      <dl class="profile-fields listing-text">
-        <dt>Категория</dt>
-        <dd>{{ review.category }}</dd>
-        <dt>Район</dt>
-        <dd>{{ review.district }}</dd>
-        @if (review.submission.details.price != null) {
-          <dt>Цена</dt>
-          <dd>
-            {{
-              review.submission.details.price === 0 ? 'Бесплатно' : review.submission.details.price
-            }}
-          </dd>
+    <article aria-label="Проверка объявления">
+      <div [class.review-comparison]="review.original">
+        @for (section of sections(); track section.original) {
+          <section>
+            @if (review.original) {
+              <h2>{{ section.original ? 'Изначальная версия' : 'Самая новая версия' }}</h2>
+              <h3>{{ section.details.title }}</h3>
+            } @else {
+              <h2>{{ section.details.title }}</h2>
+            }
+            @if (section.photos.length) {
+              <div class="review-photos">
+                @for (photo of section.photos; track photo.id) {
+                  <img
+                    [src]="imageUrl(review, photo.id, section.original)"
+                    [alt]="photo.alternativeText"
+                  />
+                }
+              </div>
+            }
+            <p class="listing-text">{{ section.details.description }}</p>
+            <dl class="profile-fields listing-text">
+              <dt>Категория</dt>
+              <dd>{{ section.category }}</dd>
+              <dt>Район</dt>
+              <dd>{{ section.district }}</dd>
+              @if (section.details.price != null) {
+                <dt>Цена</dt>
+                <dd>{{ section.details.price === 0 ? 'Бесплатно' : section.details.price }}</dd>
+              }
+              @if (section.details.phone; as phone) {
+                <dt>Телефон</dt>
+                <dd>{{ phone }}</dd>
+              }
+              @if (section.details.email; as email) {
+                <dt>Email</dt>
+                <dd>{{ email }}</dd>
+              }
+            </dl>
+          </section>
         }
-        @if (review.submission.details.phone; as phone) {
-          <dt>Телефон</dt>
-          <dd>{{ phone }}</dd>
-        }
-        @if (review.submission.details.email; as email) {
-          <dt>Email</dt>
-          <dd>{{ email }}</dd>
-        }
-      </dl>
+      </div>
       <p>
         <button type="button" [disabled]="busy()" (click)="approve()">
-          Одобрить и опубликовать
+          {{ review.original ? 'Завершить проверку' : 'Одобрить и опубликовать' }}
         </button>
       </p>
       <div class="field">
@@ -60,12 +70,18 @@
         <p class="field-hint" id="reason-hint">Обязательна, до 500 символов.</p>
       </div>
       <div class="review-actions">
-        <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(false)">
-          Вернуть на доработку
-        </button>
-        <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(true)">
-          Отклонить окончательно
-        </button>
+        @if (review.original) {
+          <button type="button" [disabled]="busy() || !reason.trim()" (click)="block()">
+            Заблокировать объявление
+          </button>
+        } @else {
+          <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(false)">
+            Вернуть на доработку
+          </button>
+          <button type="button" [disabled]="busy() || !reason.trim()" (click)="decide(true)">
+            Отклонить окончательно
+          </button>
+        }
         <button type="button" [disabled]="busy()" (click)="close()">К очереди</button>
       </div>
     </article>
@@ -78,6 +94,9 @@
               <button type="button" (click)="open(item.id)" [disabled]="busy()">
                 {{ item.title }}
               </button>
+              @if (item.publishedEdit) {
+                <span>Правки опубликованы</span>
+              }
               <time [attr.datetime]="item.submittedAtUtc">{{
                 clock.format(item.submittedAtUtc)
               }}</time>

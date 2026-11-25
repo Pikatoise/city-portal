@@ -12,6 +12,7 @@ export interface OpenListingReviewPhoto$Params {
   id: string;
   imageId: string;
   version: (number | string);
+  original?: boolean;
 }
 
 export function openListingReviewPhoto(http: HttpClient, rootUrl: string, params: OpenListingReviewPhoto$Params, context?: HttpContext): Observable<StrictHttpResponse<Blob>> {
@@ -20,6 +21,7 @@ export function openListingReviewPhoto(http: HttpClient, rootUrl: string, params
     rb.path('id', params.id, {});
     rb.path('imageId', params.imageId, {});
     rb.query('version', params.version, {});
+    rb.query('original', params.original, {});
   }
 
   return http.request(

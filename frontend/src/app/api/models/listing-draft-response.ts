@@ -8,7 +8,11 @@ import { ListingPhotoResponse } from '../models/listing-photo-response';
  * A private draft and its current version.
  */
 export interface ListingDraftResponse {
+  canRenew?: boolean;
+  canSubmit?: boolean;
+  canWithdraw?: boolean;
   details: ListingDraftInput;
+  expiresAtUtc?: (string | null);
   id: string;
   photos?: Array<ListingPhotoResponse>;
   reviewReason?: (string | null);

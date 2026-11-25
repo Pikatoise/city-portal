@@ -73,12 +73,18 @@ export type { DeleteListingDraft$Params as DeleteListingDraft$Params } from './f
 export { deleteListingDraft as deleteListingDraft } from './fn/classifieds-drafts/delete-listing-draft';
 export type { UploadListingPhoto$Params as UploadListingPhoto$Params } from './fn/classifieds-drafts/upload-listing-photo';
 export { uploadListingPhoto as uploadListingPhoto } from './fn/classifieds-drafts/upload-listing-photo';
+export type { GetListingPhotoUpload$Params as GetListingPhotoUpload$Params } from './fn/classifieds-drafts/get-listing-photo-upload';
+export { getListingPhotoUpload as getListingPhotoUpload } from './fn/classifieds-drafts/get-listing-photo-upload';
 export type { OpenMyListingPhoto$Params as OpenMyListingPhoto$Params } from './fn/classifieds-drafts/open-my-listing-photo';
 export { openMyListingPhoto as openMyListingPhoto } from './fn/classifieds-drafts/open-my-listing-photo';
 export type { SubmitListingDraft$Params as SubmitListingDraft$Params } from './fn/classifieds-drafts/submit-listing-draft';
 export { submitListingDraft as submitListingDraft } from './fn/classifieds-drafts/submit-listing-draft';
 export type { RecallListingDraft$Params as RecallListingDraft$Params } from './fn/classifieds-drafts/recall-listing-draft';
 export { recallListingDraft as recallListingDraft } from './fn/classifieds-drafts/recall-listing-draft';
+export type { RenewListing$Params as RenewListing$Params } from './fn/classifieds-drafts/renew-listing';
+export { renewListing as renewListing } from './fn/classifieds-drafts/renew-listing';
+export type { WithdrawListing$Params as WithdrawListing$Params } from './fn/classifieds-drafts/withdraw-listing';
+export { withdrawListing as withdrawListing } from './fn/classifieds-drafts/withdraw-listing';
 export type { ListListingsForModeration$Params as ListListingsForModeration$Params } from './fn/classifieds-moderation/list-listings-for-moderation';
 export { listListingsForModeration as listListingsForModeration } from './fn/classifieds-moderation/list-listings-for-moderation';
 export type { BlockListing$Params as BlockListing$Params } from './fn/classifieds-moderation/block-listing';

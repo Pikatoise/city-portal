@@ -15,7 +15,7 @@ internal static class ClassifiedsDatabase
     }
 
     internal static IQueryable<ListingPublication> Visible(ClassifiedsDbContext context, DateTimeOffset now) =>
-        context.Publications.AsNoTracking().Where(item => !item.HiddenByAccountBlock && !item.HiddenByListingBlock && item.ExpiresAtUtc > now);
+        context.Publications.AsNoTracking().Where(item => !item.HiddenByAccountBlock && !item.HiddenByListingBlock && !item.WithdrawnByOwner && item.ExpiresAtUtc > now);
 
     internal static async Task<ClassifiedsDbContext> JoinAsync(AuthorizedAccountScope scope, CancellationToken cancellationToken)
     {

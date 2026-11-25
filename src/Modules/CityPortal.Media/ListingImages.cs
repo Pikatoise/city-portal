@@ -17,6 +17,13 @@ public sealed class ListingImages
         _storage = storage;
     }
 
+    public async Task<ImageResponse> GetUploadAsync(Guid ownerId, Guid imageId, CancellationToken cancellationToken)
+    {
+        MediaImage image = await _context.Images.AsNoTracking().SingleOrDefaultAsync(item => item.Id == imageId
+            && item.OwnerId == ownerId && item.ForListing && item.State != "Deleting", cancellationToken) ?? throw MediaDatabase.Missing();
+        return MediaOperations.Response(image);
+    }
+
     public async Task<ListingPhotoResponse[]> ReadAsync(Guid draftId, CancellationToken cancellationToken)
     {
         var rows = await (from reference in _context.ListingImages.AsNoTracking()
@@ -81,6 +88,25 @@ public sealed class ListingImages
         if (!await _context.PublishedListingImages.AnyAsync(reference => reference.RevisionId == revisionId && reference.ImageId == imageId, cancellationToken))
             throw MediaDatabase.Missing();
         return await OpenStoredAsync(imageId, cancellationToken);
+    }
+
+    public async Task ReleasePublicationAsync(AuthorizedAccountScope scope, Guid revisionId, CancellationToken cancellationToken)
+    {
+        await using MediaDbContext context = await MediaDatabase.JoinAsync(scope.Connection, scope.Transaction, cancellationToken);
+        PublishedListingImageReference[] references = await context.PublishedListingImages.Where(item => item.RevisionId == revisionId)
+            .OrderBy(item => item.ImageId).ToArrayAsync(cancellationToken);
+        foreach (PublishedListingImageReference reference in references)
+        {
+            MediaImage image = await MediaDatabase.LockImageAsync(context, reference.ImageId, cancellationToken);
+            context.PublishedListingImages.Remove(reference);
+            if (!await context.ListingImages.AnyAsync(item => item.ImageId == image.Id, cancellationToken)
+                && !await context.PublishedListingImages.AnyAsync(item => item.ImageId == image.Id && item.RevisionId != revisionId, cancellationToken))
+            {
+                image.State = "Deleting";
+                image.Version++;
+            }
+        }
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ListingPhotoResponse[]> ReplaceAsync(AuthorizedAccountScope scope, Guid draftId, ListingPhotoInput[] photos, CancellationToken cancellationToken)

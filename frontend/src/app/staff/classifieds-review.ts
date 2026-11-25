@@ -1,5 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { errorMessage } from '../account/account-api';
@@ -7,6 +14,7 @@ import { ApiWrite } from '../api-write';
 import { Api } from '../api/api';
 import {
   approveListingReview,
+  blockListing,
   getListingReview,
   listListingReviews,
   openListingReviewPhoto,
@@ -29,6 +37,23 @@ export class ClassifiedsReview implements OnInit {
   protected readonly clock = inject(CityClock);
   protected readonly items = signal<ListingReviewQueueItem[]>([]);
   protected readonly preview = signal<ListingReviewPreview | null>(null);
+  protected readonly sections = computed(() => {
+    const review = this.preview();
+    if (!review) return [];
+    const { original, submission, category, district } = review;
+    const latest = {
+      details: submission.details,
+      category,
+      district,
+      photos:
+        submission.photos?.map((photo) => ({
+          id: photo.image.id,
+          alternativeText: photo.alternativeText,
+        })) ?? [],
+      original: false,
+    };
+    return original ? [{ ...original, original: true }, latest] : [latest];
+  });
   protected readonly page = signal(1);
   protected readonly hasNext = signal(false);
   protected readonly loaded = signal(false);
@@ -56,10 +81,10 @@ export class ClassifiedsReview implements OnInit {
     this.reason = '';
   }
 
-  protected imageUrl(preview: ListingReviewPreview, imageId: string): string {
+  protected imageUrl(preview: ListingReviewPreview, imageId: string, original: boolean): string {
     const { id, version } = preview.submission;
     const path = openListingReviewPhoto.PATH.replace('{id}', id).replace('{imageId}', imageId);
-    return this.api.rootUrl + path + '?version=' + version;
+    return this.api.rootUrl + path + '?version=' + version + (original ? '&original=true' : '');
   }
 
   protected async approve(): Promise<void> {
@@ -68,7 +93,10 @@ export class ClassifiedsReview implements OnInit {
     await this.run(async () => {
       const { id, version } = preview.submission;
       await this.write.invoke(approveListingReview, { id, body: { version } });
-      await this.complete(id, 'Объявление опубликовано.');
+      await this.complete(
+        id,
+        preview.original ? 'Проверка завершена.' : 'Объявление опубликовано.',
+      );
     });
   }
 
@@ -85,6 +113,17 @@ export class ClassifiedsReview implements OnInit {
         id,
         reject ? 'Объявление отклонено.' : 'Объявление возвращено на доработку.',
       );
+    });
+  }
+
+  protected async block(): Promise<void> {
+    const preview = this.preview();
+    const reason = this.reason.trim();
+    if (!preview?.original || !reason || reason.length > 500) return;
+    await this.run(async () => {
+      const { id, version } = preview.submission;
+      await this.write.invoke(blockListing, { id, body: { version, reason } });
+      await this.complete(id, 'Объявление заблокировано.');
     });
   }
 

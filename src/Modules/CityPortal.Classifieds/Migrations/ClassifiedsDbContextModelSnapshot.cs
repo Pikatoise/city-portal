@@ -101,6 +101,9 @@ namespace CityPortal.Classifieds.Migrations
                     b.Property<Guid?>("DistrictId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("EditReviewQueuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Email")
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
@@ -138,6 +141,9 @@ namespace CityPortal.Classifieds.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("DistrictId");
+
+                    b.HasIndex("EditReviewQueuedAtUtc", "Id")
+                        .HasFilter("\"EditReviewQueuedAtUtc\" IS NOT NULL");
 
                     b.HasIndex("SubmittedAtUtc", "Id")
                         .HasFilter("\"SubmittedAtUtc\" IS NOT NULL");
@@ -177,6 +183,12 @@ namespace CityPortal.Classifieds.Migrations
                     b.Property<bool>("HiddenByListingBlock")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("OriginalDetails")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OriginalRevisionId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -197,6 +209,9 @@ namespace CityPortal.Classifieds.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("WithdrawnByOwner")
+                        .HasColumnType("boolean");
 
                     b.HasKey("ListingId");
 

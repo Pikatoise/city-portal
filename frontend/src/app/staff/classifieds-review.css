@@ -34,3 +34,13 @@
   align-self: flex-start;
   border-radius: 6px;
 }
+
+.review-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 24px;
+}
+
+.review-comparison section {
+  min-width: 0;
+}

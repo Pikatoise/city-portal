@@ -7,6 +7,7 @@
  */
 export interface ListingReviewQueueItem {
   id: string;
+  publishedEdit: boolean;
   submittedAtUtc: string;
   title: string;
 }

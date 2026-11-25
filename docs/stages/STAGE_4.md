@@ -7,7 +7,8 @@ Advertisements page supports private drafts, their photo carousel, and
 submission and recall. The category and district administration screen and
 API are implemented. Staff can review, return, reject, and approve pending
 submissions. Approved listings have public detail pages. Staff can block an
-individual listing or an account. Published revisions and renewal are next.
+individual listing or an account. Published edits, comparison review,
+renewal, withdrawal and relisting are implemented. The public catalog is next.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -34,13 +35,18 @@ and/or Email.
 | Moderator | Review other users' submitted versions and reports, block their listings with a reason, and block or unblock accounts whose only role is Regular User. Corrections belong to the listing owner. |
 | Administrator | Review other users' submitted versions, block their listings with a reason, configure the catalog, and block or unblock accounts, including staff. Self-blocking and blocking the last active administrator are unavailable. |
 
-- First publication requires approval. Changes await moderation while the
-  last published revision remains visible for its current publication period.
+- First publication requires approval. After first publication, valid owner
+  edits take effect immediately except during a direct listing block. Each
+  edited listing enters the staff queue once, comparing the first published
+  version with the latest one. Staff can complete the review or block it.
 - Approval publishes immediately. Return for corrections and rejection require
   a reason. The owner can recall a pending submission to resume editing.
-- Publication lasts seven days. The owner can renew unchanged active or expired
-  content for seven days from renewal without a new review. Expiry hides the
-  listing publicly and leaves it in the owner's account.
+- Publication lasts seven days. Edits and review preserve the expiry date.
+  The owner can renew active or expired content for seven days from renewal,
+  including during review of a live edit. Withdrawal hides the listing. The
+  owner can relist it for seven days, including after an account unblock.
+  Expiry leaves the listing in the owner's account. Deletion retains
+  moderation decisions and releases unreferenced photos.
 - A direct listing block requires a reason of up to 500 characters. It hides
   the listing and prevents renewal and relisting.
   The owner corrects and resubmits it for approval.
@@ -146,8 +152,8 @@ A successful submission records its UTC time and returns the draft with
 state `InReview` and an incremented version. The owner can view the saved
 content and photos. Editing or deleting the draft requires recalling it first
 with a versioned POST to `/api/account/classifieds/drafts/{id}/recall`. Recall
-returns the draft to `Draft`, preserves its fields and attachments, and
-increments the version again. A stale version or invalid transition returns
+returns a never-published listing to `Draft` or a directly blocked listing
+to `Blocked`. It preserves fields and attachments and increments the version. A stale version or invalid transition returns
 HTTP 409. The shared account authorization lock serializes these actions
 with concurrent owner writes and excludes catalog changes during validation.
 First publication requires the later staff decision and account-blocking workflow.
@@ -157,13 +163,14 @@ First publication requires the later staff decision and account-blocking workflo
 Confirmed moderators and administrators can review pending submissions from
 other accounts. The browser-rendered `/staff/classifieds/review` opens from
 their profile. The queue shows 20 items per page in ascending submission time
-with listing ID as a tie-breaker. The preview includes the saved title,
+with listing ID as a tie-breaker. Live-edit reviews use their queue entry time.
+The preview includes the saved title,
 description, contacts, category, district, price, and attached photos.
 
 | Routes under `/api/staff/classifieds/review` | Contract |
 | --- | --- |
-| GET the collection | List pending submissions from other accounts. |
-| GET `/{id}` and `/{id}/images/{imageId}` | Read the submitted preview or a ready attached photo. Photo reads require the preview version in the query. Return 404 outside an accessible pending submission. |
+| GET the collection | List pending submissions and published edits from other accounts. |
+| GET `/{id}` and `/{id}/images/{imageId}` | Read the current review preview or a ready attached photo. Photo reads require the preview version in the query. Return 404 outside an accessible review. |
 | POST `/{id}/return` or `/{id}/reject` | Accept the preview version and a reason of 1 to 500 characters after trimming. Require CSRF. Return 204 on success and 409 for a stale version or closed review. |
 
 Return sets the owner state to `Returned` and allows editing, deletion, and
@@ -177,14 +184,14 @@ lock to serialize with owner writes and recheck the current version.
 ### First publication and public detail
 
 Staff approval publishes the submitted version and starts its seven-day
-window. The public detail page at `/classifieds/{id}` displays the approved
-phone number when present. The seller's Email remains private. Unavailable
+window. The public detail page at `/classifieds/{id}` displays the current
+public phone number when present. The seller's Email remains private. Unavailable
 listings return the standard HTTP 404 page. Public detail and photo endpoints
-use the same visibility rule and exclude unapproved revisions.
+use the same visibility rule and exclude private drafts and blocked corrections.
 
 | Routes | Contract |
 | --- | --- |
-| POST `/api/staff/classifieds/review/{id}/approve` | Approve another account's pending submission by version. Return 204, 403 for a blocked owner, or 409 for a stale or closed submission. |
+| POST `/api/staff/classifieds/review/{id}/approve` | Approve a first submission or a directly blocked correction, or mark a published edit reviewed. Check the version. Publication returns 403 for a blocked owner. Stale and closed reviews return 409. Success returns 204. |
 | GET `/api/classifieds/{id}` and `/{id}/images/{imageId}` | Anonymous reads of the visible revision and its ready photos. Use the same exact expiry and block checks on both routes. |
 | GET `/api/staff/classifieds/published`, POST `/{id}/block` | List other accounts' published listings and hide a listing using its current version and a reason. |
 | GET `/api/staff/account-blocks`, POST `/{id}/block` or `/{id}/unblock` | Search eligible accounts by name or Email and apply versioned block decisions. Blocking requires a reason of 1 to 500 characters after trimming. |
@@ -202,6 +209,38 @@ publications on the same database connection and transaction. Unblocking
 removes the Identity restriction and leaves the hidden publication flags in place.
 Public photo access rechecks visibility after opening the object. A response
 already admitted at that check may finish streaming.
+
+### Published revisions and listing lifecycle
+
+Saving a valid change to a previously published listing updates its public
+snapshot atomically with the photos. It preserves the expiry date and existing
+visibility restrictions. A directly blocked listing instead stays private
+until the owner submits changed content and staff approve it. Approval clears
+the direct block and preserves the other visibility flags and expiry date.
+
+The existing staff review queue includes a single item per listing with
+pending live edits. Further edits replace its latest version and retain its
+queue position. The preview compares text, contacts, catalog entries, price,
+and photos from the first publication and the latest version. An acknowledgement
+records the review without changing what visitors see. A block records the
+reason and hides the latest version atomically. Both actions check the
+listing version. Staff previews and photos require another account's current
+review and staff permissions.
+
+| Routes | Contract |
+| --- | --- |
+| PUT `/api/account/classifieds/drafts/{id}` | Save by version. An edit that will change the public snapshot must meet the same field and ready-photo requirements as a submission. |
+| POST `/api/account/classifieds/drafts/{id}/renew` | Start a new seven-day window at the current time. Clears owner withdrawal and residual account visibility flags. Directly blocked listings cannot renew. |
+| POST `/api/account/classifieds/drafts/{id}/withdraw` | Hide a currently visible listing. |
+| DELETE `/api/account/classifieds/drafts/{id}` | Remove the listing and its photo references, preserving moderation decisions. Recall a pending submission before deletion. |
+| GET `/api/account/classifieds/uploads/{imageId}` | Read the owner's listing upload processing status before an attachment is saved. |
+| GET `/api/staff/classifieds/review/{id}/images/{imageId}?version={version}&original=true` | Open an original comparison photo while the specified post-publication review remains current. |
+
+Renewal and withdrawal return the current owner view with expiry and available
+actions. Version and listing state conflicts return 409. Blocked accounts
+cannot write. The first publication's photos are retained for comparison until
+the listing is deleted. Media releases intermediate photos once they have no
+remaining references.
 
 ## Tools and technical contracts
 
@@ -251,9 +290,11 @@ already admitted at that check may finish streaming.
   visitors.
 - The owner selects a configured district and an active category. Archiving a
   category preserves existing associations and prevents new ones.
-- An approved revision appears anonymously in the catalog, homepage and detail
-  page as applicable. Pending text, contacts and images stay private while the
-  published revision remains visible. Search and filters use public content.
+- First approval and subsequent valid owner edits appear anonymously in the
+  catalog, homepage and detail page while the listing is visible. Search and
+  filters use the current public revision. Staff compare the first published
+  revision with the latest edit and can block it or finish the review.
+  Corrections to a directly blocked listing remain private until approved.
 - The API accepts up to five photos and rejects a sixth. The detail page shows
   the current public photos in a separate carousel immediately below the title,
   followed by the description. A listing without photos has no carousel.
@@ -268,7 +309,7 @@ already admitted at that check may finish streaming.
   until approval.
 - Forced failure while hiding listings rolls back the account block and listing
   changes. PostgreSQL tests cover both commit orders when blocking races with
-  first publication, staff publication of a change, or renewal. After the block
+  first publication, approval of a directly blocked correction, or renewal. After the block
   commits, every affected listing stays hidden. Unblocking alone restores none.
 - Staff permissions prevent a moderator from blocking staff. The block, unblock,
   listing moderation and report decisions remain auditable under the agreed rules.
@@ -357,14 +398,29 @@ profile showed the reason, and the public page and photo returned 404.
 Unblocking restored content writes and kept the listing hidden. The browser
 fixture seeded Email confirmation before exercising the flow.
 
+All 17 targeted Classifieds integration tests passed with one xUnit worker.
+The checks cover immediate edits and their review, stale versions, correction
+after a direct block, photo reference cleanup, and both PostgreSQL commit
+orders for account blocking racing renewal or correction approval.
+All 103 Angular tests passed, along with the production Angular build,
+solution format verification, changed-file Prettier, live OpenAPI comparison,
+and generated client comparison.
+
+On 2026-11-25, a live HTTPS Edge check exercised immediate owner edits,
+replacement photos, the staff comparison at 390 and 1440 pixels, direct
+blocking, correction and approval, withdrawal, relisting, and deletion.
+The test confirmed that edits and approval preserved expiry, the public API
+omitted the seller's Email, staff could open both photo versions, and
+unavailable listings returned 404. The isolated stand used
+PostgreSQL, RabbitMQ, RustFS and the Worker. The browser fixture seeded Email
+confirmation for the owner.
+
 ## Open decisions
 
 ### Moderation and visibility
 
 - Confirm whether administrators also handle advertisement reports.
-- Define how renewal interacts with a pending revision, and which relisting
-  operations are available after withdrawal, expiry or an account unblock.
-- Agree search order, homepage size, listing deletion, and image retention rules.
+- Agree search order and homepage size.
 
 ### Reports and notifications
 

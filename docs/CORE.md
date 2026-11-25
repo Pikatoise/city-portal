@@ -116,10 +116,13 @@ revision references. Reads enforce expiry before Quartz cleanup runs. See
 ### Classifieds and Moderation
 
 Classifieds owns private drafts and the installation catalog of categories
-and districts. Draft writes share the Identity administration lock. Catalog
-changes take it exclusively so a new association cannot race archival.
-Media owns private draft photo references. Classifieds and Media save changes
-to the draft and its photos in the same transaction.
+and districts. New drafts, submission and recall share the Identity
+administration lock. Existing listing saves, deletions, visibility changes,
+staff decisions and catalog writes take it exclusively. This serializes
+publication, renewal and photo reference changes with account blocking and
+prevents new catalog associations from racing archival.
+Media owns working and publication photo references. Classifieds and Media
+commit revision changes and photo references in the same transaction.
 See [Stage 4](stages/STAGE_4.md) for API contracts and delivery status.
 
 Store expiry and enforce it in public reads independently of cleanup. Account

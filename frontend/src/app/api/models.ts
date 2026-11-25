@@ -48,6 +48,7 @@ export type { ListingDraftVersionRequest } from './models/listing-draft-version-
 export type { ListingModerationItem } from './models/listing-moderation-item';
 export type { ListingPhotoInput } from './models/listing-photo-input';
 export type { ListingPhotoResponse } from './models/listing-photo-response';
+export type { ListingReviewOriginal } from './models/listing-review-original';
 export type { ListingReviewPreview } from './models/listing-review-preview';
 export type { ListingReviewQueueItem } from './models/listing-review-queue-item';
 export type { LoginRequest } from './models/login-request';

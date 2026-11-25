@@ -4,7 +4,7 @@
 
 [Staff review and owner feedback](../stages/STAGE_4.md#staff-review-and-owner-feedback),
 [First publication and public detail](../stages/STAGE_4.md#first-publication-and-public-detail),
-[03 Published revisions and listing lifecycle](03-stage-4-listing-lifecycle.md), and
+[Published revisions and listing lifecycle](../stages/STAGE_4.md#published-revisions-and-listing-lifecycle), and
 [05 Advertisement reports and staff resolution](05-stage-4-advertisement-reports.md).
 
 ## Outcome

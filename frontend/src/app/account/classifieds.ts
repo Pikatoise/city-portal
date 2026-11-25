@@ -14,16 +14,20 @@ import { Api } from '../api/api';
 import {
   createListingDraft,
   deleteListingDraft,
+  getListingPhotoUpload,
   getMyListingDraft,
   listListingCatalog,
   listMyListingDrafts,
   openMyListingPhoto,
   recallListingDraft,
+  renewListing,
   saveListingDraft,
   submitListingDraft,
   uploadListingPhoto,
+  withdrawListing,
 } from '../api/functions';
 import { CatalogEntryResponse, ListingDraftResponse, ListingPhotoResponse } from '../api/models';
+import { CityClock } from '../staff/city-clock';
 import { AccountApi, accountProblem, errorMessage } from './account-api';
 
 const maximumPrice = 999_999_999_999;
@@ -50,18 +54,17 @@ export class Classifieds implements OnInit {
   private readonly write = inject(ApiWrite);
   private readonly account = inject(AccountApi);
 
+  protected readonly clock = inject(CityClock);
   protected readonly items = signal<ListingDraftResponse[]>([]);
   protected readonly categories = signal<CatalogEntryResponse[]>([]);
   protected readonly districts = signal<CatalogEntryResponse[]>([]);
   protected readonly current = signal<ListingDraftResponse | null>(null);
   protected readonly inReview = computed(() => this.current()?.state === 'InReview');
   protected readonly rejected = computed(() => this.current()?.state === 'Rejected');
-  protected readonly published = computed(() =>
-    ['Published', 'Hidden', 'Blocked'].includes(this.current()?.state ?? ''),
-  );
+  protected readonly published = computed(() => this.current()?.expiresAtUtc != null);
   protected readonly accountBlocked = signal(false);
   protected readonly readOnly = computed(
-    () => this.accountBlocked() || this.inReview() || this.rejected() || this.published(),
+    () => this.accountBlocked() || this.inReview() || this.rejected(),
   );
   protected readonly photos = signal<ListingPhotoResponse[]>([]);
   protected readonly photoIndex = signal(0);
@@ -88,7 +91,7 @@ export class Classifieds implements OnInit {
   }
 
   canLeave(): boolean {
-    return !this.dirty || window.confirm('Закрыть черновик без сохранения правок?');
+    return !this.dirty || window.confirm('Закрыть объявление без сохранения правок?');
   }
 
   protected async load(): Promise<void> {
@@ -170,7 +173,11 @@ export class Classifieds implements OnInit {
 
   protected imageUrl(photo: ListingPhotoResponse): string | null {
     const draft = this.current();
-    if (!draft || photo.image.state !== 'Ready') return null;
+    if (
+      !draft?.photos?.some((saved) => saved.image.id === photo.image.id) ||
+      photo.image.state !== 'Ready'
+    )
+      return null;
     const path = openMyListingPhoto.PATH.replace('{id}', draft.id).replace(
       '{imageId}',
       photo.image.id,
@@ -179,13 +186,12 @@ export class Classifieds implements OnInit {
   }
 
   protected async refreshPhotos(): Promise<void> {
-    const draft = this.current();
-    if (!draft) return;
+    const photo = this.photo();
+    if (!photo) return;
     await this.run(async () => {
-      const latest = await this.api.invoke(getMyListingDraft, { id: draft.id });
-      const images = new Map(latest.photos?.map((photo) => [photo.image.id, photo.image]));
+      const image = await this.api.invoke(getListingPhotoUpload, { imageId: photo.image.id });
       this.photos.update((photos) =>
-        photos.map((photo) => ({ ...photo, image: images.get(photo.image.id) ?? photo.image })),
+        photos.map((item) => (item.image.id === image.id ? { ...item, image } : item)),
       );
     });
   }
@@ -227,7 +233,7 @@ export class Classifieds implements OnInit {
           })
         : await this.write.invoke(createListingDraft, { body: details });
       this.edit(saved);
-      this.message.set('Черновик сохранён.');
+      this.message.set(saved.canRenew ? 'Правки сохранены.' : 'Черновик сохранён.');
       await this.readPage(1);
     });
   }
@@ -237,9 +243,8 @@ export class Classifieds implements OnInit {
     if (
       !draft ||
       this.inReview() ||
-      this.published() ||
       this.accountBlocked() ||
-      !window.confirm('Удалить объявление и его фотографии?')
+      !window.confirm('Удалить объявление?')
     )
       return;
     await this.run(async () => {
@@ -252,7 +257,7 @@ export class Classifieds implements OnInit {
 
   protected async toggleReview(): Promise<void> {
     const draft = this.current();
-    if (!draft || this.dirty || this.rejected() || this.published() || this.accountBlocked())
+    if (!draft || this.dirty || this.accountBlocked() || (!this.inReview() && !draft.canSubmit))
       return;
     await this.run(async () => {
       const recalling = this.inReview();
@@ -266,6 +271,23 @@ export class Classifieds implements OnInit {
         recalling
           ? 'Объявление отозвано. Черновик можно редактировать.'
           : 'Объявление отправлено на проверку.',
+      );
+      await this.readPage(1);
+    });
+  }
+
+  protected async changeVisibility(withdraw: boolean): Promise<void> {
+    const draft = this.current();
+    if (!draft || this.dirty || this.accountBlocked()) return;
+    if (withdraw && !window.confirm('Снять объявление с публикации?')) return;
+    await this.run(async () => {
+      const saved = await this.write.invoke(withdraw ? withdrawListing : renewListing, {
+        id: draft.id,
+        body: { version: draft.version },
+      });
+      this.edit(saved);
+      this.message.set(
+        withdraw ? 'Объявление снято с публикации.' : 'Объявление опубликовано на 7 дней.',
       );
       await this.readPage(1);
     });
@@ -317,11 +339,16 @@ export class Classifieds implements OnInit {
       await operation();
     } catch (error) {
       const status = error instanceof HttpErrorResponse ? error.status : 0;
-      if (status === 401 || status === 403) {
+      const problem = accountProblem(error);
+      if (problem.code === 'account_blocked') {
+        this.accountBlocked.set(true);
+        this.error.set('Аккаунт заблокирован. Причину можно посмотреть в профиле.');
+      } else if (problem.code === 'listing_correction_required') {
+        this.error.set('Внеси правки в объявление и сохрани их перед отправкой на проверку.');
+      } else if (status === 401 || status === 403) {
         this.ready.set(false);
         this.denied.set(status);
       } else {
-        const problem = accountProblem(error);
         const validation = Object.keys(problem.errors ?? {})
           .map((field) => submissionErrors[field])
           .filter(Boolean)
@@ -330,7 +357,7 @@ export class Classifieds implements OnInit {
           problem.code === 'listing_not_ready' && validation
             ? validation
             : status === 409
-              ? 'Черновик изменился. Скопируй свои правки и открой его заново.'
+              ? 'Объявление изменилось. Скопируй свои правки и открой его заново.'
               : errorMessage(error),
         );
       }

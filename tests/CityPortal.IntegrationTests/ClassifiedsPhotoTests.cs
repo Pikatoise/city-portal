@@ -156,7 +156,8 @@ public sealed class ClassifiedsPhotoTests : IClassFixture<MediaFixture>
             Photos = [new ListingPhotoInput { ImageId = uploaded.Id, AlternativeText = "Wooden desk" }]
         }));
         await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<MediaMaintenance>().ProcessPendingAsync(CancellationToken.None);
+        MediaMaintenance maintenance = scope.ServiceProvider.GetRequiredService<MediaMaintenance>();
+        await maintenance.ProcessPendingAsync(CancellationToken.None);
         string publicPath = $"/api/classifieds/{draft.Id}";
         string photoPath = $"{publicPath}/images/{uploaded.Id}";
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(photoPath)).StatusCode);
@@ -175,10 +176,44 @@ public sealed class ClassifiedsPhotoTests : IClassFixture<MediaFixture>
         Assert.True(opened.Headers.CacheControl?.NoStore);
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync($"{publicPath}/images/{Guid.NewGuid()}")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/staff/classifieds/published/{draft.Id}/block",
-            new DecideListingReviewRequest { Version = submitted.Version + 1, Reason = "Prohibited listing" })).StatusCode);
+        ImageResponse replacement = await UploadAsync(owner);
+        string uploadPath = $"{_account}/uploads/{replacement.Id}";
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(uploadPath)).StatusCode);
+        Assert.Equal("Processing", (await owner.GetFromJsonAsync<ImageResponse>(uploadPath))!.State);
+        string ownerPath = $"{_drafts}/{draft.Id}";
+        var newPhoto = new ListingPhotoInput { ImageId = replacement.Id, AlternativeText = "Latest photo" };
+        var update = new UpdateListingDraftRequest
+        {
+            Version = submitted.Version + 1,
+            Details = draft.Details with { Photos = [newPhoto] }
+        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.PutAsJsonAsync(ownerPath, update)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await visitor.GetAsync(photoPath)).StatusCode);
+        await maintenance.ProcessPendingAsync(CancellationToken.None);
+        Assert.Equal("Ready", (await owner.GetFromJsonAsync<ImageResponse>(uploadPath))!.State);
+        ListingDraftResponse edited = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PutAsJsonAsync(ownerPath, update));
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(photoPath)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync($"{_drafts}/{draft.Id}/images/{uploaded.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await visitor.GetAsync($"{publicPath}/images/{replacement.Id}")).StatusCode);
+        string reviewPath = $"/api/staff/classifieds/review/{draft.Id}";
+        ListingReviewPreview comparison = (await admin.GetFromJsonAsync<ListingReviewPreview>(reviewPath))!;
+        Assert.Equal(uploaded.Id, Assert.Single(comparison.Original!.Photos).Id);
+        Assert.Equal("Latest photo", Assert.Single(comparison.Submission.Photos).AlternativeText);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"{reviewPath}/images/{uploaded.Id}?version={edited.Version}&original=true")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"{reviewPath}/images/{uploaded.Id}?version={edited.Version}")).StatusCode);
+
+        ListingDraftResponse removed = await CitizenSuggestionTests.ReadAsync<ListingDraftResponse>(await owner.PutAsJsonAsync(ownerPath,
+            update with { Version = edited.Version, Details = draft.Details with { Photos = [] } }));
+        var originalPhoto = new ListingPhotoInput { ImageId = uploaded.Id, AlternativeText = "Wooden desk" };
+        await maintenance.CleanupAsync(CancellationToken.None);
+        await AssertMediaCountAsync(database, [newPhoto], 0);
+        await AssertMediaCountAsync(database, [originalPhoto], 1);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/staff/classifieds/published/{draft.Id}/block",
+            new DecideListingReviewRequest { Version = removed.Version, Reason = "Prohibited listing" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"{reviewPath}/images/{uploaded.Id}?version={removed.Version}&original=true")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"{ownerPath}?version={removed.Version + 1}")).StatusCode);
+        await maintenance.CleanupAsync(CancellationToken.None);
+        await AssertMediaCountAsync(database, [originalPhoto], 0);
     }
 
     private static async Task AssertMediaCountAsync(string database, ListingPhotoInput[] photos, long expected)
