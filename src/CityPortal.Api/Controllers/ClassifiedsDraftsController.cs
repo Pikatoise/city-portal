@@ -49,6 +49,13 @@ public sealed class ClassifiedsDraftsController : ControllerBase
     public Task<ListingDraftResponse> GetAsync(Guid id, CancellationToken cancellationToken) =>
         _drafts.GetAsync(RequireOwner(), id, cancellationToken);
 
+    [HttpGet("drafts/{id:guid}/history", Name = "getMyListingHistory")]
+    [ProducesResponseType<ClassifiedsPage<ListingHistoryItem>>(200)]
+    [ProducesResponseType(404)]
+    public Task<ClassifiedsPage<ListingHistoryItem>> HistoryAsync(Guid id, [FromServices] ListingHistory history,
+        CancellationToken cancellationToken, [Range(1, 100000)] int page = 1) =>
+        history.ReadOwnAsync(RequireOwner(), id, page, cancellationToken);
+
     [HttpPost("uploads", Name = "uploadListingPhoto")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(11 * 1024 * 1024)]

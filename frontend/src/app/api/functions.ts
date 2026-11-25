@@ -3,12 +3,16 @@
 
 export type { ListAccountsForBlocking$Params as ListAccountsForBlocking$Params } from './fn/account-blocking/list-accounts-for-blocking';
 export { listAccountsForBlocking as listAccountsForBlocking } from './fn/account-blocking/list-accounts-for-blocking';
+export type { GetAccountBlockHistory$Params as GetAccountBlockHistory$Params } from './fn/account-blocking/get-account-block-history';
+export { getAccountBlockHistory as getAccountBlockHistory } from './fn/account-blocking/get-account-block-history';
 export type { BlockAccount$Params as BlockAccount$Params } from './fn/account-blocking/block-account';
 export { blockAccount as blockAccount } from './fn/account-blocking/block-account';
 export type { UnblockAccount$Params as UnblockAccount$Params } from './fn/account-blocking/unblock-account';
 export { unblockAccount as unblockAccount } from './fn/account-blocking/unblock-account';
 export type { GetAccount$Params as GetAccount$Params } from './fn/account/get-account';
 export { getAccount as getAccount } from './fn/account/get-account';
+export type { GetMyAccountBlockHistory$Params as GetMyAccountBlockHistory$Params } from './fn/account/get-my-account-block-history';
+export { getMyAccountBlockHistory as getMyAccountBlockHistory } from './fn/account/get-my-account-block-history';
 export type { GetConfirmationDelivery$Params as GetConfirmationDelivery$Params } from './fn/account/get-confirmation-delivery';
 export { getConfirmationDelivery as getConfirmationDelivery } from './fn/account/get-confirmation-delivery';
 export type { ResendConfirmation$Params as ResendConfirmation$Params } from './fn/account/resend-confirmation';
@@ -71,6 +75,8 @@ export type { SaveListingDraft$Params as SaveListingDraft$Params } from './fn/cl
 export { saveListingDraft as saveListingDraft } from './fn/classifieds-drafts/save-listing-draft';
 export type { DeleteListingDraft$Params as DeleteListingDraft$Params } from './fn/classifieds-drafts/delete-listing-draft';
 export { deleteListingDraft as deleteListingDraft } from './fn/classifieds-drafts/delete-listing-draft';
+export type { GetMyListingHistory$Params as GetMyListingHistory$Params } from './fn/classifieds-drafts/get-my-listing-history';
+export { getMyListingHistory as getMyListingHistory } from './fn/classifieds-drafts/get-my-listing-history';
 export type { UploadListingPhoto$Params as UploadListingPhoto$Params } from './fn/classifieds-drafts/upload-listing-photo';
 export { uploadListingPhoto as uploadListingPhoto } from './fn/classifieds-drafts/upload-listing-photo';
 export type { GetListingPhotoUpload$Params as GetListingPhotoUpload$Params } from './fn/classifieds-drafts/get-listing-photo-upload';
@@ -87,6 +93,8 @@ export type { WithdrawListing$Params as WithdrawListing$Params } from './fn/clas
 export { withdrawListing as withdrawListing } from './fn/classifieds-drafts/withdraw-listing';
 export type { ListListingsForModeration$Params as ListListingsForModeration$Params } from './fn/classifieds-moderation/list-listings-for-moderation';
 export { listListingsForModeration as listListingsForModeration } from './fn/classifieds-moderation/list-listings-for-moderation';
+export type { GetListingModerationHistory$Params as GetListingModerationHistory$Params } from './fn/classifieds-moderation/get-listing-moderation-history';
+export { getListingModerationHistory as getListingModerationHistory } from './fn/classifieds-moderation/get-listing-moderation-history';
 export type { BlockListing$Params as BlockListing$Params } from './fn/classifieds-moderation/block-listing';
 export { blockListing as blockListing } from './fn/classifieds-moderation/block-listing';
 export type { ListListingReviews$Params as ListListingReviews$Params } from './fn/classifieds-review/list-listing-reviews';

@@ -134,6 +134,12 @@ including staff publication. Design lock ordering around the acting account
 and listing owner and verify it with PostgreSQL. See the
 [product rules](VALUE.md#account-blocking).
 
+Classifieds and Identity retain their own moderation decisions. Listing review,
+direct listing block, and account block or unblock queue the agreed notices on
+the same PostgreSQL connection and transaction as the decision. A listing block
+from Reports also shares that transaction. Notification delivery and retention
+use the existing Notifications module independently of decision history.
+
 ### Content Reports
 
 Reports owns the shared submission, queue and decision model in its own

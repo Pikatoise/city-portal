@@ -30,6 +30,9 @@
                   : 'Новый черновик'
       }}
     </h2>
+    @if (current(); as listing) {
+      <p><a [routerLink]="['/account/classifieds', listing.id, 'history']">История решений</a></p>
+    }
     @if (inReview()) {
       <p class="field-hint">Чтобы внести правки, отзови объявление с проверки.</p>
     }

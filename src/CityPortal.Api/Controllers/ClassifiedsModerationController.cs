@@ -25,6 +25,13 @@ public sealed class ClassifiedsModerationController : ControllerBase
     public Task<ClassifiedsPage<ListingModerationItem>> ListAsync(CancellationToken cancellationToken, int page = 1) =>
         _publications.ListForModerationAsync(ActorId, SessionId, page, cancellationToken);
 
+    [HttpGet("/api/staff/classifieds/history", Name = "getListingModerationHistory")]
+    [ProducesResponseType<ClassifiedsPage<ListingHistoryItem>>(200)]
+    [ProducesResponseType(403)]
+    public Task<ClassifiedsPage<ListingHistoryItem>> HistoryAsync(Guid? id, [FromServices] ListingHistory history,
+        CancellationToken cancellationToken, [Range(1, 100000)] int page = 1) =>
+        history.ReadStaffAsync(ActorId, SessionId, id, page, cancellationToken);
+
     [HttpPost("{id:guid}/block", Name = "blockListing")]
     [Consumes("application/json")]
     [RequestSizeLimit(8192)]

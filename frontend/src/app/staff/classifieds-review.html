@@ -10,6 +10,9 @@
   }
   @if (preview(); as review) {
     <article aria-label="Проверка объявления">
+      <p>
+        <a [routerLink]="['/staff/classifieds/history', review.submission.id]">История решений</a>
+      </p>
       <div [class.review-comparison]="review.original">
         @for (section of sections(); track section.original) {
           <section>

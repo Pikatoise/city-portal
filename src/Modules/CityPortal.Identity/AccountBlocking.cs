@@ -1,3 +1,4 @@
+using CityPortal.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace CityPortal.Identity;
@@ -10,13 +11,18 @@ public sealed class AccountBlocking
     private readonly AccountAuthorization _authorization;
     private readonly TimeProvider _time;
     private readonly IEnumerable<IAccountBlockObserver> _observers;
+    private readonly AccountOperations _accounts;
+    private readonly WorkflowNotificationQueue _notifications;
 
-    internal AccountBlocking(IdentityDbContext context, AccountAuthorization authorization, TimeProvider time, IEnumerable<IAccountBlockObserver> observers)
+    internal AccountBlocking(IdentityDbContext context, AccountAuthorization authorization, TimeProvider time, IEnumerable<IAccountBlockObserver> observers,
+        AccountOperations accounts, WorkflowNotificationQueue notifications)
     {
         _context = context;
         _authorization = authorization;
         _time = time;
         _observers = observers;
+        _accounts = accounts;
+        _notifications = notifications;
     }
 
     public async Task<AccountBlockPage> ListAsync(Guid actorId, Guid sessionId, string? query, int page, CancellationToken cancellationToken)
@@ -37,6 +43,42 @@ public sealed class AccountBlocking
             .Select(account => new AccountBlockSummary(account.Id, account.Email ?? "", account.DisplayName, account.Version, account.BlockReason))
             .ToArrayAsync(cancellationToken);
         return new AccountBlockPage(rows.Take(_pageSize).ToArray(), rows.Length > _pageSize);
+    }
+
+    public async Task<AccountBlockHistory> ReadOwnHistoryAsync(Guid sessionId, int page, CancellationToken cancellationToken)
+    {
+        AccountResponse? account = await _accounts.FindSessionAsync(sessionId, cancellationToken);
+        if (account is null)
+            throw new AccountOperationException(401, "invalid_session", "Log in again.");
+
+        return await ReadHistoryAsync(account.Id, page, includeActor: false, cancellationToken);
+    }
+
+    public async Task<AccountBlockHistory> ReadStaffHistoryAsync(Guid actorId, Guid sessionId, Guid targetId, int page, CancellationToken cancellationToken)
+    {
+        await using AuthorizedAccountScope scope = await _authorization.BeginSharedAsync(actorId, sessionId, _roles, cancellationToken);
+        IQueryable<Account> accounts = _context.Users.AsNoTracking();
+        if (!scope.Actor.Roles.Contains("Administrator"))
+            accounts = accounts.Where(account => !StaffIds().Contains(account.Id));
+        if (!await accounts.AnyAsync(account => account.Id == targetId, cancellationToken))
+            throw new AccountOperationException(404, "account_not_found", "The account is unavailable.");
+
+        return await ReadHistoryAsync(targetId, page, includeActor: true, cancellationToken);
+    }
+
+    private async Task<AccountBlockHistory> ReadHistoryAsync(Guid accountId, int page, bool includeActor, CancellationToken cancellationToken)
+    {
+        if (page is < 1 or > 100000)
+            throw new AccountOperationException(400, "invalid_page", "Choose a valid page number.");
+
+        AccountBlockHistoryItem[] rows = await _context.BlockDecisions.AsNoTracking().Where(item => item.TargetId == accountId)
+            .OrderByDescending(item => item.DecidedAtUtc).ThenByDescending(item => item.Id)
+            .Skip((page - 1) * _pageSize).Take(_pageSize + 1)
+            .Select(item => new AccountBlockHistoryItem(item.Id, item.Reason != null, item.DecidedAtUtc, item.Reason,
+                includeActor ? item.ActorId : null, includeActor ? _context.Users.Where(user => user.Id == item.ActorId)
+                    .Select(user => user.DisplayName).FirstOrDefault() : null))
+            .ToArrayAsync(cancellationToken);
+        return new AccountBlockHistory(rows.Take(_pageSize).ToArray(), rows.Length > _pageSize);
     }
 
     public async Task ChangeAsync(Guid actorId, Guid sessionId, Guid accountId, long version, string? reason, bool block, CancellationToken cancellationToken)
@@ -65,19 +107,24 @@ public sealed class AccountBlocking
 
         target.BlockReason = block ? normalizedReason : null;
         target.Version++;
-        _context.BlockDecisions.Add(new AccountBlockDecision
+        var decision = new AccountBlockDecision
         {
             Id = Guid.NewGuid(),
             TargetId = accountId,
             ActorId = actorId,
             DecidedAtUtc = _time.GetUtcNow(),
             Reason = target.BlockReason
-        });
+        };
+        _context.BlockDecisions.Add(decision);
         await _context.SaveChangesAsync(cancellationToken);
         if (block)
             foreach (IAccountBlockObserver observer in _observers)
                 await observer.HideForAccountBlockAsync(accountId, scope, cancellationToken);
+        await _notifications.QueueAsync(decision.Id, block ? "account.blocked" : "account.unblocked", accountId,
+            decision.DecidedAtUtc, [new WorkflowRecipient(accountId, target.EmailConfirmed ? target.Email : null)],
+            scope.Connection, scope.Transaction, cancellationToken);
         await scope.CommitAsync(cancellationToken);
+        await _notifications.FlushAfterCommitAsync();
     }
 
     private IQueryable<Guid> StaffIds() =>

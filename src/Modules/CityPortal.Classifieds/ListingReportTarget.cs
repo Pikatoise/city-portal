@@ -44,4 +44,6 @@ internal sealed class ListingReportTarget : IReportTarget
             throw new AccountOperationException(409, "listing_draft_conflict", "The listing has changed.");
         return _publications.BlockAsync(scope, id, (int)version, reason, cancellationToken);
     }
+
+    public Task AfterHideCommitAsync() => _publications.FlushAfterCommitAsync();
 }

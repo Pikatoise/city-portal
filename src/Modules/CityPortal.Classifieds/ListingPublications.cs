@@ -12,13 +12,15 @@ public sealed class ListingPublications : IAccountBlockObserver
     private readonly AccountAuthorization _authorization;
     private readonly ListingImages _images;
     private readonly TimeProvider _time;
+    private readonly ListingNotifications _notifications;
 
-    internal ListingPublications(ClassifiedsDbContext context, AccountAuthorization authorization, ListingImages images, TimeProvider time)
+    internal ListingPublications(ClassifiedsDbContext context, AccountAuthorization authorization, ListingImages images, TimeProvider time, ListingNotifications notifications)
     {
         _context = context;
         _authorization = authorization;
         _images = images;
         _time = time;
+        _notifications = notifications;
     }
 
     public async Task PublishAsync(Guid actorId, Guid sessionId, Guid id, int version, CancellationToken cancellationToken)
@@ -75,7 +77,9 @@ public sealed class ListingPublications : IAccountBlockObserver
         draft.UpdatedAtUtc = now;
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
+        await _notifications.QueueAsync(scope, draft, "listing.approved", now, cancellationToken);
         await scope.CommitAsync(cancellationToken);
+        await _notifications.FlushAfterCommitAsync();
     }
 
     internal static async Task ReplaceRevisionAsync(ListingImages images, AuthorizedAccountScope scope, ListingPublication publication,
@@ -160,7 +164,10 @@ public sealed class ListingPublications : IAccountBlockObserver
         await using AuthorizedAccountScope scope = await _authorization.BeginAsync(actorId, sessionId, _roles, cancellationToken);
         await BlockAsync(scope, id, request.Version, request.Reason, cancellationToken);
         await scope.CommitAsync(cancellationToken);
+        await FlushAfterCommitAsync();
     }
+
+    internal Task FlushAfterCommitAsync() => _notifications.FlushAfterCommitAsync();
 
     internal async Task BlockAsync(AuthorizedAccountScope scope, Guid id, int version, string reason, CancellationToken cancellationToken)
     {
@@ -191,6 +198,7 @@ public sealed class ListingPublications : IAccountBlockObserver
         draft.UpdatedAtUtc = now;
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
+        await _notifications.QueueAsync(scope, draft, "listing.blocked", now, cancellationToken);
     }
 
     public async Task HideForAccountBlockAsync(Guid accountId, AuthorizedAccountScope scope, CancellationToken cancellationToken)

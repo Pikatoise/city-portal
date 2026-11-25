@@ -26,6 +26,13 @@ public sealed class AccountBlockingController : ControllerBase
     public Task<AccountBlockPage> ListAsync(string? query, CancellationToken cancellationToken, int page = 1) =>
         _blocking.ListAsync(ActorId, SessionId, query, page, cancellationToken);
 
+    [HttpGet("{id:guid}/history", Name = "getAccountBlockHistory")]
+    [ProducesResponseType<AccountBlockHistory>(200)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public Task<AccountBlockHistory> HistoryAsync(Guid id, CancellationToken cancellationToken, [Range(1, 100000)] int page = 1) =>
+        _blocking.ReadStaffHistoryAsync(ActorId, SessionId, id, page, cancellationToken);
+
     [HttpPost("{id:guid}/block", Name = "blockAccount")]
     [Consumes("application/json")]
     [RequestSizeLimit(8192)]

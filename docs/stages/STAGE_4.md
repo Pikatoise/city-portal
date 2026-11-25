@@ -11,6 +11,8 @@ individual listing or an account. Published edits, comparison review,
 renewal, withdrawal and relisting are implemented. The public catalog and
 its homepage entry point are implemented. Visitors can report public articles
 and listings. Staff review them in separate queues.
+Owners and staff can read moderation history. Listing and account decisions
+queue the agreed account and Email notices. Stage acceptance is pending.
 [VALUE.md](../VALUE.md#classified-advertisements) owns product rules and
 [CORE.md](../CORE.md#classifieds-and-moderation) owns architecture and
 transaction requirements.
@@ -296,6 +298,34 @@ reports and decisions after deletion. It omits IP addresses.
 The two subject kinds are `articles` and `classifieds`. The staff pages
 are at `/staff/reports/articles` and `/staff/reports/classifieds`.
 
+### Decision history and workflow notifications
+
+Owners read listing decisions in My Advertisements and account block history
+from Profile. The history shows the outcome, time and reason. Authorized
+staff also see the responsible account. The listing audit includes deleted
+listings by identifier. Staff history uses a publication title while one
+exists and does not expose an owner's unsent edits. Moderators can view
+account block history only for accounts without additional roles.
+Administrators can review any account. Existing report history remains in
+the report workspace.
+
+| Route | Contract |
+| --- | --- |
+| GET `/api/account/classifieds/drafts/{id}/history` | Decisions for an existing listing owned by the caller. |
+| GET `/api/account/block-history` | The signed-in account's block and unblock history. |
+| GET `/api/staff/classifieds/history` | Listing decisions, including deleted listings. Optional `id` limits results to one listing. |
+| GET `/api/staff/account-blocks/{id}/history` | Account block and unblock decisions, subject to staff roles. |
+
+Each history returns 20 decisions per page, newest first, with `hasNextPage`.
+Listing approval, return, rejection and direct block notify the listing owner.
+Account block and unblock notify the affected account. Both channels default
+to enabled per event and have separate switches. Email requires a confirmed
+address. Notifications provide generic messages. Reasons remain in decision
+history. A report that hides a listing or withdraws an article uses the
+corresponding decision notification. The existing transactional outbox,
+retry, replay, and retention rules apply. Deleting or disabling notifications
+does not change decision history.
+
 ## Tools and technical contracts
 
 - Classifieds owns listing revisions, taxonomy, visibility, expiry and listing
@@ -496,9 +526,25 @@ rollback of a failed hiding decision, and history after listing deletion.
 All 103 Angular tests passed, along with the production build, formatting,
 and both OpenAPI checks.
 
+On 2026-11-25, eight targeted PostgreSQL tests verified listing and account
+decision history, role access, independent notification preferences, and
+rollback of a report-triggered listing block and its notification. They
+also covered private reasons, an unverified Email address, and retained
+decisions after listing deletion or notification removal. All 104 Angular
+tests passed, including a failed-page retry and navigation between account
+histories. The solution and production Angular build, C# formatting,
+changed-file Prettier, and both OpenAPI checks passed.
+The complete .NET suite passed all 219 tests with one xUnit worker in 15m 42s.
+
+A live HTTPS Edge check at 390 and 1440 pixels verified the owner and staff
+history, actor visibility, an administrator's own staff history, notification
+preferences, unblock notifications, and access to a deleted listing's audit.
+With RabbitMQ and SMTP stopped, an account block persisted, the owner saw one
+account notice, and PostgreSQL kept one outgoing Email envelope. After the
+broker restarted, the Worker scheduled a retry while SMTP was still down.
+After SMTP restarted, the Email reached `Sent` on attempt two. The isolated
+stand seeded the owner's Email confirmation before the check.
+
 ## Open decisions
 
-### Reports and notifications
-
-- Agree notification events, recipients and default channels. Reuse the existing
-  account and Email preferences and delivery rules when applicable.
+- Record the owner's review after Stage 4 acceptance.

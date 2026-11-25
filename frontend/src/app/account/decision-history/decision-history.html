@@ -1,0 +1,70 @@
+<section
+  class="account-panel"
+  aria-labelledby="history-title"
+  [attr.aria-busy]="history.isLoading()"
+>
+  @if (staff) {
+    <p><a routerLink="/staff/classifieds/moderation">Блокировки объявлений и аккаунтов</a></p>
+  } @else if (listings) {
+    <p><a routerLink="/account/classifieds">Мои объявления</a></p>
+  } @else {
+    <p><a routerLink="/account">Профиль</a></p>
+  }
+  <h1 id="history-title">
+    {{ listings ? 'История решений по объявлениям' : 'История блокировок аккаунта' }}
+  </h1>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    @if (signedOut()) {
+      <p><a routerLink="/account/login">Войти</a></p>
+    } @else {
+      <button type="button" (click)="history.reload()">Повторить</button>
+    }
+  } @else if (history.isLoading() && !rows().length) {
+    <p role="status">Загружаем историю…</p>
+  } @else {
+    <ul class="history-list">
+      @for (row of rows(); track 'listingId' in row ? row.listingId + ':' + row.version : row.id) {
+        <li>
+          @if ('listingId' in row) {
+            <h2>{{ listingOutcomes[row.outcome] || row.outcome }}</h2>
+            @if (staff) {
+              <p>{{ row.currentTitle || row.listingId }}</p>
+            }
+          } @else {
+            <h2>{{ row.blocked ? 'Аккаунт заблокирован' : 'Аккаунт разблокирован' }}</h2>
+          }
+          <p>
+            <time [attr.datetime]="row.decidedAtUtc">{{ clock.format(row.decidedAtUtc) }}</time>
+            @if (row.actorId) {
+              <span> · {{ row.actorName || row.actorId }}</span>
+            }
+          </p>
+          @if (row.reason) {
+            <p class="reason">{{ row.reason }}</p>
+          }
+        </li>
+      } @empty {
+        <li>Решений пока нет.</li>
+      }
+    </ul>
+    @if (page() > 1 || hasNextPage()) {
+      <nav class="staff-pagination" aria-label="Страницы истории">
+        <button
+          type="button"
+          [disabled]="history.isLoading() || page() === 1"
+          (click)="page.set(page() - 1)"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          [disabled]="history.isLoading() || !hasNextPage()"
+          (click)="page.set(page() + 1)"
+        >
+          Дальше
+        </button>
+      </nav>
+    }
+  }
+</section>

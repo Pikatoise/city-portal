@@ -1,6 +1,9 @@
 import { Routes } from '@angular/router';
 import { requireInstallation } from './installation-state';
 
+const loadDecisionHistory = () =>
+  import('./account/decision-history/decision-history').then((m) => m.DecisionHistory);
+
 export const routes: Routes = [
   { path: 'setup', loadComponent: () => import('./setup').then((m) => m.Setup) },
   {
@@ -63,6 +66,21 @@ export const routes: Routes = [
           import('./staff/classifieds-moderation').then((m) => m.ClassifiedsModeration),
       },
       {
+        path: 'staff/classifieds/history/:id',
+        data: { staff: true, listings: true },
+        loadComponent: loadDecisionHistory,
+      },
+      {
+        path: 'staff/classifieds/history',
+        data: { staff: true, listings: true },
+        loadComponent: loadDecisionHistory,
+      },
+      {
+        path: 'staff/account-blocks/:id/history',
+        data: { staff: true },
+        loadComponent: loadDecisionHistory,
+      },
+      {
         path: 'staff/classifieds/review',
         loadComponent: () => import('./staff/classifieds-review').then((m) => m.ClassifiedsReview),
       },
@@ -93,6 +111,15 @@ export const routes: Routes = [
         path: 'account/classifieds',
         loadComponent: () => import('./account/classifieds').then((m) => m.Classifieds),
         canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+      },
+      {
+        path: 'account/classifieds/:id/history',
+        data: { listings: true },
+        loadComponent: loadDecisionHistory,
+      },
+      {
+        path: 'account/block-history',
+        loadComponent: loadDecisionHistory,
       },
       {
         path: 'account/notifications',

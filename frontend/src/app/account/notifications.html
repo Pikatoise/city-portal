@@ -39,6 +39,10 @@
             <p>{{ item.message }}</p>
             @if (item.type.startsWith('template.')) {
               <a routerLink="/account/media">Открыть медиатеку и историю решений</a>
+            } @else if (item.type.startsWith('listing.')) {
+              <a routerLink="/account/classifieds">Мои объявления</a>
+            } @else if (item.type.startsWith('account.')) {
+              <a routerLink="/account/block-history">История блокировок аккаунта</a>
             }
           </div>
           <div class="notification-actions">

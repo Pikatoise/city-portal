@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using CityPortal.Classifieds;
 using CityPortal.News;
+using CityPortal.Notifications;
 using CityPortal.Reports;
 using Npgsql;
 
@@ -96,11 +97,17 @@ public sealed class ContentReportsTests : IClassFixture<RegistrationFixture>
         Assert.Equal(HttpStatusCode.InternalServerError, (await DecideAsync(admin, previewPath, preview, "hide", "Spam")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await visitor.GetAsync(publicPath)).StatusCode);
         Assert.Empty((await admin.GetFromJsonAsync<ReportReviewPreview>(previewPath))!.Decisions);
+        AccountNotificationPage before = (await owner.GetFromJsonAsync<AccountNotificationPage>("/api/account/notifications"))!;
+        Assert.Equal("listing.approved", Assert.Single(before.Items).Type);
         await using var removeFailure = new NpgsqlCommand("""DROP TRIGGER fail_test_decision ON reports."Decisions" """, connection);
         await removeFailure.ExecuteNonQueryAsync();
         Assert.Equal(HttpStatusCode.NoContent, (await DecideAsync(admin, previewPath, preview, "hide", "Spam")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPath)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await SubmitAsync(visitor, "classifieds", listing.Id, "spam")).StatusCode);
+        AccountNotificationPage after = (await owner.GetFromJsonAsync<AccountNotificationPage>("/api/account/notifications"))!;
+        AccountNotificationResponse notice = Assert.Single(after.Items, item => item.Type == "listing.blocked");
+        Assert.Equal(listing.Id, notice.ResourceId);
+        Assert.DoesNotContain("Spam", notice.Message, StringComparison.OrdinalIgnoreCase);
 
         string ownerPath = $"/api/account/classifieds/drafts/{listing.Id}";
         ListingDraftResponse blocked = (await owner.GetFromJsonAsync<ListingDraftResponse>(ownerPath))!;

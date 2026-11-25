@@ -38,7 +38,7 @@ public sealed class WorkflowNotificationQueue
             _context.WorkflowReceipts.Add(new WorkflowReceipt { EventId = eventId, AccountId = recipient.AccountId, Type = type, NotificationId = id });
             if (preference?.Account != false && createdAtUtc.AddDays(30) > now)
                 _context.AccountNotifications.Add(new AccountNotification { Id = id, AccountId = recipient.AccountId, Type = type, ResourceId = resourceId, CreatedAtUtc = createdAtUtc });
-            if (preference?.Email != false && createdAtUtc.AddDays(7) > now)
+            if (recipient.Email is not null && preference?.Email != false && createdAtUtc.AddDays(7) > now)
             {
                 _context.Deliveries.Add(new EmailDelivery
                 {

@@ -47,6 +47,72 @@
         }
       }
     },
+    "/api/staff/account-blocks/{id}/history": {
+      "get": {
+        "tags": [
+          "AccountBlocking"
+        ],
+        "operationId": "getAccountBlockHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "maximum": 100000,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountBlockHistory"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/staff/account-blocks/{id}/block": {
       "post": {
         "tags": [
@@ -220,6 +286,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/block-history": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "operationId": "getMyAccountBlockHistory",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "maximum": 100000,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountBlockHistory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1882,6 +1995,82 @@
         }
       }
     },
+    "/api/account/classifieds/drafts/{id}/history": {
+      "get": {
+        "tags": [
+          "ClassifiedsDrafts"
+        ],
+        "operationId": "getMyListingHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "maximum": 100000,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedsPageOfListingHistoryItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/account/classifieds/uploads": {
       "post": {
         "tags": [
@@ -2539,6 +2728,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClassifiedsPageOfListingModerationItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/classifieds/history": {
+      "get": {
+        "tags": [
+          "ClassifiedsModeration"
+        ],
+        "operationId": "getListingModerationHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "maximum": 100000,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedsPageOfListingHistoryItem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -6211,6 +6455,69 @@
   },
   "components": {
     "schemas": {
+      "AccountBlockHistory": {
+        "required": [
+          "items",
+          "hasNextPage"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountBlockHistoryItem"
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        },
+        "description": "A page of account block decisions, newest first."
+      },
+      "AccountBlockHistoryItem": {
+        "required": [
+          "id",
+          "blocked",
+          "decidedAtUtc",
+          "reason",
+          "actorId",
+          "actorName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "blocked": {
+            "type": "boolean"
+          },
+          "decidedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "An account block or unblock. Actor details are available to authorized staff."
+      },
       "AccountBlockPage": {
         "required": [
           "items",
@@ -6891,6 +7198,25 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ListingDraftResponse"
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        },
+        "description": "A page of up to 20 records and an indication that more records exist."
+      },
+      "ClassifiedsPageOfListingHistoryItem": {
+        "required": [
+          "items",
+          "hasNextPage"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingHistoryItem"
             }
           },
           "hasNextPage": {
@@ -7690,6 +8016,66 @@
           }
         },
         "description": "Changes the draft's review status using the last version read."
+      },
+      "ListingHistoryItem": {
+        "required": [
+          "listingId",
+          "version",
+          "outcome",
+          "decidedAtUtc",
+          "reason",
+          "actorId",
+          "actorName",
+          "currentTitle"
+        ],
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "decidedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currentTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A recorded listing review or block. Actor details are available to authorized staff."
       },
       "ListingModerationItem": {
         "required": [

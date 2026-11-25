@@ -33,6 +33,13 @@ public sealed class AccountController : ControllerBase
         return account;
     }
 
+    [HttpGet("block-history", Name = "getMyAccountBlockHistory")]
+    [ProducesResponseType<AccountBlockHistory>(200)]
+    [ProducesResponseType(401)]
+    public Task<AccountBlockHistory> BlockHistoryAsync([FromServices] AccountBlocking blocking, CancellationToken cancellationToken,
+        [Range(1, 100000)] int page = 1) =>
+        blocking.ReadOwnHistoryAsync(Guid.Parse(User.FindFirstValue("session")!), page, cancellationToken);
+
     [HttpGet("email-confirmation", Name = "getConfirmationDelivery")]
     [ProducesResponseType<ConfirmationDeliveryResponse>(200)]
     public async Task<ActionResult<ConfirmationDeliveryResponse>> GetConfirmationAsync(CancellationToken cancellationToken)

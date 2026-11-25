@@ -4,7 +4,7 @@
 
 [Published revisions and listing lifecycle](../stages/STAGE_4.md#published-revisions-and-listing-lifecycle),
 [Public catalog and homepage entry point](../stages/STAGE_4.md#public-catalog-and-homepage-entry-point), and
-[06 Decision history and workflow notifications](06-stage-4-notifications-and-history.md),
+[Decision history and workflow notifications](../stages/STAGE_4.md#decision-history-and-workflow-notifications),
 including their prerequisites.
 
 ## Outcome

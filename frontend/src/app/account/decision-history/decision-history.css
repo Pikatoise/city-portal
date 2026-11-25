@@ -1,0 +1,18 @@
+.history-list {
+  list-style: none;
+  padding: 0;
+}
+
+.history-list li {
+  border-bottom: 1px solid var(--color-divider);
+  padding-block: 12px;
+  overflow-wrap: anywhere;
+}
+
+.history-list p {
+  margin-block: 6px;
+}
+
+.reason {
+  white-space: pre-wrap;
+}

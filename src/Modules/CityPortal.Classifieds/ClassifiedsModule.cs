@@ -16,10 +16,15 @@ public static class ClassifiedsModule
             provider.GetRequiredService<AccountAuthorization>()));
         services.AddScoped(provider => new ListingDraftOperations(provider.GetRequiredService<ClassifiedsDbContext>(),
             provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>()));
+        services.AddScoped<ListingNotifications>();
+        services.AddScoped(provider => new ListingHistory(provider.GetRequiredService<ClassifiedsDbContext>(),
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<AccountOperations>()));
         services.AddScoped(provider => new ListingReviewOperations(provider.GetRequiredService<ClassifiedsDbContext>(),
-            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>()));
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ListingImages>(),
+            provider.GetRequiredService<ListingNotifications>()));
         services.AddScoped(provider => new ListingPublications(provider.GetRequiredService<ClassifiedsDbContext>(),
-            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<ListingImages>(), provider.GetRequiredService<TimeProvider>()));
+            provider.GetRequiredService<AccountAuthorization>(), provider.GetRequiredService<ListingImages>(), provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<ListingNotifications>()));
         services.AddScoped<IReportTarget, ListingReportTarget>();
         services.AddScoped<IAccountBlockObserver>(provider => provider.GetRequiredService<ListingPublications>());
         services.AddScoped(provider => new PublicListingSearch(provider.GetRequiredService<ClassifiedsDbContext>(), provider.GetRequiredService<TimeProvider>()));

@@ -60,8 +60,14 @@ const roleLabels: Record<string, string> = {
         <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>
         <p><a routerLink="/account/suggestions">Мои предложения новостей</a></p>
         <p><a routerLink="/account/classifieds">Мои объявления</a></p>
+        <p><a routerLink="/account/block-history">История блокировок аккаунта</a></p>
         @if (!account.blockReason && account.roles.includes('Administrator')) {
           <p><a routerLink="/staff/classifieds/catalog">Категории и районы объявлений</a></p>
+          <p>
+            <a [routerLink]="['/staff/account-blocks', account.id, 'history']"
+              >Служебная история моих блокировок</a
+            >
+          </p>
         }
         @if (
           account.roles.includes('Author') ||

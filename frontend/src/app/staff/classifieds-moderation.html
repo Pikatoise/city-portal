@@ -1,6 +1,7 @@
 <section class="staff-panel" aria-labelledby="moderation-title">
   <p><a routerLink="/staff/classifieds/review">Очередь объявлений</a></p>
   <h1 id="moderation-title">Блокировки объявлений и аккаунтов</h1>
+  <p><a routerLink="/staff/classifieds/history">Журнал решений по объявлениям</a></p>
   @if (error()) {
     <p class="error" role="alert">{{ error() }}</p>
   }
@@ -34,6 +35,7 @@
       @for (item of listings(); track item.id) {
         <li>
           {{ item.title }}
+          <a [routerLink]="['/staff/classifieds/history', item.id]">История решений</a>
           @if (item.blocked) {
             <span>Скрыто модератором</span>
           } @else {
@@ -76,6 +78,7 @@
       @for (item of accounts(); track item.id) {
         <li>
           {{ item.displayName }} ({{ item.email }})
+          <a [routerLink]="['/staff/account-blocks', item.id, 'history']">История блокировок</a>
           @if (item.blockReason) {
             <span>Заблокирован. Причина: {{ item.blockReason }}</span>
             <button type="button" [disabled]="busy()" (click)="unblock(item)">

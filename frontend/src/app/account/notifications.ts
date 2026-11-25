@@ -46,6 +46,12 @@ export class Notifications implements OnInit {
     'template.unblocked': 'Снятие блокировки шаблона',
     'image.blocked': 'Блокировка изображения в ваших статьях',
     'image.unblocked': 'Снятие блокировки изображения в ваших статьях',
+    'listing.approved': 'Одобрение объявления',
+    'listing.returned': 'Возврат объявления на доработку',
+    'listing.rejected': 'Отклонение объявления',
+    'listing.blocked': 'Блокировка объявления',
+    'account.blocked': 'Блокировка аккаунта',
+    'account.unblocked': 'Снятие блокировки аккаунта',
   };
 
   ngOnInit(): void {

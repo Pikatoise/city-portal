@@ -228,6 +228,19 @@ Review outcomes and feedback are delivered to the account and by Email. Profile 
 
 Article authors receive notices for return with feedback, final rejection, approval, publication, direct editorial correction, withdrawal, and closure of a superseded working version. Template submitters receive approval, rejection, archival, block, and unblock notifications. Each type defaults to enabled for both account and Email delivery.
 
+Advertisement owners receive notices for approval, return, final rejection and
+direct blocking, including blocking after a report. Account block and unblock
+notices go to the affected account. Each event has separate account and Email
+preferences, both enabled by default. Email goes to a confirmed address. The
+owner opens the advertisement or account profile to read the decision and reason.
+
+My Advertisements shows decisions, dates and reasons for the owner's existing
+advertisements. Profile shows the owner's account block and unblock history.
+Staff history also identifies the actor. Advertisement decisions survive deletion
+and remain available to moderators and administrators. Moderators may read account
+block history only for accounts without additional roles. Administrators may read
+all account block history.
+
 Notify only affected editors about resubmission to their review, author withdrawal/deletion, and review transfer. Do not broadcast new shared-queue articles to all editors. Template block/unblock notifications also go once to each author whose current draft or publication uses the image. Historical versions alone do not trigger a notification.
 
 Users may mark account notifications as read and remove them from their own list. Automatically delete these notifications 30 days after creation regardless of read state. Removing a notification does not delete the underlying decision or content history.

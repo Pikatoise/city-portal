@@ -14,13 +14,15 @@ public sealed class ListingReviewOperations
     private readonly AccountAuthorization _authorization;
     private readonly TimeProvider _time;
     private readonly ListingImages _images;
+    private readonly ListingNotifications _notifications;
 
-    internal ListingReviewOperations(ClassifiedsDbContext context, AccountAuthorization authorization, TimeProvider time, ListingImages images)
+    internal ListingReviewOperations(ClassifiedsDbContext context, AccountAuthorization authorization, TimeProvider time, ListingImages images, ListingNotifications notifications)
     {
         _context = context;
         _authorization = authorization;
         _time = time;
         _images = images;
+        _notifications = notifications;
     }
 
     public async Task<ClassifiedsPage<ListingReviewQueueItem>> ListAsync(Guid actorId, Guid sessionId, int page, CancellationToken cancellationToken)
@@ -119,7 +121,9 @@ public sealed class ListingReviewOperations
         draft.UpdatedAtUtc = now;
         draft.Version++;
         await context.SaveChangesAsync(cancellationToken);
+        await _notifications.QueueAsync(scope, draft, reject ? "listing.rejected" : "listing.returned", now, cancellationToken);
         await scope.CommitAsync(cancellationToken);
+        await _notifications.FlushAfterCommitAsync();
     }
 
     private IQueryable<ListingDraft> Pending(Guid actorId) =>
