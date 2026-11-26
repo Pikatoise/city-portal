@@ -12,6 +12,8 @@ import { ReportReviewPreview } from '../../models/report-review-preview';
 export interface GetReportReview$Params {
   kind: string;
   id: string;
+  resolvedPage?: (number | string);
+  decisionPage?: (number | string);
 }
 
 export function getReportReview(http: HttpClient, rootUrl: string, params: GetReportReview$Params, context?: HttpContext): Observable<StrictHttpResponse<ReportReviewPreview>> {
@@ -19,6 +21,8 @@ export function getReportReview(http: HttpClient, rootUrl: string, params: GetRe
   if (params) {
     rb.path('kind', params.kind, {});
     rb.path('id', params.id, {});
+    rb.query('resolvedPage', params.resolvedPage, {});
+    rb.query('decisionPage', params.decisionPage, {});
   }
 
   return http.request(

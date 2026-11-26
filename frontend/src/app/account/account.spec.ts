@@ -343,6 +343,28 @@ describe('Account workflows', () => {
     fixture.destroy();
   });
 
+  it.each([
+    ['Editor', true, true],
+    ['Administrator', true, true],
+    ['Editor', false, false],
+    ['RegularUser', true, false],
+  ])(
+    'shows the staff publications link for %s with confirmed email %s: %s',
+    async (role, confirmed, visible) => {
+      const fixture = TestBed.createComponent(Profile);
+      fixture.detectChanges();
+      http
+        .expectOne('/api/account')
+        .flush({ ...account, roles: [role], emailConfirmed: confirmed });
+      await settle(fixture);
+      const host: HTMLElement = fixture.nativeElement;
+      const link = host.querySelector('a[href="/staff/publications"]');
+      if (visible) expect(link?.textContent).toBe('Опубликованные статьи');
+      else expect(link).toBeNull();
+      fixture.destroy();
+    },
+  );
+
   it('does not let an older profile response overwrite the latest requested mail status', async () => {
     const fixture = TestBed.createComponent(Profile);
     fixture.detectChanges();

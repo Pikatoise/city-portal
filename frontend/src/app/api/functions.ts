@@ -109,6 +109,14 @@ export type { RejectListingReview$Params as RejectListingReview$Params } from '.
 export { rejectListingReview as rejectListingReview } from './fn/classifieds-review/reject-listing-review';
 export type { ApproveListingReview$Params as ApproveListingReview$Params } from './fn/classifieds-review/approve-listing-review';
 export { approveListingReview as approveListingReview } from './fn/classifieds-review/approve-listing-review';
+export type { ListArticleComments$Params as ListArticleComments$Params } from './fn/comments/list-article-comments';
+export { listArticleComments as listArticleComments } from './fn/comments/list-article-comments';
+export type { CreateArticleComment$Params as CreateArticleComment$Params } from './fn/comments/create-article-comment';
+export { createArticleComment as createArticleComment } from './fn/comments/create-article-comment';
+export type { ListOwnComments$Params as ListOwnComments$Params } from './fn/comments/list-own-comments';
+export { listOwnComments as listOwnComments } from './fn/comments/list-own-comments';
+export type { DeleteOwnComment$Params as DeleteOwnComment$Params } from './fn/comments/delete-own-comment';
+export { deleteOwnComment as deleteOwnComment } from './fn/comments/delete-own-comment';
 export type { GetEditorialHomepage$Params as GetEditorialHomepage$Params } from './fn/editorial/get-editorial-homepage';
 export { getEditorialHomepage as getEditorialHomepage } from './fn/editorial/get-editorial-homepage';
 export type { SaveEditorialHomepage$Params as SaveEditorialHomepage$Params } from './fn/editorial/save-editorial-homepage';
@@ -197,6 +205,8 @@ export type { OpenPublicListingPhoto$Params as OpenPublicListingPhoto$Params } f
 export { openPublicListingPhoto as openPublicListingPhoto } from './fn/public-classifieds/open-public-listing-photo';
 export type { SubmitContentReport$Params as SubmitContentReport$Params } from './fn/public-reports/submit-content-report';
 export { submitContentReport as submitContentReport } from './fn/public-reports/submit-content-report';
+export type { HidePublicComment$Params as HidePublicComment$Params } from './fn/staff-comments/hide-public-comment';
+export { hidePublicComment as hidePublicComment } from './fn/staff-comments/hide-public-comment';
 export type { ListReportedContent$Params as ListReportedContent$Params } from './fn/staff-reports/list-reported-content';
 export { listReportedContent as listReportedContent } from './fn/staff-reports/list-reported-content';
 export type { GetReportReview$Params as GetReportReview$Params } from './fn/staff-reports/get-report-review';

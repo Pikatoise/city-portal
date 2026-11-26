@@ -11,10 +11,13 @@
       [attr.aria-current]="kind === 'classifieds' ? 'page' : null"
       >Жалобы на объявления</a
     >
+    <a
+      routerLink="/staff/reports/comments"
+      [attr.aria-current]="kind === 'comments' ? 'page' : null"
+      >Жалобы на комментарии</a
+    >
   </nav>
-  <h1 id="reports-title">
-    {{ kind === 'articles' ? 'Жалобы на статьи' : 'Жалобы на объявления' }}
-  </h1>
+  <h1 id="reports-title">{{ queueTitles[kind] }}</h1>
   @if (error()) {
     <p class="error" role="alert">{{ error() }}</p>
   }
@@ -26,7 +29,7 @@
     <h2>{{ item.title }}</h2>
     @if (item.publicUrl; as url) {
       <p>
-        <a [routerLink]="url" target="_blank" rel="noopener"
+        <a [href]="url" target="_blank" rel="noopener"
           >Открыть публичную страницу (в новой вкладке)</a
         >
       </p>
@@ -38,6 +41,9 @@
     }
 
     <h3>Жалобы</h3>
+    @if (item.hasMorePendingReports) {
+      <p>Показаны 20 первых необработанных жалоб.</p>
+    }
     <ul class="queue-rows">
       @for (report of item.reports; track report.sequence) {
         <li>
@@ -52,14 +58,34 @@
         </li>
       }
     </ul>
+    @if (resolvedPage() > 1 || item.hasMoreResolvedReports) {
+      <nav class="queue-actions" aria-label="Страницы обработанных жалоб">
+        @if (resolvedPage() > 1) {
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="open(item.id, resolvedPage() - 1, decisionPage())"
+          >
+            Предыдущие обработанные жалобы
+          </button>
+        }
+        @if (item.hasMoreResolvedReports) {
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="open(item.id, resolvedPage() + 1, decisionPage())"
+          >
+            Следующие обработанные жалобы
+          </button>
+        }
+      </nav>
+    }
     @if (item.decisions.length) {
       <h3>История решений</h3>
       <ul class="queue-rows">
         @for (decision of item.decisions; track decision.id) {
           <li>
-            <strong>{{
-              decision.outcome === 'hide' ? 'Публикация скрыта' : 'Жалобы отклонены'
-            }}</strong>
+            <strong>{{ decision.outcome === 'hide' ? hideNotice : 'Жалобы отклонены.' }}</strong>
             <time [attr.datetime]="decision.decidedAtUtc">{{
               clock.format(decision.decidedAtUtc)
             }}</time>
@@ -69,6 +95,28 @@
           </li>
         }
       </ul>
+    }
+    @if (decisionPage() > 1 || item.hasMoreDecisions) {
+      <nav class="queue-actions" aria-label="Страницы решений">
+        @if (decisionPage() > 1) {
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="open(item.id, resolvedPage(), decisionPage() - 1)"
+          >
+            Предыдущие решения
+          </button>
+        }
+        @if (item.hasMoreDecisions) {
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="open(item.id, resolvedPage(), decisionPage() + 1)"
+          >
+            Следующие решения
+          </button>
+        }
+      </nav>
     }
     @if (item.throughSequence != null) {
       <div class="queue-actions">
@@ -89,7 +137,7 @@
             required
             [readOnly]="busy()"
           ></textarea>
-          <button type="submit" [disabled]="busy() || !reason.trim()">Скрыть публикацию</button>
+          <button type="submit" [disabled]="busy() || !reason.trim()">{{ hideLabel }}</button>
         </form>
       }
     }

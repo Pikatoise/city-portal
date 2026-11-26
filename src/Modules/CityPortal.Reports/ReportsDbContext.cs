@@ -22,6 +22,8 @@ internal sealed class ReportsDbContext : DbContext
             target.HasKey(item => new { item.Kind, item.Id });
             target.Property(item => item.Kind).HasMaxLength(12);
             target.Property(item => item.Title).HasMaxLength(200);
+            target.Property(item => item.SnapshotText).HasMaxLength(500);
+            target.HasOne<ReportDecision>().WithMany().HasForeignKey(item => item.DirectDecisionId).OnDelete(DeleteBehavior.Restrict);
             target.HasMany(item => item.Reports).WithOne().HasForeignKey(item => new { item.Kind, item.TargetId }).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<ContentReport>(report =>

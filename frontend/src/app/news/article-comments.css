@@ -1,0 +1,54 @@
+.comments {
+  margin-block: 2rem;
+  padding-block: 1rem;
+  border-top: 1px solid var(--color-divider);
+}
+
+form {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+}
+
+form p,
+time {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+form p {
+  margin: 0;
+}
+
+.comment-list {
+  list-style: none;
+  padding: 0;
+}
+
+.comment-list > li {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.comment-list header,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.comment-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.decision {
+  margin-block-start: 12px;
+}

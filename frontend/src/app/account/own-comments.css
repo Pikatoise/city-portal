@@ -1,0 +1,33 @@
+.own-comments {
+  padding: 0;
+  list-style: none;
+}
+
+.own-comments li {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.own-comments p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+time {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.unavailable-link {
+  color: var(--color-muted);
+}
+
+.article-status {
+  margin-inline-start: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

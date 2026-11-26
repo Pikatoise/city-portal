@@ -92,6 +92,7 @@
           </footer>
           <app-report-form kind="articles" [targetId]="article.id" />
         </article>
+        <app-article-comments [articleId]="article.id" />
         @if (related().length) {
           <section aria-labelledby="related-heading">
             <h2 id="related-heading">Читайте также</h2>

@@ -1,6 +1,7 @@
 using System.Net;
 using CityPortal.CitizenSubmissions;
 using CityPortal.Classifieds;
+using CityPortal.Comments;
 using CityPortal.Identity;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -31,6 +32,7 @@ public sealed class InfrastructureFoundationTests
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
         await factory.Services.MigrateReportsAsync(CancellationToken.None);
+        await factory.Services.MigrateCommentsAsync(CancellationToken.None);
 
         await using var schemas = new NpgsqlCommand("""
             SELECT to_regclass('identity."AspNetUsers"') IS NOT NULL
@@ -39,6 +41,7 @@ public sealed class InfrastructureFoundationTests
               AND to_regclass('reports."Reports"') IS NOT NULL
               AND to_regclass('reports."Decisions"') IS NOT NULL
               AND to_regclass('reports."Targets"') IS NOT NULL
+              AND to_regclass('comments."Comments"') IS NOT NULL
             """, connection);
         Assert.Equal(true, await schemas.ExecuteScalarAsync(CancellationToken.None));
         await using var histories = new NpgsqlCommand("""
@@ -46,6 +49,7 @@ public sealed class InfrastructureFoundationTests
                  + (SELECT count(*) FROM notifications."__EFMigrationsHistory")
                  + (SELECT count(*) FROM news."__EFMigrationsHistory")
                  + (SELECT count(*) FROM reports."__EFMigrationsHistory")
+                 + (SELECT count(*) FROM comments."__EFMigrationsHistory")
             """, connection);
         long appliedMigrations = Assert.IsType<long>(await histories.ExecuteScalarAsync(CancellationToken.None));
 
@@ -58,6 +62,7 @@ public sealed class InfrastructureFoundationTests
         await factory.Services.MigrateNotificationsAsync(CancellationToken.None);
         await factory.Services.MigrateNewsAsync(CancellationToken.None);
         await factory.Services.MigrateReportsAsync(CancellationToken.None);
+        await factory.Services.MigrateCommentsAsync(CancellationToken.None);
 
         await using var read = new NpgsqlCommand("SELECT \"DisplayName\" FROM identity.\"AspNetUsers\" WHERE \"Id\" = @id", connection);
         read.Parameters.AddWithValue("id", accountId);
@@ -98,6 +103,7 @@ public sealed class InfrastructureFoundationTests
         await factory.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
         await factory.Services.MigrateClassifiedsAsync(CancellationToken.None);
         await factory.Services.MigrateReportsAsync(CancellationToken.None);
+        await factory.Services.MigrateCommentsAsync(CancellationToken.None);
 
         using HttpResponseMessage initialReadiness = await client.GetAsync("/health/ready", CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, initialReadiness.StatusCode);

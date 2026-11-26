@@ -5,6 +5,20 @@ including measurement conditions and limits. See [VALUE.md](VALUE.md),
 [CORE.md](CORE.md) and the stage specifications for current contracts, and
 [DEVELOPMENT.md](DEVELOPMENT.md) for operating procedures.
 
+## Stage 5 comment and report review
+
+2026-11-26. Comment paging uses the existing article, timestamp, and ID index
+with a cursor. The My Comments query has a partial index for undeleted
+account comments. The staff preview replaces two unbounded result sets with
+bounded pending, resolved, and decision queries. Report visibility for staff
+is expressed in one predicate shared by list, preview, and decision
+operations. See the [Stage 5 verification](stages/STAGE_5.md#code-review-follow-up).
+
+The integration fixture confirmed the response caps of 20 pending reports,
+20 resolved reports, and 20 decisions. It also verified that later reports
+remain pending. Cursor tests covered inserts and hides before the page
+boundary. No latency comparison was measured.
+
 ## Angular CSRF transport
 
 2026-11-22. Consolidated CSRF acquisition for 37 Angular write operations

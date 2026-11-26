@@ -1,0 +1,65 @@
+<section class="account-panel" aria-labelledby="own-comments-title">
+  <a routerLink="/account">Профиль</a>
+  <h1 id="own-comments-title">Мои комментарии</h1>
+  @if (signedOut()) {
+    <a routerLink="/account/login">Войди, чтобы увидеть свои комментарии</a>
+  }
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    <button type="button" [disabled]="busy()" (click)="load(page())">Обновить комментарии</button>
+  }
+  @if (result(); as current) {
+    @if (!current.canDelete && current.items.length) {
+      <p>Комментарии доступны только для чтения.</p>
+    }
+    <ul class="own-comments">
+      @for (item of current.items; track item.id) {
+        <li>
+          <time [attr.datetime]="item.createdAtUtc">{{ clock.format(item.createdAtUtc) }}</time>
+          <p>{{ item.body }}</p>
+          @if (item.articleUrl; as articleUrl) {
+            <a [routerLink]="articleUrl">Открыть статью</a>
+          } @else {
+            <span class="unavailable-link" role="link" aria-disabled="true">Открыть статью</span>
+            <span class="article-status">Статья скрыта</span>
+          }
+          @if (current.canDelete) {
+            @if (selection() === item.id) {
+              <div class="actions">
+                <button
+                  class="primary-button"
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="remove(item.id)"
+                >
+                  Удалить комментарий
+                </button>
+                <button type="button" [disabled]="busy()" (click)="selection.set(null)">
+                  Отмена
+                </button>
+              </div>
+            } @else {
+              <button type="button" [disabled]="busy()" (click)="selection.set(item.id)">
+                Удалить
+              </button>
+            }
+          }
+        </li>
+      } @empty {
+        <li>У тебя пока нет комментариев.</li>
+      }
+    </ul>
+    @if (page() > 1 || current.hasMore) {
+      <nav class="actions" aria-label="Страницы моих комментариев">
+        @if (page() > 1) {
+          <button type="button" [disabled]="busy()" (click)="load(page() - 1)">Назад</button>
+        }
+        @if (current.hasMore) {
+          <button type="button" [disabled]="busy()" (click)="load(page() + 1)">Далее</button>
+        }
+      </nav>
+    }
+  } @else if (busy()) {
+    <p role="status">Загружаем комментарии…</p>
+  }
+</section>

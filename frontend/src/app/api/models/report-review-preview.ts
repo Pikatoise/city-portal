@@ -6,6 +6,9 @@ import { ReportDecisionResponse } from '../models/report-decision-response';
 export interface ReportReviewPreview {
   canHide: boolean;
   decisions: Array<ReportDecisionResponse>;
+  hasMoreDecisions: boolean;
+  hasMorePendingReports: boolean;
+  hasMoreResolvedReports: boolean;
   id: string;
   publicUrl: (string | null);
   reports: Array<ContentReportResponse>;

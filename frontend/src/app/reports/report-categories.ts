@@ -1,4 +1,4 @@
-export type ReportKind = 'articles' | 'classifieds';
+export type ReportKind = 'articles' | 'classifieds' | 'comments';
 
 const common = {
   spam: 'Спам',
@@ -19,6 +19,13 @@ export const reportCategories: Record<ReportKind, Record<string, string>> = {
     insults: common.insults,
     'hate-speech': 'Язык вражды',
     'inappropriate-media': 'Неуместные фото или видео',
+    other: common.other,
+  },
+  comments: {
+    spam: common.spam,
+    insults: common.insults,
+    'hate-speech': 'Язык вражды',
+    'personal-data': common['personal-data'],
     other: common.other,
   },
   classifieds: {

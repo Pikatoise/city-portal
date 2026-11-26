@@ -23,6 +23,7 @@
     <ProjectReference Include="../Modules/CityPortal.Reports/CityPortal.Reports.csproj" />
     <ProjectReference Include="../Modules/CityPortal.CitizenSubmissions/CityPortal.CitizenSubmissions.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Classifieds/CityPortal.Classifieds.csproj" />
+    <ProjectReference Include="../Modules/CityPortal.Comments/CityPortal.Comments.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />
     <ProjectReference Include="..\Modules\CityPortal.News\CityPortal.News.csproj" />
   </ItemGroup>

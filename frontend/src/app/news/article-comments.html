@@ -1,0 +1,115 @@
+<section class="comments" aria-labelledby="article-comments">
+  <h2 id="article-comments">Комментарии</h2>
+  <form (ngSubmit)="post()">
+    <label for="comment-body">Твой комментарий</label>
+    <textarea
+      id="comment-body"
+      name="body"
+      rows="3"
+      required
+      maxlength="500"
+      aria-describedby="comment-length"
+      [(ngModel)]="body"
+      [readOnly]="!interactive() || busy()"
+    ></textarea>
+    <p id="comment-length">{{ body.length }} из 500</p>
+    <button
+      class="primary-button"
+      type="submit"
+      [disabled]="!interactive() || busy() || !body.trim()"
+    >
+      Опубликовать
+    </button>
+  </form>
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    <button type="button" [disabled]="busy()" (click)="load(cursors())">
+      Обновить комментарии
+    </button>
+  }
+  @if (result(); as current) {
+    <ul class="comment-list">
+      @for (comment of current.items; track comment.id) {
+        <li [id]="'comment-' + comment.id">
+          <header>
+            <strong>{{ comment.displayName }}</strong>
+            <time [attr.datetime]="comment.createdAtUtc">{{
+              clock.format(comment.createdAtUtc)
+            }}</time>
+          </header>
+          <p class="comment-text">{{ comment.body }}</p>
+          @if (interactive()) {
+            <div class="actions">
+              <app-report-form kind="comments" [targetId]="comment.id" />
+              @if (comment.canDelete) {
+                <button
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="startAction(comment.id, 'delete')"
+                >
+                  Удалить
+                </button>
+              }
+              @if (current.canModerate) {
+                <button type="button" [disabled]="busy()" (click)="startAction(comment.id, 'hide')">
+                  Скрыть
+                </button>
+              }
+            </div>
+          }
+          @if (action(); as selection) {
+            @if (selection.id === comment.id) {
+              <form class="decision" (ngSubmit)="applyAction()">
+                @if (selection.type === 'hide') {
+                  <label for="comment-hide-reason">Причина скрытия</label>
+                  <textarea
+                    id="comment-hide-reason"
+                    name="reason"
+                    rows="3"
+                    required
+                    maxlength="500"
+                    [(ngModel)]="reason"
+                    [readOnly]="busy()"
+                  ></textarea>
+                }
+                <div class="actions">
+                  <button
+                    class="primary-button"
+                    type="submit"
+                    [disabled]="busy() || (selection.type === 'hide' && !reason.trim())"
+                  >
+                    {{ selection.type === 'hide' ? 'Скрыть комментарий' : 'Удалить комментарий' }}
+                  </button>
+                  <button type="button" [disabled]="busy()" (click)="action.set(null)">
+                    Отмена
+                  </button>
+                </div>
+              </form>
+            }
+          }
+        </li>
+      } @empty {
+        <li>Комментариев пока нет.</li>
+      }
+    </ul>
+    @if (cursors().length > 1 || current.nextCursor) {
+      <nav class="actions" aria-label="Страницы комментариев">
+        @if (cursors().length > 1) {
+          <button type="button" [disabled]="busy()" (click)="load(cursors().slice(0, -1))">
+            Назад
+          </button>
+        }
+        @if (current.nextCursor; as nextCursor) {
+          <button type="button" [disabled]="busy()" (click)="load([...cursors(), nextCursor])">
+            Далее
+          </button>
+        }
+      </nav>
+    }
+  } @else if (busy()) {
+    <p role="status">Загружаем комментарии…</p>
+  }
+</section>

@@ -31,9 +31,10 @@ public sealed class StaffReportsController : ControllerBase
 
     [HttpGet("{kind}/{id:guid}", Name = "getReportReview")]
     [ProducesResponseType<ReportReviewPreview>(200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(404)]
-    public Task<ReportReviewPreview> GetAsync(string kind, Guid id, CancellationToken cancellationToken) =>
-        _reports.GetAsync(kind, id, ActorId, SessionId, cancellationToken);
+    public Task<ReportReviewPreview> GetAsync(string kind, Guid id, CancellationToken cancellationToken, int resolvedPage = 1, int decisionPage = 1) =>
+        _reports.GetAsync(kind, id, ActorId, SessionId, resolvedPage, decisionPage, cancellationToken);
 
     [HttpPost("{kind}/{id:guid}/decide", Name = "decideContentReports")]
     [Consumes("application/json")]

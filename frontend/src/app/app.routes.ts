@@ -61,6 +61,11 @@ export const routes: Routes = [
         loadComponent: () => import('./staff/report-queue').then((m) => m.ReportQueue),
       },
       {
+        path: 'staff/reports/comments',
+        data: { kind: 'comments' },
+        loadComponent: () => import('./staff/report-queue').then((m) => m.ReportQueue),
+      },
+      {
         path: 'staff/classifieds/moderation',
         loadComponent: () =>
           import('./staff/classifieds-moderation').then((m) => m.ClassifiedsModeration),
@@ -106,6 +111,10 @@ export const routes: Routes = [
       {
         path: 'account/suggestions',
         loadComponent: () => import('./account/suggestions').then((m) => m.Suggestions),
+      },
+      {
+        path: 'account/comments',
+        loadComponent: () => import('./account/own-comments').then((m) => m.OwnComments),
       },
       {
         path: 'account/classifieds',

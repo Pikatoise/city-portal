@@ -49,6 +49,13 @@ internal sealed class AccountRequestFilter : IAsyncResourceFilter
             if (http.User.FindFirstValue(ClaimTypes.NameIdentifier) is string accountId)
                 await accounts.EnforceIpLimitAsync(accountId, "content-report-account", 5, TimeSpan.FromHours(1), http.RequestAborted);
         }
+        if (HttpMethods.IsPost(http.Request.Method) && path.StartsWith("/api/news/articles/", StringComparison.Ordinal)
+            && path.EndsWith("/comments", StringComparison.Ordinal))
+        {
+            await accounts.EnforceIpLimitAsync(ip, "comment-post-ip", 5, TimeSpan.FromMinutes(1), http.RequestAborted);
+            if (http.User.FindFirstValue(ClaimTypes.NameIdentifier) is string accountId)
+                await accounts.EnforceIpLimitAsync(accountId, "comment-post-account", 5, TimeSpan.FromMinutes(1), http.RequestAborted);
+        }
         if (http.Request.Path.StartsWithSegments("/api/account/classifieds", StringComparison.OrdinalIgnoreCase)
             || http.Request.Path.StartsWithSegments("/api/admin/classifieds", StringComparison.OrdinalIgnoreCase))
             await accounts.EnforceIpLimitAsync(http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ip, "classifieds-mutation", 30, TimeSpan.FromMinutes(1), http.RequestAborted);

@@ -10,7 +10,7 @@ Technical architecture, engineering requirements, tooling, working method, deliv
 
 News is the central capability; classifieds complement it. Official articles are written by authors and reviewed by editors. Residents can supply topics and raw materials for authors.
 
-Public news, advertisements, and comments are readable without an account. Anonymous visitors can comment and report advertisements. Other content creation and personal account actions require authentication.
+Public news, advertisements, and comments are readable without an account. Anonymous visitors can post comments and report articles, advertisements, or comments. Other content creation and personal account actions require authentication.
 
 Each installation serves one city. Configurable settings include portal name, branding, city and region, time zone, coordinates, districts and locations, contacts, SEO metadata, and external services. Changing city settings must not reinterpret or migrate existing content.
 
@@ -126,6 +126,7 @@ A user with both author and editor roles may approve their own article. Before f
 
 ### Published Article Changes
 
+- The profile links to the shared publications workspace for accounts with effective editorial permissions.
 - Each article has at most one unfinished working version, separate from its current published revision.
 - Authors propose new versions through the editorial workflow. The current version remains public until the replacement is approved and published.
 - Editors can directly change title, summary, body, images, sources, category, and tags without separate approval. Original authorship is preserved.
@@ -190,8 +191,9 @@ Choose one of the subject's standard categories, then add optional text up to
 per signed-in account. Blocked accounts cannot submit reports.
 
 Moderators and administrators use separate article and advertisement queues.
-Each subject appears once. Opening it shows the subject, all reports and
-previous decisions. Staff may dismiss the reports they saw without a reason
+Each subject appears once. Opening it shows the subject, the first pending
+batch, and pages of previous reports and decisions. Staff may dismiss the
+reports they saw without a reason
 or hide another user's publication with a required reason of up to 500
 characters. For articles, hiding uses editorial withdrawal. For advertisements,
 it uses a direct listing block. Reports leave the publication visible until
@@ -205,8 +207,11 @@ addresses.
 ### Article Comments
 
 - Anonymous and authenticated comments appear immediately in one flat list under the article, without replies or nesting.
+- Comments use plain text and contain 1 to 500 characters after trimming. Posting requires no Email confirmation. Withdrawing an article hides all its comments until republication. Individually hidden or deleted comments stay out of the public list.
 - Comments cannot be edited. Authenticated users can delete their own account comments; anonymous visitors cannot delete theirs.
+- My Comments gives users access to their own comments during article withdrawal and after staff hide a comment. Each entry links to the current public article. When the article is unavailable, show a disabled link and the label “Статья скрыта”. A blocked account retains read access to its comments.
 - Visitors can report comments. Moderators and administrators can hide any comment; author and editor roles alone do not grant this right.
+- Staff review comment reports in a separate queue and record a reason when they hide a comment. Staff can read retained decisions after owner deletion. See [Stage 5](stages/STAGE_5.md) for the full workflow.
 
 ### Personal Account and Notifications
 
@@ -294,4 +299,4 @@ The following are outside the initial implementation or subject to later agreeme
 - Complex real-time collaboration.
 - Scheduled publication, advanced search, advanced revision comparison, and additional media capabilities.
 
-Open details include state models, notification events and defaults, comment-report handling, and remaining module interactions.
+Open details include later state models, notification events and defaults, and remaining module interactions.

@@ -63,7 +63,8 @@ and/or Email.
   Direct listing blocks still apply.
 - Reports leave listings visible until a moderator acts. The queue shows the
   total count per subject. Moderators and administrators open a subject to
-  review all reports and previous decisions. They can dismiss the reports
+  review pending reports and page through earlier reports and decisions.
+  They can dismiss the reports
   they saw or hide the subject with a reason. New reports stay pending.
 
 ### Draft form and starting catalog
@@ -281,7 +282,8 @@ hour per IP and per signed-in account. Reports can be submitted only for
 currently public content. Moderators and administrators use separate queues
 for other users' articles and advertisements. Each queue row groups the
 subject's reports. The preview shows the current publication if available,
-all reports, and prior decisions. Staff can dismiss the reports they saw or
+the oldest pending batch, and pages of resolved reports and prior decisions.
+Staff can dismiss the reports they saw or
 hide the subject with a trimmed reason of 1 to 500 characters. A hiding
 decision checks the subject version and applies editorial withdrawal or the
 direct listing block in the same transaction. Only reports up to the preview
@@ -292,7 +294,7 @@ reports and decisions after deletion. It omits IP addresses.
 | --- | --- |
 | POST `/api/reports/{kind}/{id}` | Submit a reason and optional text. Returns 204, 400 for invalid input, 403 for a blocked account, 404 for unavailable content, or 429 when rate limited. |
 | GET `/api/staff/reports/{kind}` | List grouped pending reports or resolved subjects when `history=true`. |
-| GET `/api/staff/reports/{kind}/{id}` | Review the subject, reports, and decisions. |
+| GET `/api/staff/reports/{kind}/{id}` | Review the subject with the oldest pending batch. Page through resolved reports and decisions with `resolvedPage` and `decisionPage`. The [Stage 5 shared preview change](STAGE_5.md#reports-and-moderation) caps each batch or page at 20. |
 | POST `/api/staff/reports/{kind}/{id}/decide` | Dismiss the reports shown or hide the subject. Returns 204 or 409 for a stale decision. |
 
 The two subject kinds are `articles` and `classifieds`. The staff pages

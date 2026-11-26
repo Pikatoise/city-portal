@@ -1,5 +1,6 @@
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../api/api';
 import { getPublicArticle } from '../api/fn/news/get-public-article';
@@ -9,12 +10,18 @@ import { listPublicArticles, ListPublicArticles$Params } from '../api/fn/news/li
 import { listPublicTaxonomy } from '../api/fn/news/list-public-taxonomy';
 import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 
-export const publicNewsRequests: HttpInterceptorFn = (request, next) =>
-  next(
-    request.method === 'GET' && request.url.includes('/api/news/')
-      ? request.clone({ credentials: 'omit', cache: 'no-store', transferCache: false })
-      : request,
+export const publicNewsRequests: HttpInterceptorFn = (request, next) => {
+  if (request.method !== 'GET' || !request.url.includes('/api/news/')) return next(request);
+  const viewerComments =
+    request.url.endsWith('/comments') && isPlatformBrowser(inject(PLATFORM_ID));
+  return next(
+    request.clone({
+      credentials: viewerComments ? 'same-origin' : 'omit',
+      cache: 'no-store',
+      transferCache: false,
+    }),
   );
+};
 
 @Injectable({ providedIn: 'root' })
 export class PublicNewsApi {

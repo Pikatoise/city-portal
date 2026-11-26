@@ -4,6 +4,8 @@ namespace CityPortal.Reports;
 
 public sealed record DecideContentReportsRequest
 {
+    private readonly string? _reason;
+
     [Required, MaxLength(10)]
     public required string Outcome { get; init; }
 
@@ -12,5 +14,9 @@ public sealed record DecideContentReportsRequest
     public long? TargetVersion { get; init; }
 
     [MaxLength(500)]
-    public string? Reason { get; init; }
+    public string? Reason
+    {
+        get => _reason;
+        init => _reason = value?.Trim();
+    }
 }

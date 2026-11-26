@@ -16,6 +16,7 @@ export class ReportForm {
   private readonly write = inject(ApiWrite);
   readonly kind = input.required<ReportKind>();
   readonly targetId = input.required<string>();
+  protected readonly fieldId = computed(() => `report-${this.kind()}-${this.targetId()}`);
   protected readonly categories = computed(() => Object.entries(reportCategories[this.kind()]));
   protected readonly open = signal(false);
   protected readonly busy = signal(false);

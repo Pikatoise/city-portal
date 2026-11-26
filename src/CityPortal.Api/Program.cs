@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CityPortal.CitizenSubmissions;
 using CityPortal.Classifieds;
+using CityPortal.Comments;
 using CityPortal.Identity;
 using CityPortal.Media;
 using CityPortal.News;
@@ -40,6 +41,7 @@ public partial class Program
         builder.Services.AddCitizenSubmissionsModule(database);
         builder.Services.AddClassifiedsModule(database);
         builder.Services.AddReportsModule(database);
+        builder.Services.AddCommentsModule(database);
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
@@ -104,6 +106,7 @@ public partial class Program
             await app.Services.MigrateCitizenSubmissionsAsync(CancellationToken.None);
             await app.Services.MigrateClassifiedsAsync(CancellationToken.None);
             await app.Services.MigrateReportsAsync(CancellationToken.None);
+            await app.Services.MigrateCommentsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();

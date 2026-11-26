@@ -16,10 +16,16 @@ public sealed class AccountAuthorization
 
     public async Task<AccountResponse> RequireAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken, bool allowBlockedOwnerRead = false)
     {
+        return await RequireActorAsync(actorId, sessionId, roles, allowBlockedOwnerRead, cancellationToken);
+    }
+
+    private async Task<AccountResponse> RequireActorAsync(Guid actorId, Guid sessionId, string[]? roles,
+        bool allowBlockedOwnerRead, CancellationToken cancellationToken)
+    {
         AccountResponse? actor = await _accounts.FindSessionAsync(sessionId, cancellationToken);
         if (actor is null || actor.Id != actorId)
             throw new AccountOperationException(401, "invalid_session", "Log in again.");
-        if (!actor.EmailConfirmed || !roles.Intersect(actor.Roles, StringComparer.Ordinal).Any())
+        if (roles is not null && (!actor.EmailConfirmed || !roles.Intersect(actor.Roles, StringComparer.Ordinal).Any()))
             throw new AccountOperationException(403, "media_permission_required", "A confirmed account with the required role is needed.");
         if (actor.BlockReason is not null && !allowBlockedOwnerRead)
             throw Blocked();
@@ -32,6 +38,9 @@ public sealed class AccountAuthorization
     /// <summary>Allows concurrent writes that serialize their own resources while excluding role changes.</summary>
     public Task<AuthorizedAccountScope> BeginSharedAsync(Guid actorId, Guid sessionId, string[] roles, CancellationToken cancellationToken) =>
         BeginAsync(actorId, sessionId, roles, shareRoleLock: true, cancellationToken);
+
+    public Task<AuthorizedAccountScope> BeginContentWriteAsync(Guid actorId, Guid sessionId, bool shareRoleLock, CancellationToken cancellationToken) =>
+        BeginAsync(actorId, sessionId, roles: null, shareRoleLock, cancellationToken);
 
     public async Task RequireUnblockedOwnerAsync(Guid ownerId, CancellationToken cancellationToken)
     {
@@ -46,7 +55,7 @@ public sealed class AccountAuthorization
 
     private static AccountOperationException Blocked() => new(403, "account_blocked", "The account is restricted to reading its content.");
 
-    private async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[] roles, bool shareRoleLock, CancellationToken cancellationToken)
+    private async Task<AuthorizedAccountScope> BeginAsync(Guid actorId, Guid sessionId, string[]? roles, bool shareRoleLock, CancellationToken cancellationToken)
     {
         IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -57,7 +66,7 @@ public sealed class AccountAuthorization
             if (email is not null)
                 await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"email:" + email}, 0))", cancellationToken);
             await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"account:" + actorId}, 0))", cancellationToken);
-            AccountResponse actor = await RequireAsync(actorId, sessionId, roles, cancellationToken);
+            AccountResponse actor = await RequireActorAsync(actorId, sessionId, roles, allowBlockedOwnerRead: false, cancellationToken);
             return new AuthorizedAccountScope(actor, _context.Database.GetDbConnection(), transaction);
         }
         catch

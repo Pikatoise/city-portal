@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Text.Json;
 using CityPortal.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,33 @@ public sealed class PublicArticleOperations
         _context = context;
         _accounts = accounts;
     }
+
+    public async Task<PublicArticleReference?> FindReferenceAsync(Guid articleId, DbTransaction? transaction, CancellationToken cancellationToken)
+    {
+        if (transaction is null)
+            return await QueryReferenceAsync(_context, articleId, cancellationToken);
+
+        DbConnection connection = transaction.Connection ?? throw new InvalidOperationException("The article lookup requires an active transaction.");
+        await using NewsDbContext context = await NewsDatabase.JoinAsync(connection, transaction, cancellationToken);
+        return await QueryReferenceAsync(context, articleId, cancellationToken);
+    }
+
+    public Task<Dictionary<Guid, string>> FindPublicUrlsAsync(Guid[] articleIds, CancellationToken cancellationToken) =>
+        (from article in PreviouslyPublished(_context)
+         join revision in _context.Revisions on article.PublishedRevisionId equals revision.Id
+         where articleIds.Contains(article.Id) && article.PublicationState == "Published"
+         select new { article.Id, article.PublicAddress })
+        .ToDictionaryAsync(item => item.Id, item => item.PublicAddress, cancellationToken);
+
+    private static Task<PublicArticleReference?> QueryReferenceAsync(NewsDbContext context, Guid articleId, CancellationToken cancellationToken) =>
+        (from article in PreviouslyPublished(context)
+         join revision in context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id
+         where article.Id == articleId
+         select new PublicArticleReference(revision.Title, article.PublicationState == "Published" ? article.PublicAddress : null))
+        .SingleOrDefaultAsync(cancellationToken);
+
+    private static IQueryable<NewsArticle> PreviouslyPublished(NewsDbContext context) =>
+        context.Articles.AsNoTracking().Where(article => article.DeletedAtUtc == null && article.FirstPublishedAtUtc != null);
 
     public async Task<PublicArticleResponse> GetAsync(string address, CancellationToken cancellationToken)
     {

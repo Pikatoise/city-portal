@@ -3,9 +3,9 @@
 } @else if (open()) {
   <form (ngSubmit)="submit()">
     <div class="field">
-      <label for="report-category">Причина жалобы</label>
+      <label [for]="fieldId() + '-category'">Причина жалобы</label>
       <select
-        id="report-category"
+        [id]="fieldId() + '-category'"
         name="category"
         [(ngModel)]="category"
         required
@@ -19,9 +19,9 @@
     </div>
     @if (category) {
       <div class="field">
-        <label for="report-text">Комментарий (необязательно)</label>
+        <label [for]="fieldId() + '-text'">Комментарий (необязательно)</label>
         <textarea
-          id="report-text"
+          [id]="fieldId() + '-text'"
           name="reportText"
           [(ngModel)]="text"
           rows="3"

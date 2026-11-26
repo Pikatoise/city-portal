@@ -148,13 +148,17 @@ and apply their existing withdrawal or direct block in the staff decision
 transaction. Anonymous writes use the shared Identity administration lock
 and a per-subject transaction lock. The subject lock keeps report sequence
 order consistent with commit order. Staff decisions take the exclusive
-administration lock and cover reports up to the sequence returned by the
-preview. The report, target snapshot and decision history survive deletion.
+administration lock and cover the oldest pending reports up to the sequence
+returned by the preview, at most 20 reports per decision. Preview pages bound
+resolved reports and past decisions independently. The report, target snapshot
+and decision history survive deletion.
 
 ### Comments
 
-Define reporting and abuse controls before implementation. Follow the
-[comment rules](VALUE.md#article-comments).
+Comments owns its PostgreSQL schema and comment lifecycle. News supplies the
+article publication state. Reports owns comment reports and review decisions.
+See [Stage 5](stages/STAGE_5.md) for abuse controls, transaction boundaries,
+and API contracts.
 
 ### Notifications
 
@@ -224,7 +228,7 @@ and the root `.editorconfig` for C# and enforce format checks in build and CI.
 | [2](stages/STAGE_2.md) | News, Media, editorial history, public SSR and basic search.                    | 2026-11-17       |
 | [3](stages/STAGE_3.md) | Citizen suggestions, assignment, article conversion and expiry.                 | 2026-11-19       |
 | [4](stages/STAGE_4.md) | Classifieds, moderation, reports, blocking and lifecycle management.            | 2026-11-25       |
-| 5                      | Comments and moderation.                                                        | Planned          |
+| [5](stages/STAGE_5.md) | Comments and moderation.                                                        | 2026-11-26       |
 | 6                      | Telegram, weather, RSS, MCP and AI integrations                                 | Planned          |
 
 Each stage includes its relevant workspaces, notifications and audit history.

@@ -47,6 +47,7 @@ const roleLabels: Record<string, string> = {
           <p><a routerLink="/staff/suggestions/moderation">Модерация предложений</a></p>
           <p><a routerLink="/staff/reports/articles">Жалобы на статьи</a></p>
           <p><a routerLink="/staff/reports/classifieds">Жалобы на объявления</a></p>
+          <p><a routerLink="/staff/reports/comments">Жалобы на комментарии</a></p>
           <p><a routerLink="/staff/classifieds/review">Модерация объявлений</a></p>
           <p><a routerLink="/staff/classifieds/moderation">Блокировки объявлений и аккаунтов</a></p>
         }
@@ -55,11 +56,15 @@ const roleLabels: Record<string, string> = {
           (account.roles.includes('Editor') || account.roles.includes('Administrator'))
         ) {
           <p><a routerLink="/staff/reviews">Редакция</a></p>
+          @if (account.emailConfirmed) {
+            <p><a routerLink="/staff/publications">Опубликованные статьи</a></p>
+          }
           <p><a routerLink="/staff/taxonomy">Категории и теги</a></p>
         }
         <p><a routerLink="/account/notifications">Уведомления и настройки доставки</a></p>
         <p><a routerLink="/account/suggestions">Мои предложения новостей</a></p>
         <p><a routerLink="/account/classifieds">Мои объявления</a></p>
+        <p><a routerLink="/account/comments">Мои комментарии</a></p>
         <p><a routerLink="/account/block-history">История блокировок аккаунта</a></p>
         @if (!account.blockReason && account.roles.includes('Administrator')) {
           <p><a routerLink="/staff/classifieds/catalog">Категории и районы объявлений</a></p>

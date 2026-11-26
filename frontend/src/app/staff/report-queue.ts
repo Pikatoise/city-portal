@@ -21,9 +21,20 @@ export class ReportQueue implements OnInit {
   private readonly write = inject(ApiWrite);
   protected readonly clock = inject(CityClock);
   protected readonly kind = inject(ActivatedRoute).snapshot.data['kind'] as ReportKind;
+  protected readonly queueTitles: Record<ReportKind, string> = {
+    articles: 'Жалобы на статьи',
+    classifieds: 'Жалобы на объявления',
+    comments: 'Жалобы на комментарии',
+  };
+  protected readonly hideLabel =
+    this.kind === 'comments' ? 'Скрыть комментарий' : 'Скрыть публикацию';
+  protected readonly hideNotice =
+    this.kind === 'comments' ? 'Комментарий скрыт.' : 'Публикация скрыта.';
   protected readonly categories = reportCategories[this.kind];
   protected readonly items = signal<ReportedContentSummary[]>([]);
   protected readonly preview = signal<ReportReviewPreview | null>(null);
+  protected readonly resolvedPage = signal(1);
+  protected readonly decisionPage = signal(1);
   protected readonly history = signal(false);
   protected readonly page = signal(1);
   protected readonly hasNext = signal(false);
@@ -44,10 +55,14 @@ export class ReportQueue implements OnInit {
     });
   }
 
-  protected async open(id: string): Promise<void> {
+  protected async open(id: string, resolvedPage = 1, decisionPage = 1): Promise<void> {
     await this.run(async () => {
-      this.reason = '';
-      this.preview.set(await this.api.invoke(getReportReview, { kind: this.kind, id }));
+      if (this.preview()?.id !== id) this.reason = '';
+      this.preview.set(
+        await this.api.invoke(getReportReview, { kind: this.kind, id, resolvedPage, decisionPage }),
+      );
+      this.resolvedPage.set(resolvedPage);
+      this.decisionPage.set(decisionPage);
     });
   }
 
@@ -74,7 +89,7 @@ export class ReportQueue implements OnInit {
         },
       });
       this.close();
-      this.notice.set(outcome === 'hide' ? 'Публикация скрыта.' : 'Жалобы отклонены.');
+      this.notice.set(outcome === 'hide' ? this.hideNotice : 'Жалобы отклонены.');
       await this.readPage(1, this.history());
     });
   }
