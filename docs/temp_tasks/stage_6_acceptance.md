@@ -3,9 +3,9 @@
 Implementation baseline: `1c60bd9`. See the [Stage 6 specification](../stages/STAGE_6.md)
 for contracts and completed checks. Track acceptance in [GitHub issue #17](https://github.com/Pikatoise/city-portal/issues/17).
 
-- [ ] Run the full .NET Release suite on the implementation revision and record the
-  result. The focused rerun passed all 16 cases, including the three failures
-  from the interrupted full run.
+- [x] Run the full .NET Release suite and record the result. On 2026-11-26,
+  `f704caa` passed all 242 tests with zero failures and zero skips. The application
+  and tests match implementation revision `1c60bd9`.
 - [ ] On an HTTPS test deployment, use a test bot and channel to send an approved
   Telegram announcement from the editorial workspace. Verify that its status and
   post link match the message in the channel.

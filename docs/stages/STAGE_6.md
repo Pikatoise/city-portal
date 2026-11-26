@@ -118,8 +118,11 @@ command completed. API and Worker readiness passed. The HTTPS proxy returned
 404 for the disabled RSS and MCP routes. The disposable containers, volumes
 and images were removed.
 
-An earlier full Release run found the old system-metadata property count and
-two immediate probes after PostgreSQL unpause. Both checks were updated, and
-all three cases passed in the focused rerun. The earlier full run was stopped
-after those fixes. The final revision has focused verification rather than a
-completed full Release result.
+An earlier full Release run was stopped after fixes to the system-metadata
+property count and readiness probes after PostgreSQL unpause. The three affected
+cases passed in the focused rerun.
+
+On 2026-11-26, the full .NET Release run on `f704caa` (same implementation as
+`1c60bd9`) passed with SDK `10.0.403` and Docker Testcontainers. The command
+`dotnet test CityPortal.slnx --configuration Release` ran 242 tests in 13 min 23 s.
+All 242 passed, with zero failures and zero skips.
