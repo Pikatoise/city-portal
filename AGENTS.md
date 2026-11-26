@@ -38,6 +38,7 @@ The owner defines scenarios and key decisions; AI implements agreed behavior and
 4. Resolve open decisions with the owner before implementing the affected workflow. Implement the agreed specification and record progress and verification evidence in it.
 5. When work changes an agreed requirement, contract, or technical decision, update every affected specification in the same work session. Update VALUE.md for product changes and CORE.md for architecture or delivery changes; keep stage specifications consistent with both. Confirm new business rules and features with the owner before implementing them.
 6. Close the stage only when its acceptance criteria pass and the owner has reviewed the result. Record remaining limitations and the review outcome before describing the next stage. Keep GitHub Issues and Projects aligned with the stage specification.
+7. As soon as you close a numbered delivery stage, start a new agent session to review and clean up all documentation under `docs/`. Start it without a separate request and complete the review before beginning the next stage. Fix stale statuses and conflicting descriptions, consolidate duplicate rules in their source of truth, and move reusable procedures to the development guides. Preserve approved requirements, acceptance evidence, and known limitations. Verify local links and anchors after the cleanup.
 
 ## Optimization and Refactoring
 
