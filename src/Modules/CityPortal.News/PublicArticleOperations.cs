@@ -33,6 +33,24 @@ public sealed class PublicArticleOperations
          select new { article.Id, article.PublicAddress })
         .ToDictionaryAsync(item => item.Id, item => item.PublicAddress, cancellationToken);
 
+    /// <summary>Returns the current public revision for a downstream publication workflow.</summary>
+    public async Task<PublicArticleAnnouncement?> FindAnnouncementAsync(Guid articleId, DbTransaction? transaction, CancellationToken cancellationToken)
+    {
+        if (transaction is null)
+            return await QueryAnnouncementAsync(_context, articleId, cancellationToken);
+
+        DbConnection connection = transaction.Connection ?? throw new InvalidOperationException("The article lookup requires an active transaction.");
+        await using NewsDbContext context = await NewsDatabase.JoinAsync(connection, transaction, cancellationToken);
+        return await QueryAnnouncementAsync(context, articleId, cancellationToken);
+    }
+
+    private static Task<PublicArticleAnnouncement?> QueryAnnouncementAsync(NewsDbContext context, Guid articleId, CancellationToken cancellationToken) =>
+        (from article in PreviouslyPublished(context)
+         join revision in context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id
+         where article.Id == articleId && article.PublicationState == "Published" && article.PublicAddress != null
+         select new PublicArticleAnnouncement(revision.Id, revision.Title, revision.Summary, article.PublicAddress!))
+        .SingleOrDefaultAsync(cancellationToken);
+
     private static Task<PublicArticleReference?> QueryReferenceAsync(NewsDbContext context, Guid articleId, CancellationToken cancellationToken) =>
         (from article in PreviouslyPublished(context)
          join revision in context.Revisions.AsNoTracking() on article.PublishedRevisionId equals revision.Id

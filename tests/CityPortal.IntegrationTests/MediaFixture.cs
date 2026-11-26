@@ -29,6 +29,8 @@ public sealed class MediaFixture : IAsyncLifetime
 
     public async Task InitializeAsync() => await Task.WhenAll(_accounts.InitializeAsync(), _storage.StartAsync());
 
+    public Task SetBrokerRunningAsync(bool running) => _accounts.SetBrokerRunningAsync(running);
+
     public async Task DisposeAsync()
     {
         await _storage.DisposeAsync();

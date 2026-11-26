@@ -12,7 +12,7 @@ https://localhost:8443 {
 		-Server
 	}
 
-	@api path /api/* /health/* /openapi/* /scalar /scalar/*
+	@api path /rss.xml /.well-known/oauth-protected-resource/api/mcp /api/* /health/* /openapi/* /scalar /scalar/*
 	handle @api {
 		reverse_proxy api:8080
 	}

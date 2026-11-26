@@ -4598,6 +4598,84 @@
         }
       }
     },
+    "/api/admin/integrations": {
+      "get": {
+        "tags": [
+          "IntegrationAdministration"
+        ],
+        "operationId": "getIntegrationSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "IntegrationAdministration"
+        ],
+        "operationId": "saveIntegrationSettings",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveIntegrationSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/media/images": {
       "post": {
         "tags": [
@@ -5754,6 +5832,47 @@
         }
       }
     },
+    "/rss.xml": {
+      "get": {
+        "tags": [
+          "Rss"
+        ],
+        "summary": "Returns the latest twenty currently published articles as RSS 2.0.",
+        "operationId": "getNewsRss",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/staff/comments/{id}/hide": {
       "post": {
         "tags": [
@@ -6847,6 +6966,286 @@
           }
         }
       }
+    },
+    "/api/editorial/articles/{id}/telegram": {
+      "get": {
+        "tags": [
+          "TelegramAnnouncements"
+        ],
+        "operationId": "getTelegramAnnouncement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "maxLength": 33,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramAnnouncementResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TelegramAnnouncements"
+        ],
+        "operationId": "queueTelegramAnnouncement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueTelegramAnnouncementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramDeliveryResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/telegram/recovery": {
+      "get": {
+        "tags": [
+          "TelegramAnnouncements"
+        ],
+        "operationId": "listTelegramRecovery",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TelegramRecoveryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/telegram/suggest": {
+      "post": {
+        "tags": [
+          "TelegramAnnouncements"
+        ],
+        "operationId": "suggestTelegramAnnouncement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestTelegramAnnouncementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramSuggestionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/editorial/articles/{id}/telegram/resolve": {
+      "post": {
+        "tags": [
+          "TelegramAnnouncements"
+        ],
+        "operationId": "resolveTelegramAnnouncement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveTelegramAnnouncementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramDeliveryResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/weather/current": {
+      "get": {
+        "tags": [
+          "Weather"
+        ],
+        "summary": "Returns the latest usable city weather reading.",
+        "operationId": "getCurrentWeather",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentWeatherResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7885,6 +8284,41 @@
           }
         }
       },
+      "CurrentWeatherResponse": {
+        "required": [
+          "celsius",
+          "weatherCode",
+          "observedAtUtc",
+          "isStale"
+        ],
+        "type": "object",
+        "properties": {
+          "celsius": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "weatherCode": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "observedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isStale": {
+            "type": "boolean"
+          }
+        },
+        "description": "Current weather for the configured city and whether its observation is stale."
+      },
       "DecideContentReportsRequest": {
         "required": [
           "outcome",
@@ -8338,6 +8772,55 @@
           },
           "implicitTls": {
             "type": "boolean"
+          }
+        }
+      },
+      "IntegrationStatus": {
+        "required": [
+          "settings",
+          "telegramConfigured",
+          "aiConfigured",
+          "mcpConfigured",
+          "weatherRefreshedAtUtc",
+          "telegramPending",
+          "telegramNeedsAttention"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SaveIntegrationSettings"
+          },
+          "telegramConfigured": {
+            "type": "boolean"
+          },
+          "aiConfigured": {
+            "type": "boolean"
+          },
+          "mcpConfigured": {
+            "type": "boolean"
+          },
+          "weatherRefreshedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "telegramPending": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "telegramNeedsAttention": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -9590,6 +10073,27 @@
         },
         "description": "Photo information safe to include in a published listing."
       },
+      "QueueTelegramAnnouncementRequest": {
+        "required": [
+          "revisionId",
+          "channel",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "description": "Editor-reviewed text and the public revision and channel shown in the preview."
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -9858,6 +10362,57 @@
         },
         "description": "Consumes a one-time recovery link and sets a new password."
       },
+      "ResolveTelegramAnnouncementRequest": {
+        "required": [
+          "channel",
+          "version",
+          "retry",
+          "postUrl",
+          "revisionId",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "retry": {
+            "type": "boolean"
+          },
+          "postUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "revisionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cancel": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Records the editor's decision after inspecting the channel."
+      },
       "ReviewArticleRequest": {
         "type": "object",
         "properties": {
@@ -10113,6 +10668,69 @@
           "secondCategoryId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "SaveIntegrationSettings": {
+        "required": [
+          "version",
+          "rssEnabled",
+          "weatherEnabled",
+          "latitude",
+          "longitude",
+          "telegramEnabled",
+          "telegramChannel",
+          "aiEnabled",
+          "mcpEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "rssEnabled": {
+            "type": "boolean"
+          },
+          "weatherEnabled": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "telegramEnabled": {
+            "type": "boolean"
+          },
+          "telegramChannel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "mcpEnabled": {
+            "type": "boolean"
           }
         }
       },
@@ -10440,6 +11058,19 @@
         },
         "description": "The last version retrieved by the author."
       },
+      "SuggestTelegramAnnouncementRequest": {
+        "required": [
+          "revisionId"
+        ],
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Identifies the public revision being announced."
+      },
       "SystemInfoResponse": {
         "required": [
           "name",
@@ -10469,6 +11100,9 @@
           },
           "region": {
             "type": "string"
+          },
+          "rssEnabled": {
+            "type": "boolean"
           }
         },
         "description": "Public application metadata for the frontend connection check."
@@ -10506,6 +11140,148 @@
           }
         },
         "description": "A category or tag, including its archival and optimistic-concurrency state."
+      },
+      "TelegramAnnouncementResponse": {
+        "required": [
+          "revisionId",
+          "suggestedText",
+          "articleUrl",
+          "enabled",
+          "aiEnabled",
+          "channel",
+          "delivery"
+        ],
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "suggestedText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "articleUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "delivery": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelegramDeliveryResponse"
+              }
+            ]
+          }
+        },
+        "description": "The public revision and current delivery state shown to the editor."
+      },
+      "TelegramDeliveryResponse": {
+        "required": [
+          "version",
+          "revisionId",
+          "state",
+          "channel",
+          "text",
+          "postUrl",
+          "errorCode"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "postUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "Delivery status and optional link to a post in the configured public channel."
+      },
+      "TelegramRecoveryResponse": {
+        "required": [
+          "articleId",
+          "channel",
+          "text",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "articleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Identifies a delivery requiring the editor to inspect the Telegram channel."
+      },
+      "TelegramSuggestionResponse": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "description": "Returns an editable announcement generated from currently published text."
       },
       "TemplateActionRequest": {
         "type": "object",
@@ -10791,6 +11567,9 @@
       "name": "Installation"
     },
     {
+      "name": "IntegrationAdministration"
+    },
+    {
       "name": "Media"
     },
     {
@@ -10801,6 +11580,9 @@
     },
     {
       "name": "PublicReports"
+    },
+    {
+      "name": "Rss"
     },
     {
       "name": "StaffComments"
@@ -10816,6 +11598,12 @@
     },
     {
       "name": "System"
+    },
+    {
+      "name": "TelegramAnnouncements"
+    },
+    {
+      "name": "Weather"
     }
   ]
 }

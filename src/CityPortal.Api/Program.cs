@@ -3,6 +3,7 @@ using CityPortal.CitizenSubmissions;
 using CityPortal.Classifieds;
 using CityPortal.Comments;
 using CityPortal.Identity;
+using CityPortal.Integrations;
 using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -42,8 +43,12 @@ public partial class Program
         builder.Services.AddClassifiedsModule(database);
         builder.Services.AddReportsModule(database);
         builder.Services.AddCommentsModule(database);
-        builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false);
+        builder.Services.AddIntegrationsModule(database);
+        builder.Services.AddScoped<PublicIntegrationReads>();
+        builder.Services.AddTelegramIntegrations(builder.Configuration);
+        builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false, options => options.ConfigureTelegramMessaging(isWorker: false));
         builder.Services.AddAccountSecurity(builder.Configuration);
+        builder.Services.AddNewsMcp(builder.Configuration);
         builder.Services.AddHealthChecks().AddCheck<InstallationHealthCheck>("installation", tags: ["ready"]);
         builder.Services.AddControllers(options => options.Filters.Add<AccountRequestFilter>());
         builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, cancellationToken) =>
@@ -70,7 +75,7 @@ public partial class Program
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("CityPortal.Api"))
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation())
-            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation());
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddMeter("CityPortal.Telegram"));
 
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {
@@ -107,6 +112,7 @@ public partial class Program
             await app.Services.MigrateClassifiedsAsync(CancellationToken.None);
             await app.Services.MigrateReportsAsync(CancellationToken.None);
             await app.Services.MigrateCommentsAsync(CancellationToken.None);
+            await app.Services.MigrateIntegrationsAsync(CancellationToken.None);
             if (!string.IsNullOrWhiteSpace(builder.Configuration["Media:Endpoint"]))
                 await app.Services.GetRequiredService<MediaObjectStore>().InitializeAsync(CancellationToken.None);
             await app.Services.MigrateAccountMailMessagingAsync();
@@ -117,6 +123,7 @@ public partial class Program
         app.UseExceptionHandler();
         app.UseMiddleware<AccountErrorMiddleware>();
         app.UseForwardedHeaders();
+        app.UseNewsMcp();
         app.Use(async (context, next) =>
         {
             if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase)
@@ -140,6 +147,7 @@ public partial class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.MapNewsMcp();
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
         app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") });
 

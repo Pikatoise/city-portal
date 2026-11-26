@@ -1,5 +1,6 @@
 using CityPortal.CitizenSubmissions;
 using CityPortal.Identity;
+using CityPortal.Integrations;
 using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -26,7 +27,10 @@ internal static class Program
         builder.Logging.AddJsonConsole();
         builder.Services.AddIdentityModule(database).AddNotificationsModule(database, messaging).AddMediaModule(database, builder.Configuration).AddNewsModule(database);
         builder.Services.AddCitizenSubmissionsModule(database);
-        builder.Host.UseAccountMailMessaging(database, messaging, isWorker: true);
+        builder.Services.AddIntegrationsModule(database);
+        builder.Services.AddWeatherWorker();
+        builder.Services.AddTelegramIntegrations(builder.Configuration);
+        builder.Host.UseAccountMailMessaging(database, messaging, isWorker: true, options => options.ConfigureTelegramMessaging(isWorker: true));
         string keysPath = builder.Configuration["Security:DataProtectionKeysPath"]
             ?? throw new InvalidOperationException("Security:DataProtectionKeysPath must be configured.");
         builder.Services.AddDataProtection().SetApplicationName("CityPortal").PersistKeysToFileSystem(new DirectoryInfo(keysPath));
@@ -34,11 +38,12 @@ internal static class Program
         {
             MediaModule.ConfigureMediaJobs(quartz, builder.Configuration);
             CitizenSubmissionsModule.ConfigureSuggestionJobs(quartz);
+            WeatherModule.ConfigureWeatherJobs(quartz);
         });
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("CityPortal.Worker"))
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation())
-            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation());
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter("CityPortal.Weather", "CityPortal.Telegram"));
 
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {

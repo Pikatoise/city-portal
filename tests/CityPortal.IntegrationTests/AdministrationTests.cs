@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CityPortal.Identity;
+using CityPortal.Integrations;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,50 @@ public sealed class AdministrationTests : IClassFixture<RegistrationFixture>
     public AdministrationTests(RegistrationFixture fixture)
     {
         _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task IntegrationSettings_RequireAdministratorAndCsrf_CommitVersionsAndKeepSecretsPrivateAsync()
+    {
+        const string route = "/api/admin/integrations";
+        (ApiFactory factory, string database) = await _fixture.CreateAsync(settings: new Dictionary<string, string>
+        {
+            ["Integrations:Telegram:BotToken"] = "12345:fixture-bot-secret",
+            ["Integrations:OpenAI:ApiKey"] = "fixture-ai-secret"
+        });
+        await using ApiFactory lifetime = factory;
+        AccountResponse administrator = await SeedAsync(factory, database, "integrations-admin@example.test");
+        AccountResponse reader = await SeedAsync(factory, database, "integrations-reader@example.test");
+        await AdminAsync(factory, admin => admin.BootstrapAsync(administrator.Email, CancellationToken.None));
+        using HttpClient client = Client(factory);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(route)).StatusCode);
+        await HttpLoginAsync(client, reader.Email);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(route)).StatusCode);
+        await HttpLoginAsync(client, administrator.Email);
+
+        IntegrationStatus initial = (await client.GetFromJsonAsync<IntegrationStatus>(route))!;
+        Assert.Equal(new SaveIntegrationSettings(0, false, false, null, null, false, null, false, false), initial.Settings);
+        Assert.True(initial.TelegramConfigured);
+        Assert.True(initial.AiConfigured);
+        Assert.False(initial.McpConfigured);
+        var requested = new SaveIntegrationSettings(0, true, true, 55.75, 37.62, true, " @Test_News ", true, false);
+        client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(route, requested)).StatusCode);
+        await CsrfAsync(client);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(route, new { version = 0 })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(route, requested with { Latitude = 91 })).StatusCode);
+        Assert.Equal(0L, await ScalarAsync(database, "SELECT count(*) FROM integrations.settings_changes"));
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync(route, requested);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        string json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("fixture-bot-secret", json);
+        Assert.DoesNotContain("fixture-ai-secret", json);
+        IntegrationStatus saved = (await response.Content.ReadFromJsonAsync<IntegrationStatus>())!;
+        Assert.Equal(requested with { Version = 1, TelegramChannel = "@test_news" }, saved.Settings);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync(route, requested with { RssEnabled = false })).StatusCode);
+        Assert.Equal(saved, await client.GetFromJsonAsync<IntegrationStatus>(route));
+        Assert.Equal(1L, await ScalarAsync(database, $"""SELECT count(*) FROM integrations.settings_changes WHERE "ActorId" = '{administrator.Id}' AND "Version" = 1 AND "Settings" ->> 'TelegramChannel' = '@test_news'"""));
     }
 
     [Fact]

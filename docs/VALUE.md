@@ -280,11 +280,20 @@ When an article is withdrawn, close public access to its images unless another c
 
 Email supports account confirmation, password recovery, and workflow notifications from their respective implementation stages. Temporary delivery outages must not prevent otherwise valid business actions, including news publication. Pending messages resume delivery after recovery. Email delivery may occasionally be repeated after a failure; strictly one-time Email delivery is not promised.
 
-Telegram, weather, and RSS are planned as later integrations.
+Administrators configure the integrations. They are off by default. Editors and
+administrators can prepare and confirm a Telegram announcement for a current public
+article. The AI assistant can suggest editable text from the public title and
+summary. A confirmed send targets one configured channel. Editors manage a sent
+post in Telegram and reconcile any delivery that might have succeeded.
+
+When enabled, the homepage shows current city weather while a recent observation
+is available. The RSS feed lists the latest published news with links. An
+authorized MCP client can list, search and read public news. See
+[Stage 6](stages/STAGE_6.md) for permissions and contracts.
 
 ## Excluded and Deferred Scope
 
-A public API is excluded.
+A general-purpose public API is excluded. RSS is public, and MCP news access requires authorization.
 
 The following are outside the initial implementation or subject to later agreement:
 

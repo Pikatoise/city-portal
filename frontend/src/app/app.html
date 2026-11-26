@@ -29,5 +29,8 @@
 @if (installation.installed()) {
   <footer class="site-footer">
     {{ site.name() }} · {{ site.city() || 'Городской портал в разработке' }}
+    @if (site.rssEnabled()) {
+      · <a href="/rss.xml">Новости по RSS</a>
+    }
   </footer>
 }

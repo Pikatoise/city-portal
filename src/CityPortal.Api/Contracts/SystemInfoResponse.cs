@@ -24,6 +24,8 @@ public sealed record SystemInfoResponse
     [JsonRequired]
     public string Region { get; init; } = "";
 
+    public bool RssEnabled { get; init; }
+
     public void Deconstruct(out string name, out int stage)
     {
         name = Name;

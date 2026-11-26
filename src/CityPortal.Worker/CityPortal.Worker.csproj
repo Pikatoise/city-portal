@@ -10,6 +10,7 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../Modules/CityPortal.Integrations/CityPortal.Integrations.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
     <ProjectReference Include="../Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />
     <ProjectReference Include="..\Modules\CityPortal.News\CityPortal.News.csproj" />

@@ -34,7 +34,7 @@ describe('Public discovery', () => {
     };
     queryParamMap: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   };
-  const api = { taxonomy: vi.fn(), list: vi.fn(), homepage: vi.fn() };
+  const api = { taxonomy: vi.fn(), list: vi.fn(), homepage: vi.fn(), weather: vi.fn() };
   const response: ResponseInit = {};
   beforeEach(() => {
     vi.resetAllMocks();
@@ -55,6 +55,7 @@ describe('Public discovery', () => {
     api.taxonomy.mockResolvedValue([]);
     api.list.mockResolvedValue({ items: [story('one')], total: 41, page: 2, pageSize: 20 });
     api.homepage.mockResolvedValue({ featured: [], latest: [], categories: [] });
+    api.weather.mockResolvedValue(null);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),

@@ -45,7 +45,9 @@ public sealed class ApiFoundationTests : IClassFixture<RegistrationFixture>
         Assert.Equal("UTC", body.RootElement.GetProperty("timeZone").GetString());
         Assert.Equal("", body.RootElement.GetProperty("city").GetString());
         Assert.Equal("", body.RootElement.GetProperty("region").GetString());
-        Assert.Equal(5, body.RootElement.EnumerateObject().Count());
+        Assert.False(body.RootElement.GetProperty("rssEnabled").GetBoolean());
+        Assert.Equal(["city", "name", "region", "rssEnabled", "stage", "timeZone"],
+            body.RootElement.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 
     [Fact]

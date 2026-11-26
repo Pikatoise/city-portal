@@ -105,7 +105,12 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Api.Dockerfile
-    environment: *backend-environment
+    environment:
+      <<: *backend-environment
+      Integrations__Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Integrations__OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      Mcp__Authority: ${MCP_AUTHORITY:-}
+      Mcp__AllowedClientIds__0: ${MCP_CLIENT_ID:-}
     volumes:
       - protection-keys:/var/cityportal/keys
     ports:
@@ -120,7 +125,9 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Worker.Dockerfile
-    environment: *backend-environment
+    environment:
+      <<: *backend-environment
+      Integrations__Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
       - protection-keys:/var/cityportal/keys
     ports:

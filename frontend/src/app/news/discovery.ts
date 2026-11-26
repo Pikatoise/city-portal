@@ -16,6 +16,8 @@ import { Meta, Title } from '@angular/platform-browser';
 import { PublicNewsApi } from './public-news-api';
 import { NewsCard } from './news-card';
 import { FeaturedNews } from './featured-news';
+import { WeatherWidget } from './weather-widget';
+import { CurrentWeatherResponse } from '../api/models/current-weather-response';
 import { PublicHomepageResponse } from '../api/models/public-homepage-response';
 import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 import { NewsPageOfPublicArticleSummaryResponse } from '../api/models/news-page-of-public-article-summary-response';
@@ -23,7 +25,7 @@ import { SiteMetadata } from '../site-metadata';
 
 @Component({
   selector: 'app-discovery',
-  imports: [FormsModule, RouterLink, NewsCard, FeaturedNews],
+  imports: [FormsModule, RouterLink, NewsCard, FeaturedNews, WeatherWidget],
   templateUrl: './discovery.html',
   styleUrl: './discovery.css',
 })
@@ -39,6 +41,7 @@ export class Discovery {
   private readonly document = inject(DOCUMENT);
   readonly isList = this.route.snapshot.data['list'] === true;
   readonly home = signal<PublicHomepageResponse | null>(null);
+  readonly weather = signal<CurrentWeatherResponse | null>(null);
   readonly result = signal<NewsPageOfPublicArticleSummaryResponse | null>(null);
   readonly categories = signal<PublicTaxonomyResponse[]>([]);
   readonly tags = signal<PublicTaxonomyResponse[]>([]);
@@ -86,6 +89,7 @@ export class Discovery {
     this.loading.set(true);
     this.error.set('');
     this.home.set(null);
+    this.weather.set(null);
     this.result.set(null);
     if (this.response) {
       this.response.status = 200;
@@ -111,7 +115,7 @@ export class Discovery {
     });
     this.document.querySelector('link[rel="canonical"]')?.remove();
     try {
-      const [categories, tags, data] = await Promise.all([
+      const [categories, tags, data, weather] = await Promise.all([
         this.api.taxonomy('categories'),
         this.isList ? this.api.taxonomy('tags') : Promise.resolve([]),
         this.isList
@@ -125,10 +129,12 @@ export class Discovery {
               pageSize: 20,
             })
           : this.api.homepage(),
+        this.isList ? Promise.resolve(null) : this.api.weather(),
       ]);
       if (generation !== this.generation) return;
       this.categories.set(categories);
       this.tags.set(tags);
+      this.weather.set(weather);
       if (this.isList) this.result.set(data as NewsPageOfPublicArticleSummaryResponse);
       else this.home.set(data as PublicHomepageResponse);
       const link = this.document.createElement('link');

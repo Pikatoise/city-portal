@@ -1,4 +1,9 @@
 {
+  "/rss.xml": {
+    "target": "http://localhost:5080",
+    "secure": false,
+    "changeOrigin": false
+  },
   "/api/**": {
     "target": "http://localhost:5080",
     "secure": false,

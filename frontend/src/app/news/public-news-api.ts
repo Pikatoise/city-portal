@@ -1,17 +1,23 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { Api } from '../api/api';
 import { getPublicArticle } from '../api/fn/news/get-public-article';
 import { getPublicHomepage } from '../api/fn/news/get-public-homepage';
 import { getRelatedArticles } from '../api/fn/news/get-related-articles';
 import { listPublicArticles, ListPublicArticles$Params } from '../api/fn/news/list-public-articles';
 import { listPublicTaxonomy } from '../api/fn/news/list-public-taxonomy';
+import { getCurrentWeather } from '../api/fn/weather/get-current-weather';
+import { CurrentWeatherResponse } from '../api/models/current-weather-response';
 import { PublicTaxonomyResponse } from '../api/models/public-taxonomy-response';
 
 export const publicNewsRequests: HttpInterceptorFn = (request, next) => {
-  if (request.method !== 'GET' || !request.url.includes('/api/news/')) return next(request);
+  if (
+    request.method !== 'GET' ||
+    (!request.url.includes('/api/news/') && !request.url.endsWith('/api/weather/current'))
+  )
+    return next(request);
   const viewerComments =
     request.url.endsWith('/comments') && isPlatformBrowser(inject(PLATFORM_ID));
   return next(
@@ -29,6 +35,16 @@ export class PublicNewsApi {
   private readonly api = inject(Api);
   async homepage() {
     return (await firstValueFrom(getPublicHomepage(this.http, this.api.rootUrl))).body;
+  }
+  async weather(): Promise<CurrentWeatherResponse | null> {
+    try {
+      return (
+        (await firstValueFrom(getCurrentWeather(this.http, this.api.rootUrl).pipe(timeout(1500))))
+          .body ?? null
+      );
+    } catch {
+      return null;
+    }
   }
   async list(params: ListPublicArticles$Params) {
     return (await firstValueFrom(listPublicArticles(this.http, this.api.rootUrl, params))).body;

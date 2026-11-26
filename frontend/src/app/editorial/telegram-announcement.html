@@ -1,0 +1,74 @@
+<section aria-label="Анонс в Telegram">
+  <h3>Анонс в Telegram</h3>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (announcement(); as current) {
+    @if (delivery(); as sent) {
+      <p role="status">{{ sent.channel }}: {{ stateLabel() }}</p>
+      @if (sent.postUrl; as url) {
+        <a [href]="url" target="_blank" rel="noopener noreferrer">Открыть пост в Telegram</a>
+      }
+    }
+    @if (!current.enabled) {
+      <p>Отправка в Telegram выключена.</p>
+    }
+    @if (canQueue() || retryUsesNewRevision()) {
+      <p>Канал: {{ current.channel }}</p>
+      <label>
+        Текст анонса
+        <textarea [(ngModel)]="text" maxlength="3000" rows="4" [disabled]="busy()"></textarea>
+      </label>
+      @if (current.articleUrl; as url) {
+        <p>Ссылка в анонсе: <a [href]="url" target="_blank" rel="noopener noreferrer">{{ url }}</a></p>
+      }
+      @if (suggestion()) {
+        <p><strong>Вариант текста</strong></p>
+        <p>{{ suggestion() }}</p>
+        <button type="button" (click)="useSuggestion()" [disabled]="busy()">Вставить вариант</button>
+      }
+      <div class="actions">
+        @if (current.aiEnabled) {
+          <button type="button" (click)="generate()" [disabled]="busy()">Предложить текст</button>
+        }
+        @if (canQueue()) {
+          <button type="button" (click)="queue()" [disabled]="busy() || !text.trim()">
+            Отправить анонс в канал
+          </button>
+        }
+      </div>
+    }
+    @if (needsReview()) {
+      <label>
+        Ссылка на найденный пост
+        <input type="url" [(ngModel)]="postUrl" maxlength="250" [disabled]="busy()" />
+      </label>
+      <div class="actions">
+        <button type="button" (click)="resolve('link')" [disabled]="busy() || !postUrl.trim()">
+          Привязать пост
+        </button>
+      </div>
+      <label>
+        <input type="checkbox" [(ngModel)]="checkedNoPost" [disabled]="busy()" />
+        Я проверил канал, поста нет
+      </label>
+      <div class="actions">
+        @if (canRetry()) {
+          <button
+            type="button"
+            (click)="resolve('retry')"
+            [disabled]="busy() || !checkedNoPost || (retryUsesNewRevision() && !text.trim())"
+          >
+            Повторить отправку
+          </button>
+        }
+        <button type="button" (click)="resolve('cancel')" [disabled]="busy() || !checkedNoPost">
+          Закрыть без отправки
+        </button>
+      </div>
+    }
+  }
+  <div class="actions">
+    <button type="button" (click)="refresh()" [disabled]="busy()">Обновить статус</button>
+  </div>
+</section>

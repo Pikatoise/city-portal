@@ -12,7 +12,7 @@ namespace CityPortal.Notifications;
 
 public static class AccountMailMessaging
 {
-    public static IHostBuilder UseAccountMailMessaging(this IHostBuilder host, string database, string messaging, bool isWorker)
+    public static IHostBuilder UseAccountMailMessaging(this IHostBuilder host, string database, string messaging, bool isWorker, Action<WolverineOptions>? configure = null)
     {
         return host.UseWolverine(options =>
         {
@@ -40,6 +40,8 @@ public static class AccountMailMessaging
                 options.Durability.Mode = DurabilityMode.ServerlessWithOutbox;
                 options.Discovery.DisableConventionalDiscovery();
             }
+
+            configure?.Invoke(options);
         });
     }
 

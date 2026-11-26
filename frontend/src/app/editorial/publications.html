@@ -13,6 +13,17 @@
     <p>Нужны права редактора и подтверждённый Email.</p>
   }
   @if (allowed()) {
+    <button
+      type="button"
+      [attr.aria-expanded]="telegramRecoveryOpen()"
+      aria-controls="telegram-recovery"
+      (click)="telegramRecoveryOpen.set(!telegramRecoveryOpen())"
+    >
+      Сверка отправок в Telegram
+    </button>
+    @if (telegramRecoveryOpen()) {
+      <app-telegram-recovery id="telegram-recovery" />
+    }
     <button type="button" (click)="configureHomepage()" [disabled]="busy()">
       Настроить категории главной
     </button>
@@ -59,10 +70,22 @@
             Открыть статью
           </button>
           <a [routerLink]="['/staff/articles', row.id]">Исправить опубликованную версию</a>
+          <button
+            type="button"
+            [attr.aria-expanded]="telegramArticle() === row.id"
+            [attr.aria-controls]="'telegram-' + row.id"
+            (click)="telegramArticle.set(telegramArticle() === row.id ? null : row.id)"
+            [disabled]="busy()"
+          >
+            Telegram
+          </button>
           <button type="button" (click)="withdrawing.set(row); reason = ''" [disabled]="busy()">
             Снять с публикации
           </button>
         </div>
+        @if (telegramArticle() === row.id) {
+          <app-telegram-announcement [id]="row.id" [attr.id]="'telegram-' + row.id" />
+        }
       </article>
     } @empty {
       @if (!busy()) {

@@ -9,6 +9,7 @@ export interface SystemInfoResponse {
   city: string;
   name: string;
   region: string;
+  rssEnabled?: boolean;
   stage: (number | string);
   timeZone: string;
 }

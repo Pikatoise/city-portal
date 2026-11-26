@@ -59,6 +59,9 @@
     <p role="alert">{{ error() }} <button type="button" (click)="load()">Повторить</button></p>
   }
   @if (home(); as home) {
+    @if (weather(); as currentWeather) {
+      <app-weather-widget [weather]="currentWeather" />
+    }
     <section id="news-latest" aria-labelledby="featured-heading">
       <div class="section-heading">
         <h1 id="featured-heading">Выбор редакции</h1>

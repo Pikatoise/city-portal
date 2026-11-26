@@ -193,6 +193,15 @@ Notifications owns preferences, delivery and attempts. Specify events,
 defaults and retention with each workflow. Keep passwords, cookies and
 confirmation/recovery links out of application logs.
 
+### Integrations
+
+Integrations owns settings, their audit history, weather observations and
+Telegram delivery state. News supplies current public versions through explicit
+read operations. The Worker refreshes weather with Quartz and delivers
+Telegram announcements through Wolverine. The API serves RSS, authenticates
+MCP readers through Auth0, and requests optional AI suggestions. See the
+[Stage 6 contracts](stages/STAGE_6.md).
+
 ## Background Processing and Integrations
 
 Use Wolverine, RabbitMQ and EF Core Transactional Outbox/Inbox for durable
@@ -256,7 +265,7 @@ and the root `.editorconfig` for C# and enforce format checks in build and CI.
 | [3](stages/STAGE_3.md) | Citizen suggestions, assignment, article conversion and expiry.                 | 2026-11-19       |
 | [4](stages/STAGE_4.md) | Classifieds, moderation, reports, blocking and lifecycle management.            | 2026-11-25       |
 | [5](stages/STAGE_5.md) | Comments and moderation.                                                        | 2026-11-26       |
-| 6                      | Telegram, weather, RSS, MCP and AI integrations                                 | Planned          |
+| [6](stages/STAGE_6.md) | Telegram, weather, RSS, MCP and AI integrations.                                 | In progress      |
 
 Each stage includes its relevant workspaces, notifications and audit history.
 Follow [AGENTS.md](../AGENTS.md#stage-workflow) for stage planning, owner review,

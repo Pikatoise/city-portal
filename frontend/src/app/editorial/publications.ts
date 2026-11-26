@@ -5,10 +5,12 @@ import { AccountApi, AccountProfile } from '../account/account-api';
 import { NewsApi, ArticleSummaryResponse, newsError } from './news-api';
 import { HomepageSelectionResponse } from '../api/models/homepage-selection-response';
 import { TaxonomyResponse } from '../api/models/taxonomy-response';
+import { TelegramAnnouncement } from './telegram-announcement';
+import { TelegramRecovery } from './telegram-recovery';
 
 @Component({
   selector: 'app-publications',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, TelegramAnnouncement, TelegramRecovery],
   templateUrl: './publications.html',
   styleUrl: './publications.css',
 })
@@ -29,6 +31,8 @@ export class Publications implements OnInit {
   readonly error = signal('');
   readonly notice = signal('');
   readonly withdrawing = signal<ArticleSummaryResponse | null>(null);
+  readonly telegramArticle = signal<string | null>(null);
+  readonly telegramRecoveryOpen = signal(false);
   reason = '';
   readonly selection = signal<HomepageSelectionResponse | null>(null);
   readonly categories = signal<TaxonomyResponse[]>([]);

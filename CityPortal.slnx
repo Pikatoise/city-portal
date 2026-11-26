@@ -8,6 +8,7 @@
     <Project Path="src/Modules/CityPortal.Classifieds/CityPortal.Classifieds.csproj" />
     <Project Path="src/Modules/CityPortal.Comments/CityPortal.Comments.csproj" />
     <Project Path="src/Modules/CityPortal.Identity/CityPortal.Identity.csproj" />
+    <Project Path="src/Modules/CityPortal.Integrations/CityPortal.Integrations.csproj" />
     <Project Path="src/Modules/CityPortal.Media/CityPortal.Media.csproj" />
     <Project Path="src/Modules/CityPortal.News/CityPortal.News.csproj" />
     <Project Path="src/Modules/CityPortal.Notifications/CityPortal.Notifications.csproj" />

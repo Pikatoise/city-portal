@@ -184,6 +184,10 @@ export const routes: Routes = [
         path: 'staff/email-deliveries',
         loadComponent: () => import('./staff/email-deliveries').then((m) => m.EmailDeliveries),
       },
+      {
+        path: 'staff/integrations',
+        loadComponent: () => import('./staff/integrations').then((m) => m.Integrations),
+      },
       { path: '**', redirectTo: '' },
     ],
   },

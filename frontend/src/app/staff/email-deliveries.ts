@@ -35,6 +35,7 @@ const errors: Record<string, string> = {
       <h1 id="deliveries-title">Доставка Email</h1>
       <p>Часовой пояс города: {{ clock.timeZone() }}</p>
       <nav class="staff-nav">
+        <a routerLink="/staff/integrations">??????????</a>
         <a routerLink="/staff/media">Медиатека</a>
         <a routerLink="/staff/accounts">Аккаунты</a
         ><a routerLink="/staff/email-deliveries">Доставка Email</a

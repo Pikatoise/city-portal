@@ -13,7 +13,7 @@
 		respond 404
 	}
 
-	@api path /api/* /health/*
+	@api path /rss.xml /.well-known/oauth-protected-resource/api/mcp /api/* /health/*
 	handle @api {
 		reverse_proxy api:8080
 	}

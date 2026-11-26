@@ -2,6 +2,7 @@ using CityPortal.CitizenSubmissions;
 using CityPortal.Classifieds;
 using CityPortal.Comments;
 using CityPortal.Identity;
+using CityPortal.Integrations;
 using CityPortal.Media;
 using CityPortal.News;
 using CityPortal.Notifications;
@@ -62,6 +63,7 @@ public sealed class RegistrationFixture : IAsyncLifetime
         await factory.Services.MigrateClassifiedsAsync(CancellationToken.None);
         await factory.Services.MigrateReportsAsync(CancellationToken.None);
         await factory.Services.MigrateCommentsAsync(CancellationToken.None);
+        await factory.Services.MigrateIntegrationsAsync(CancellationToken.None);
         await factory.Services.MigrateAccountMailMessagingAsync();
         if (installed)
         {

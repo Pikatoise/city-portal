@@ -159,6 +159,10 @@ export type { GetInstallationStatus$Params as GetInstallationStatus$Params } fro
 export { getInstallationStatus as getInstallationStatus } from './fn/installation/get-installation-status';
 export type { InstallSite$Params as InstallSite$Params } from './fn/installation/install-site';
 export { installSite as installSite } from './fn/installation/install-site';
+export type { GetIntegrationSettings$Params as GetIntegrationSettings$Params } from './fn/integration-administration/get-integration-settings';
+export { getIntegrationSettings as getIntegrationSettings } from './fn/integration-administration/get-integration-settings';
+export type { SaveIntegrationSettings$Params as SaveIntegrationSettings$Params } from './fn/integration-administration/save-integration-settings';
+export { saveIntegrationSettings as saveIntegrationSettings } from './fn/integration-administration/save-integration-settings';
 export type { ListImages$Params as ListImages$Params } from './fn/media/list-images';
 export { listImages as listImages } from './fn/media/list-images';
 export type { UploadImage$Params as UploadImage$Params } from './fn/media/upload-image';
@@ -205,6 +209,8 @@ export type { OpenPublicListingPhoto$Params as OpenPublicListingPhoto$Params } f
 export { openPublicListingPhoto as openPublicListingPhoto } from './fn/public-classifieds/open-public-listing-photo';
 export type { SubmitContentReport$Params as SubmitContentReport$Params } from './fn/public-reports/submit-content-report';
 export { submitContentReport as submitContentReport } from './fn/public-reports/submit-content-report';
+export type { GetNewsRss$Params as GetNewsRss$Params } from './fn/rss/get-news-rss';
+export { getNewsRss as getNewsRss } from './fn/rss/get-news-rss';
 export type { HidePublicComment$Params as HidePublicComment$Params } from './fn/staff-comments/hide-public-comment';
 export { hidePublicComment as hidePublicComment } from './fn/staff-comments/hide-public-comment';
 export type { ListReportedContent$Params as ListReportedContent$Params } from './fn/staff-reports/list-reported-content';
@@ -243,3 +249,15 @@ export type { UpdateMySuggestion$Params as UpdateMySuggestion$Params } from './f
 export { updateMySuggestion as updateMySuggestion } from './fn/suggestions/update-my-suggestion';
 export type { GetSystemInfo$Params as GetSystemInfo$Params } from './fn/system/get-system-info';
 export { getSystemInfo as getSystemInfo } from './fn/system/get-system-info';
+export type { GetTelegramAnnouncement$Params as GetTelegramAnnouncement$Params } from './fn/telegram-announcements/get-telegram-announcement';
+export { getTelegramAnnouncement as getTelegramAnnouncement } from './fn/telegram-announcements/get-telegram-announcement';
+export type { QueueTelegramAnnouncement$Params as QueueTelegramAnnouncement$Params } from './fn/telegram-announcements/queue-telegram-announcement';
+export { queueTelegramAnnouncement as queueTelegramAnnouncement } from './fn/telegram-announcements/queue-telegram-announcement';
+export type { ListTelegramRecovery$Params as ListTelegramRecovery$Params } from './fn/telegram-announcements/list-telegram-recovery';
+export { listTelegramRecovery as listTelegramRecovery } from './fn/telegram-announcements/list-telegram-recovery';
+export type { SuggestTelegramAnnouncement$Params as SuggestTelegramAnnouncement$Params } from './fn/telegram-announcements/suggest-telegram-announcement';
+export { suggestTelegramAnnouncement as suggestTelegramAnnouncement } from './fn/telegram-announcements/suggest-telegram-announcement';
+export type { ResolveTelegramAnnouncement$Params as ResolveTelegramAnnouncement$Params } from './fn/telegram-announcements/resolve-telegram-announcement';
+export { resolveTelegramAnnouncement as resolveTelegramAnnouncement } from './fn/telegram-announcements/resolve-telegram-announcement';
+export type { GetCurrentWeather$Params as GetCurrentWeather$Params } from './fn/weather/get-current-weather';
+export { getCurrentWeather as getCurrentWeather } from './fn/weather/get-current-weather';
