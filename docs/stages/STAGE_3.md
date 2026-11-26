@@ -224,14 +224,5 @@ The [Angular write transport check](../OPTIMIZATIONS.md#angular-csrf-transport)
 verified resident upload, creation and edits, plus claim, image import, return
 and moderation deletion in Edge through the real HTTPS API.
 
-## Local Review Scenario
-
-From the homepage choose **Suggest a story** to submit a suggestion with a
-photo. From an Author account open **Resident suggestions**, preview the photo
-in the available queue, confirm that contacts are hidden, then take the item,
-select a ready attachment in **My assignments**, then open the draft. Submit
-the completed article and publish after an Editor approves it. Check the
-published link and notice in the resident account and the byline on the public
-article. To review the failure path, try claiming one queued suggestion with
-two different authors or return an unpublished suggestion and verify that its
-old draft is gone and its remaining queue time resumes.
+For a repeatable browser check, use the
+[suggestion review scenario](../development_instructions/development_and_verification/editorial_media_and_suggestion_workspaces.md#suggestion-review-scenario).

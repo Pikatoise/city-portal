@@ -67,7 +67,7 @@ C# conventions and their enforcement follow [CODE_STYLE.md](../CODE_STYLE.md) an
 - Email addresses contain at most 254 characters after trimming. Validate address syntax; Email confirmation verifies control of the address.
 - Passwords contain 8-30 characters from printable ASCII U+0021 through U+007E. Allowed characters are Latin letters A-Z/a-z, digits 0-9, and ASCII punctuation. At least one punctuation character is required; letters and digits are optional. Spaces and non-ASCII characters are rejected. Do not trim or otherwise transform passwords.
 - Every registered account receives the Regular User role. Staff roles are added to it.
-- Unconfirmed accounts can log in, view their own profile, request another confirmation Email, and log out. Content creation and staff operations require confirmed Email.
+- Unconfirmed accounts can log in, view their own profile, request another confirmation Email, and log out. Staff operations require confirmed Email. Other stages define confirmation requirements for their own content workflows. See [registration and access](../VALUE.md#registration-and-access).
 
 ## Links, Sessions, and Login Protection
 

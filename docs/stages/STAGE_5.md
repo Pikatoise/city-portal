@@ -8,10 +8,8 @@ Stage 5 on 2026-11-26 after the final navigation fixes. All eight code review
 findings have been addressed.
 [VALUE.md](../VALUE.md#article-comments) defines the approved product behavior.
 [CORE.md](../CORE.md#comments) defines the technical direction.
-[Stage 4](STAGE_4.md#article-and-advertisement-reports) records the existing
-reporting contract that this stage extends.
-Track the stage in [issue #16](https://github.com/Pikatoise/city-portal/issues/16)
-in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
+[Issue #16](https://github.com/Pikatoise/city-portal/issues/16) is closed
+and marked Done in [GitHub Project 3](https://github.com/users/Pikatoise/projects/3).
 
 ## Goal and scope
 
@@ -64,28 +62,23 @@ Comments have no replies, nesting, or edit operation.
 
 ### Reports and moderation
 
-- Add a separate comment queue to the existing Reports workflow. Group
-  reports by comment and show the reported text and article context. Use
-  the existing report limits. Reasons are spam, insults, hate
-  speech, personal data, and other. A report leaves the comment visible.
-- Confirmed moderators and administrators can dismiss the reports they
-  reviewed or hide the comment with a trimmed reason of 1 to 500 characters.
-  Offer a direct hide action on visible comments for the same roles.
-- The staff preview includes up to 20 oldest pending reports, one page of up
-  to 20 resolved reports, and one page of up to 20 decisions. A decision
-  covers only the reviewed pending batch. Staff can page through resolved
-  reports and decisions independently.
-- Keep report and decision history available to staff after hiding or owner
-  deletion. Retain the reported snapshot in Reports. Later reports stay
-  pending and can still be dismissed if the comment disappeared during
-  review. Direct hides appear in history and leave existing reports pending.
-  The stage has no restore action, account notification, or Email notification.
+The comment queue at `/staff/reports/comments` follows the
+[shared reporting contract](../CORE.md#content-reports). Reasons are spam,
+insults, hate speech, personal data, and other. The preview shows the
+reported text and article context. Reports retains a copy of the comment text
+for review after owner deletion.
+
+Moderators and administrators can review reports on any comment, including
+their own. They can also hide a visible comment directly with a trimmed
+reason of 1 to 500 characters. Direct hides appear in history and leave
+existing reports pending. The stage has no restore action, account
+notification, or Email notification.
 
 ### API
 
-All mutations require CSRF. Use Problem Details, current authorization
-checks, and the established report preview sequence and stale-decision
-behavior.
+All mutations require CSRF. Use Problem Details and current authorization
+checks. The shared contract defines the routes for the `comments` report
+kind.
 
 | Route | Contract |
 | --- | --- |
@@ -93,9 +86,6 @@ behavior.
 | POST /api/news/articles/{articleId}/comments | Create a comment with a plain-text body and return 201 with the created comment. Return 400 for invalid text, 403 for a blocked account, 404 for an unavailable article, or 429 when rate limited. |
 | GET /api/account/comments | Read up to 20 undeleted comments owned by the signed-in account. Include the account's current deletion permission and an `articleUrl` for each item. The URL is null when the article is unavailable publicly. |
 | DELETE /api/account/comments/{id} | Delete the acting account's own comment. Return 204 on success, 403 for a blocked account, or 404 if the comment is unavailable to the actor. |
-| POST /api/reports/comments/{id} | Submit a report using the existing reason and optional text contract. Require a currently public comment. |
-| GET /api/staff/reports/comments and GET /api/staff/reports/comments/{id} | List pending subjects or history and open a bounded review preview. Use `resolvedPage` and `decisionPage` to page through history. |
-| POST /api/staff/reports/comments/{id}/decide | Dismiss reports through the reviewed sequence or hide the target and record the decision in the same transaction. |
 | POST /api/staff/comments/{id}/hide | Hide a visible comment with a reason and record the actor and time. |
 
 ## Tools and module boundaries
@@ -157,87 +147,32 @@ No product decisions remain open.
 
 ## Implementation and verification
 
-The API, Angular article comments, and staff queue are implemented.
+The API, Angular article comments, My Comments, and staff queue are
+implemented. The final local run passed all 17 focused .NET integration
+cases and all 109 Angular tests. The Angular production build, .NET
+format check, and live OpenAPI comparison also passed.
 
-- All 227 .NET tests passed. A separate run passed all 14 focused PostgreSQL
-  integration cases. They covered the
-  500-character boundary, CSRF, rate limiting, ownership, withdrawal and
-  republication, both commit orders for posting or reporting against a
-  withdrawal, atomic report moderation rollback, and direct hide history.
-- On 2026-11-25 the live HTTPS Edge check covered anonymous posting and
-  reporting, plain-text rendering and SSR, posting with an unconfirmed
-  account, owner deletion, hiding from the report queue, direct hiding,
-  and retained history. The article fit 390 and 1440 pixel viewports.
-  An owner deletion made a prior hide preview stale. Staff could still
-  see the reported text and dismiss the pending report.
-- The Reports upgrade applied to the Stage 4 Reports schema with an existing
-  article report and decision. It preserved both records and created the
-  Comments schema. Both EF models match their migrations.
-- The Angular build and all 104 Angular tests passed. The generated client
-  matches the live OpenAPI contract. The .NET format check and Prettier on
-  changed frontend files passed. The project-wide Prettier check flagged
-  30 existing files with Windows CRLF endings. All 30 passed with the LF
-  endings stored in Git.
-
-## Stand check and code review
-
-On 2026-11-26 the owner confirmed the comment workflows worked on the local
-stand. The stand was stopped with its data retained. The code review compared
-the working tree with Stage 4 closure commit `0a0ce73`.
-
-Specification findings:
-
-- Owner deletion works through the API during article withdrawal. The
-  browser offers deletion only for comments still visible on an article,
-  leaving the owner without a browser action after withdrawal or hiding.
-- Offset pagination can repeat or skip comments when an earlier page
-  changes between requests.
-- Report-review validation checks the raw hide reason length before
-  trimming, while direct hide checks the trimmed length.
-
-Engineering findings:
-
-- The staff preview loads all reports and decisions for a target. The new
-  comment queue inherits this unbounded response from Stage 4.
-- The comment write contract should define behavior when password changes
-  revoke sessions during a request. Comment writes use the role lock,
-  while password changes use Email and account locks.
-- Primary comment actions use the default secondary button treatment.
-- Some integration test reads use null suppression in place of explicit
-  assertions about response bodies.
-- The comment-specific exception for staff reviewing their own content is
-  repeated across the report queue, preview, and decision queries.
-
-Local verification is recorded above. GitHub Actions verification remains
-pending for these working-tree changes.
-
-## Code review follow-up
-
-On 2026-11-26, the private My Comments page made owner deletion reachable after
-withdrawal and hiding. Public comment paging now uses a cursor. Report-driven
-hiding normalizes the reason before request validation, and the staff preview
-uses separate bounded pages for reports and decisions. Signed-in comment
-writes recheck the session under the Identity locks. Primary actions use the
-shared button style, test reads assert that response bodies exist, and the
-report queue, preview, and decision queries share one eligibility predicate.
-
-All 17 focused .NET integration cases and all 105 Angular tests passed.
-The .NET cases include owner access during withdrawal and hiding, cursor
-continuation after insertion and hiding, the 500-character trimmed hide
-reason, report batch boundaries, and password change winning a concurrent
-comment write. The Angular account test exercises owner deletion without
-opening the article. The Angular build and live OpenAPI verification passed.
-The updated migrations applied to an isolated PostgreSQL database.
-
-The local HTTPS review stand applied the owner-comment index migration to its
-retained database. API and Worker readiness and the live OpenAPI comparison
-passed. The stand has a dedicated published article and a comment owned by
-the demo regular user for the withdrawal and deletion check.
-
-The full Release .NET run passed 229 of 230 tests with no skips. One readiness
-case returned HTTP 503 immediately after PostgreSQL resumed while the stand
-images were building. Both readiness cases passed in a focused repeat after
-the image builds finished.
+- **API and concurrency.** PostgreSQL cases covered the 500-character
+  boundary, CSRF, rate limiting, ownership, withdrawal and republication,
+  and both commit orders for posting or reporting against a withdrawal.
+  They verified moderation rollback, direct hide history, cursor
+  continuation after insertion or hiding, trimmed hide reasons, bounded
+  report batches, and session revocation when a password change wins a
+  concurrent comment write.
+- **Browser workflows.** The live HTTPS check covered anonymous posting
+  and reporting, plain-text SSR, posting with an unconfirmed account,
+  owner deletion, both hide paths, and retained history. The article
+  fit 390 px and 1440 px viewports. Owner deletion made a prior hide
+  preview stale. Staff could still read the retained text and dismiss
+  the report.
+- **Upgrade.** The migration from the Stage 4 schema preserved an existing
+  article report and decision and created the Comments schema. Both EF
+  models matched their migrations. The owner-comment index also applied
+  to the retained local stand database, and API and Worker readiness passed.
+- **Local readiness retry.** A full Release run passed 229 of 230 tests.
+  One readiness case returned HTTP 503 just after PostgreSQL resumed
+  while stand images were building. Both readiness cases passed when
+  rerun after the builds finished.
 
 ## Owner acceptance
 
@@ -254,9 +189,8 @@ closure after they were addressed.
   checked both renderings and deletion. PostgreSQL integration tests checked
   the URL before withdrawal, during withdrawal, and after republication.
   Hiding just the comment leaves the public article link available.
-- All 17 focused .NET integration cases and all 109 Angular tests passed.
-  The Angular production build, .NET format check, live OpenAPI comparison,
-  and HTTPS smoke check of the public article link passed.
+- A live HTTPS smoke check confirmed the public article link.
 
-The stage is closed for product acceptance. GitHub Actions verification of
-the final working-tree changes is pending publication of those changes.
+The stage is closed. The [GitHub Actions run](https://github.com/Pikatoise/city-portal/actions/runs/45806791723)
+passed backend, frontend, and container verification on implementation
+commit `13f0266`.

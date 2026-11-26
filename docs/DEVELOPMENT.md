@@ -13,7 +13,8 @@
 - [Complete first-run setup locally or over SSH](development_instructions/installation_and_deployment/first_run_setup.md)
 - [Expose an installed site over public HTTPS](development_instructions/installation_and_deployment/public_network_access.md)
 - [Bootstrap a legacy administrator and locate account tools](development_instructions/installation_and_deployment/legacy_administrator_bootstrap.md)
-- [Apply the Stage 2 migration, back up, and restore](development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md)
+- [Back up and restore an installation](development_instructions/installation_and_deployment/backup_and_restore.md)
+- [Apply the Stage 2 migration](development_instructions/installation_and_deployment/stage_2_upgrade.md)
 
 ## Development and verification
 
@@ -21,4 +22,5 @@
 - [Find service endpoints, check health, and inspect logs](development_instructions/development_and_verification/services_and_diagnostics.md)
 - [Configure local mail and smoke-test registration and confirmation](development_instructions/development_and_verification/registration_and_confirmation.md)
 - [Open editorial, Media, and citizen suggestion workspaces](development_instructions/development_and_verification/editorial_media_and_suggestion_workspaces.md)
+- [Run the citizen suggestion review scenario](development_instructions/development_and_verification/editorial_media_and_suggestion_workspaces.md#suggestion-review-scenario)
 - [Reproduce the News capacity check](development_instructions/development_and_verification/news_capacity_check.md)

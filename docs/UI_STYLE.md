@@ -48,9 +48,11 @@ Illustration colors are content, not additional interface palette roles. They ma
 
 ## Interaction and Accessibility
 
-The production author workspace at `/account/articles` now reuses the accepted five-section layout with actual persistence and Media. Shared native-control styles also cover `/staff/taxonomy`; review uses the production staff workspace. Real 1440px/390px checks covered editor/preview, Media selection, retained local conflict copy, and no horizontal page overflow. Visible keyboard focus, labelled native controls, and Russian editor labels are retained; Stage 2 is owner-accepted.
-
-The account notification page follows the shared typography, buttons, muted metadata, and divider-based rows. Native fieldsets keep account and Email switches independently labelled, with visible unsaved/success/error feedback. Notification actions and settings fit desktop 1440px and mobile 390px without horizontal page overflow; the real HTTPS verification also covered read/delete and persistence after reload. The page is browser-rendered under `/account/notifications` and uses the existing account navigation.
+Use shared native controls in the authoring, taxonomy, and editorial
+workspaces. Keep the editor's Russian labels. Use shared typography,
+buttons, muted metadata, and divider-based rows for account notifications.
+Use native fieldsets to label account and Email switches independently.
+Show unsaved, success, and error states.
 
 Preserve the accepted sticky category row, 650ms interruptible category scrolling, 380ms carousel settling, and 180ms content entrance. These explicit owner-reviewed motions remain as configured; do not silently change them during theme work. The carousel retains arrow alternatives to dragging. Decorative image-hover animation and the loading spinner retain reduced-motion handling.
 
@@ -68,7 +70,10 @@ focus containment, Escape and focus return.
 
 ## Editorial Review and Publication
 
-The production author workspace now uses real submission/recall, required resubmission notes, explicit approved Save returning to review, separate publication, and paginated retained snapshots. Its five existing sections remain. Submitted/rejected/published content is read-only; approved content disables autosave and explains explicit Save behavior. Unsaved changes and version conflicts preserve the local form.
+Keep the five authoring sections visible across content states. Show
+read-only content for submitted, rejected, and published versions.
+In the approved state, explain what explicit Save does. Preserve the local
+form when it contains unsaved changes or a version conflict occurs.
 
 The reviewer workspace uses shared controls and focuses the submitted preview
 after a claim or takeover. The preview displays the body and its photos,
@@ -78,6 +83,13 @@ explains who can see the author's current edits.
 
 ## Public News
 
-The production homepage and detailed list now use actual publication data and the shared visual language. Homepage gutters are 8vw (5vw on mobile), category/search controls use header gutters, and the fluid article reader retains its additional desktop article inset without a fixed width cap. Featured images use safe Media URLs; no-cover and unavailable-image states are explicit. The carousel retains 380ms settling and pointer/arrow alternatives, one active accessible slide and one-line current-author/date credit. Category scrolling is interruptible by wheel, touch or keyboard input and cleans up animation frames/listeners on destruction.
+Use the shared public gutters for the homepage, detailed list, and article.
+Use safe Media URLs for featured images and show explicit no-cover and
+unavailable-image states. Expose one active carousel slide to assistive
+technology and keep the author and date on one line. Category scrolling
+stops on wheel, touch, or keyboard input. Clean up its animation frames and
+listeners when the component is destroyed.
 
-The detailed list owns its labelled filters and numbered page navigation; the homepage category bar is hidden there. Editorial publication rows expose versioned featured toggles and ordered category configuration with conflict/error feedback preserving input. HTTPS checks covered 1440px and 390px layouts, actual search/filter/navigation and curation actions without horizontal overflow. STAGE_2.md records verification and acceptance.
+Use labelled filters and numbered pages on the detailed list. Show the
+sticky category bar only on the homepage. Editorial curation controls
+preserve input and show feedback on version conflicts and request failures.

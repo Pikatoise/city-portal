@@ -61,11 +61,8 @@ and/or Email.
   commit together. A blocked owner cannot publish or renew through an owner
   or staff action. Unblocking leaves listings hidden until the owner acts.
   Direct listing blocks still apply.
-- Reports leave listings visible until a moderator acts. The queue shows the
-  total count per subject. Moderators and administrators open a subject to
-  review pending reports and page through earlier reports and decisions.
-  They can dismiss the reports
-  they saw or hide the subject with a reason. New reports stay pending.
+- Moderators and administrators review article and listing reports through the
+  [report workflow](#article-and-advertisement-reports).
 
 ### Draft form and starting catalog
 
@@ -77,7 +74,7 @@ price. Price is optional in the other initial categories. Zero means free.
 
 Start with a flat list of electronics and belongings, real estate, vehicles,
 services, jobs, animals and lost pets, and miscellaneous listings. Administrators
-configure categories and attributes. The first version uses the common listing
+configure categories. The catalog uses the common listing
 fields. Archived categories stay associated with existing advertisements and
 drafts. Only active categories can be newly assigned.
 
@@ -270,35 +267,19 @@ detail responses are served without storage in shared caches.
 
 ### Article and advertisement reports
 
-Visitors choose a reason, then may add up to 500 characters of text. Article
-reasons are spam, fraud, inaccurate information, misleading headline,
-copyright infringement, personal data, insults, hate speech, inappropriate
-media and other. Advertisement reasons are spam, fraud, prohibited item or
-service, wrong category, inaccurate description, incorrect price,
-inappropriate photos, insults, personal data and other.
+The [shared reporting contract](../CORE.md#content-reports) defines
+submission limits, previews, review decisions, history, and API routes.
 
-The API uses the existing antiforgery flow and allows up to five attempts per
-hour per IP and per signed-in account. Reports can be submitted only for
-currently public content. Moderators and administrators use separate queues
-for other users' articles and advertisements. Each queue row groups the
-subject's reports. The preview shows the current publication if available,
-the oldest pending batch, and pages of resolved reports and prior decisions.
-Staff can dismiss the reports they saw or
-hide the subject with a trimmed reason of 1 to 500 characters. A hiding
-decision checks the subject version and applies editorial withdrawal or the
-direct listing block in the same transaction. Only reports up to the preview
-sequence are closed. The history view retains the ID, last reported title,
-reports and decisions after deletion. It omits IP addresses.
+- Article categories are spam, fraud, inaccurate information, misleading
+  headline, copyright infringement, personal data, insults, hate speech,
+  inappropriate media, and other.
+- Advertisement categories are spam, fraud, prohibited item or service, wrong
+  category, inaccurate description, incorrect price, inappropriate photos,
+  insults, personal data, and other.
 
-| Route | Contract |
-| --- | --- |
-| POST `/api/reports/{kind}/{id}` | Submit a reason and optional text. Returns 204, 400 for invalid input, 403 for a blocked account, 404 for unavailable content, or 429 when rate limited. |
-| GET `/api/staff/reports/{kind}` | List grouped pending reports or resolved subjects when `history=true`. |
-| GET `/api/staff/reports/{kind}/{id}` | Review the subject with the oldest pending batch. Page through resolved reports and decisions with `resolvedPage` and `decisionPage`. The [Stage 5 shared preview change](STAGE_5.md#reports-and-moderation) caps each batch or page at 20. |
-| POST `/api/staff/reports/{kind}/{id}/decide` | Dismiss the reports shown or hide the subject. Returns 204 or 409 for a stale decision. |
-
-The two subject kinds are `articles` and `classifieds`. The staff pages
-are at `/staff/reports/articles` and `/staff/reports/classifieds`.
+Staff review other users' publications at `/staff/reports/articles` and
+`/staff/reports/classifieds`. Hiding an article uses editorial withdrawal.
+Hiding an advertisement applies a direct listing block.
 
 ### Decision history and workflow notifications
 
@@ -407,145 +388,56 @@ does not change decision history.
 
 ## Verification
 
-On 2026-11-24 the solution built with no warnings or errors and passed the
-format check. All 16 targeted xUnit tests for Classifieds, infrastructure and
-installation passed using PostgreSQL and RabbitMQ containers.
+The final local .NET suite passed all 219 tests with one xUnit worker.
+All 104 Angular tests passed. The solution and production Angular build,
+C# formatting, changed-file Prettier, live OpenAPI comparison, and
+generated-client comparison also passed.
 
-- `PrivateDraft_EnforcesConfirmationOwnershipAndVersionAsync` verifies private
-  reads and writes, CSRF, incomplete drafts, zero price, rejection of fractional
-  and out-of-range amounts, version conflicts and deletion.
-- `ArchivedCategory_PreservesExistingDraftAndRejectsNewAssignmentAsync` verifies
-  repeat migration, the seven starter categories and three price requirements,
-  administrator-only district creation and category archival.
-
-The live OpenAPI document matched the snapshot, Angular client regeneration
-matched the checked-in client files, and the Angular application type check
-passed.
-
-After the integer price and photo changes, all 17 targeted tests for classifieds
-and existing media workflows passed. `DraftPhotos_EnforceLimitOwnershipOrderAndCleanupAsync`
-uses PostgreSQL and RustFS to verify five attachments, rejection of a sixth,
-foreign and duplicate IDs, required alternative text, private WebP delivery,
-retained attachments, reordering, and cleanup on detachment or deletion.
-The existing unreleased Classifieds initial migration now creates the price
-column as `bigint`. The new Media migration upgrades existing media tables.
-
-The solution format check, live OpenAPI comparison, production Angular build
-and all 103 Angular tests passed. In Edge with mocked API responses, the account form rejected a decimal
-price, uploaded two photos, saved a whole price, switched carousel photos,
-and deleted the draft. At viewport widths of 390 and 1440 pixels the carousel
-sat between the title and description without horizontal page overflow.
-
-The catalog administration change passed the Angular production build and
-all 103 Angular tests. An Edge check with mocked API responses verified adding
-a category and a district, renaming the district, archiving and restoring a
-category, and preserving form input after a version conflict. It verified that
-a regular account cannot access the editor and that the page fits 390 and
-1440 pixel viewports.
-
-The submission and recall change passed all seven targeted Classifieds and
-infrastructure tests, the solution format check, live OpenAPI comparison,
-production Angular build and all 103 Angular tests.
-`Submission_ValidatesFieldsFreezesDraftAndAllowsVersionedRecallAsync` verifies
-field validation, owner-only access, a single successful concurrent submission,
-the pending edit and deletion guards, and an unchanged draft after recall.
-An Edge check with mocked responses verified field feedback, prevention of
-submission with unsaved edits, read-only fields in review, and editing after
-recall.
-
-The staff review change passed the solution format check, live OpenAPI
-comparison, generated client comparison, production Angular build, and all
-103 Angular tests. All six targeted Classifieds tests passed with PostgreSQL,
-RabbitMQ, and RustFS. The complete .NET suite passed all 201 tests with one
-xUnit worker. The targeted tests cover role and ownership checks, queue order,
-reason validation, concurrent staff decisions and owner recall, and photo
-access across recall and resubmission. Changed Angular files passed Prettier.
-The workspace-wide Prettier check flagged 34 files outside this change.
-A live HTTPS Edge check exercised submission, staff preview,
-return, correction, resubmission, final rejection, and deletion. It also
-checked layout at 390 and 1440 pixels. The isolated PostgreSQL database retained
-both decision records after deletion, with their submitted versions, staff
-actors, and UTC decision timestamps. The browser fixture seeded the owner's
-Email confirmation before exercising the advertisement workflow.
-
-First publication and atomic account blocking passed 36 targeted integration
-tests with one xUnit worker. The checks forced both PostgreSQL commit orders
-between approval and a block, forced rollback during an account block, and
-verified the exact expiry boundary and photo access. They also exercised
-Classifieds, suggestions, account administration, and API foundation behavior.
-The four publication tests passed again after adding a distinct blocked-owner
-approval error. The solution format check, live OpenAPI comparison, generated
-client comparison, production Angular build, and all 103 Angular tests passed.
-
-On 2026-11-25, a live HTTPS Edge check exercised approval, phone-only SSR,
-public photo delivery, account blocking, and unblocking. The same owner
-session kept profile and read-only listing access during the block. The
-profile showed the reason, and the public page and photo returned 404.
-Unblocking restored content writes and kept the listing hidden. The browser
-fixture seeded Email confirmation before exercising the flow.
-
-All 17 targeted Classifieds integration tests passed with one xUnit worker.
-The checks cover immediate edits and their review, stale versions, correction
-after a direct block, photo reference cleanup, and both PostgreSQL commit
-orders for account blocking racing renewal or correction approval.
-All 103 Angular tests passed, along with the production Angular build,
-solution format verification, changed-file Prettier, live OpenAPI comparison,
-and generated client comparison.
-
-On 2026-11-25, a live HTTPS Edge check exercised immediate owner edits,
-replacement photos, the staff comparison at 390 and 1440 pixels, direct
-blocking, correction and approval, withdrawal, relisting, and deletion.
-The test confirmed that edits and approval preserved expiry, the public API
-omitted the seller's Email, staff could open both photo versions, and
-unavailable listings returned 404. The isolated stand used
-PostgreSQL, RabbitMQ, RustFS and the Worker. The browser fixture seeded Email
-confirmation for the owner.
-
-On 2026-11-25, a live HTTPS Edge check verified the catalog with 21 listings.
-It checked the homepage button, server-rendered results, pagination with the
-district retained in the URL, Russian word-form search with combined filters,
-navigation to the detail page and owner form, and removal after withdrawal.
-The catalog fit viewports of 390 and 1440 pixels. The disposable stand
-published two listings through the API and seeded the remaining rows.
-
-All 19 targeted Classifieds integration tests passed. The catalog checks
-cover first-publication ordering across pages, relevance, Russian word forms,
-inclusive price filters, exact expiry, withdrawal, both block types, and
-search updates after a live edit. The production Angular build, all 103
-Angular tests, changed-file Prettier, and both OpenAPI checks passed.
-
-On 2026-11-25, a live HTTPS Edge check submitted anonymous reports on an
-article and an advertisement using different categories. It checked that the
-optional comment appeared after category selection, that the two staff queues
-remained separate, and that dismissal left a later report pending. It also
-withdrew the article from the reports workspace and checked its public 404
-response. The staff preview fit 390 and 1440 pixel viewports.
-
-All 17 targeted PostgreSQL integration tests passed. They covered migration
-and readiness, anonymous CSRF and rate limiting, separate queues grouped by
-subject, dismissal up to the preview sequence, moderator withdrawal,
-rollback of a failed hiding decision, and history after listing deletion.
-All 103 Angular tests passed, along with the production build, formatting,
-and both OpenAPI checks.
-
-On 2026-11-25, eight targeted PostgreSQL tests verified listing and account
-decision history, role access, independent notification preferences, and
-rollback of a report-triggered listing block and its notification. They
-also covered private reasons, an unverified Email address, and retained
-decisions after listing deletion or notification removal. All 104 Angular
-tests passed, including a failed-page retry and navigation between account
-histories. The solution and production Angular build, C# formatting,
-changed-file Prettier, and both OpenAPI checks passed.
-The complete .NET suite passed all 219 tests with one xUnit worker in 15m 42s.
-
-A live HTTPS Edge check at 390 and 1440 pixels verified the owner and staff
-history, actor visibility, an administrator's own staff history, notification
-preferences, unblock notifications, and access to a deleted listing's audit.
-With RabbitMQ and SMTP stopped, an account block persisted, the owner saw one
-account notice, and PostgreSQL kept one outgoing Email envelope. After the
-broker restarted, the Worker scheduled a retry while SMTP was still down.
-After SMTP restarted, the Email reached `Sent` on attempt two. The isolated
-stand seeded the owner's Email confirmation before the check.
+- **Drafts and catalog.** `PrivateDraft_EnforcesConfirmationOwnershipAndVersionAsync`
+  covered confirmation, ownership, CSRF, incomplete saves, whole-number
+  price bounds, version conflicts, and deletion.
+  `ArchivedCategory_PreservesExistingDraftAndRejectsNewAssignmentAsync`
+  verified repeat migration, the seed catalog, administrator-only district
+  creation, and the archival rules. Browser checks with mocked responses
+  covered catalog edits and conflict recovery.
+- **Photos and review.** `DraftPhotos_EnforceLimitOwnershipOrderAndCleanupAsync`
+  checked file ownership, ordering, private access and cleanup against
+  PostgreSQL and RustFS.
+  `Submission_ValidatesFieldsFreezesDraftAndAllowsVersionedRecallAsync`
+  verified submission validation, one winner under concurrency, and recall.
+  The live HTTPS browser check covered preview, return, resubmission, final
+  rejection, and deletion. Both decisions remained in history after
+  deletion with their submission versions, actors, and timestamps.
+- **Publication and blocking.** PostgreSQL tests forced rollback during
+  account blocking and both commit orders when a block raced initial
+  approval, renewal, or correction approval. They also checked the
+  exact expiry boundary and photo visibility. Live HTTPS checks covered
+  phone-only SSR, omission of the seller's Email from the public API,
+  immediate edits and photo replacement, staff comparison, direct block
+  and correction, withdrawal, relisting, and deletion. A blocked owner
+  kept the same session and read-only access. Public listing and photo
+  requests returned 404. Unblocking restored writes while the listing
+  remained hidden.
+- **Public catalog.** PostgreSQL tests covered ordering, Russian word
+  forms, inclusive price bounds, search updates after live edits, and
+  exclusion of expired, withdrawn, or blocked listings. A live HTTPS
+  fixture with 21 listings verified SSR, the homepage entry point,
+  combined filters, pagination with the district preserved in the URL,
+  and navigation to listing detail and creation.
+- **Reports and decision history.** The tests verified anonymous CSRF
+  and throttling, separate queues grouped by subject, dismissal through
+  the reviewed sequence, and rollback of a report-triggered hide and its
+  notification. Live browser checks covered reporting with different
+  categories, a later report staying pending, public 404 after article
+  withdrawal, owner and staff history, actor visibility, independent
+  notification preferences, and history after listing deletion. The
+  live listings, catalog, and staff flows were checked at 390 px and
+  1440 px.
+- **Delivery recovery.** With RabbitMQ and SMTP stopped, an account block
+  persisted with one account notice and one outgoing Email envelope.
+  After RabbitMQ restarted, the Worker scheduled a retry while SMTP
+  was still unavailable. The Email reached `Sent` on attempt two after
+  SMTP recovered.
 
 ## Owner acceptance
 

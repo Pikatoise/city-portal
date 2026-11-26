@@ -161,7 +161,7 @@ Missing payloads mark the image Failed. Reconciliation runs every ten seconds
 without concurrent execution in the persistent `CityPortal.Email` Quartz
 scheduler. Cleanup rechecks retention under the attachment lock and marks
 the row Deleting before removing objects. Failed deletes retain the row for
-retry. See [upgrade and recovery](../development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md).
+retry. See [Stage 2 upgrade](../development_instructions/installation_and_deployment/stage_2_upgrade.md).
 
 ## API, Transactions, and Module Contracts
 
@@ -368,15 +368,14 @@ services. This is logical recovery verification, not a second-machine disaster
 recovery or a production RPO/RTO measurement. SMTP acknowledgment followed by a
 database failure can still produce a duplicate external Email.
 
-## Measured query changes
+## Optimization evidence
 
-The [optimization log](../OPTIMIZATIONS.md#news-discovery-queries) records
-the migration and query measurements.
-
-## Capacity Results
-
-See the [capacity results](../OPTIMIZATIONS.md#capacity-results) for the
-load measurements and their limits.
+The optimization log records [News discovery queries and migration](../OPTIMIZATIONS.md#news-discovery-queries),
+[capacity measurements](../OPTIMIZATIONS.md#capacity-results),
+[draft write concurrency](../OPTIMIZATIONS.md#draft-write-concurrency),
+and [public article request counts](../OPTIMIZATIONS.md#public-article-read).
+[CORE.md](../CORE.md#transactions-concurrency-and-module-interaction) owns
+the lock policy.
 
 ## Browser verification
 
@@ -387,8 +386,12 @@ publication notices through SMTP. The reviewer held Administrator without Editor
 Withdrawal removed public content, private reasons, article metadata and image grants;
 republication retained first-publication time. Replacement address verification
 confirmed 404 for old addresses.
-Homepage/list/article layouts at 1440px and 390px had no horizontal overflow or
-browser page errors. Completed fixtures, screenshots and logs were removed.
+At 1440 px and 390 px, the homepage, detailed list, article, authoring
+workspace, and notifications fit without horizontal overflow. Browser
+checks covered search, filters, navigation, curation, editor preview,
+Media selection, preservation of a local conflict copy, and notification
+read/delete and persistence after reload. The public pages showed no
+browser errors. Completed fixtures, screenshots and logs were removed.
 
 ## Final Verification
 
@@ -404,7 +407,7 @@ and repeat stand startup passed. Replacement-address checks covered transliterat
 collision rollback, concurrent publication/correction, retained local dates and
 interrupted backfill recovery; EF pending-model verification passed.
 
-See [local startup](../DEVELOPMENT.md#local-startup) and [Stage 2 upgrade and recovery](../development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md) for commands.
+See [local startup](../DEVELOPMENT.md#local-startup), the [Stage 2 upgrade](../development_instructions/installation_and_deployment/stage_2_upgrade.md), and the [backup and restore procedure](../development_instructions/installation_and_deployment/backup_and_restore.md) for commands.
 Module design is in [CORE.md](../CORE.md).
 
 ## Final Owner Acceptance: 2026-11-17
@@ -426,14 +429,3 @@ replay while the delivery remains eligible. The
 measurement limits. The address concurrency tests do not independently isolate contention on the
 address-specific lock. No production deployment or new CI/test run is implied
 by this acceptance record.
-
-## Draft write concurrency
-
-See the [draft write optimization](../OPTIMIZATIONS.md#draft-write-concurrency)
-for the performance comparison and regression evidence. The [lock policy](../CORE.md#transactions-concurrency-and-module-interaction) is in CORE.md.
-
-## Public article read
-
-The [public article optimization](../OPTIMIZATIONS.md#public-article-read)
-records the request counts and the verification of publication visibility,
-related-news failures, and OpenAPI consistency.

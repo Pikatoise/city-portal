@@ -128,11 +128,11 @@ See [Stage 4](stages/STAGE_4.md) for API contracts and delivery status.
 Store expiry and enforce it in public reads independently of cleanup. The
 public catalog searches only current publication snapshots. PostgreSQL keeps
 the generated Russian full-text search vector in sync with edits. Account
-blocking and hiding its listings commit or roll back together. Stage 4 must
-verify both commit orders for a block racing with publication or renewal,
-including staff publication. Design lock ordering around the acting account
-and listing owner and verify it with PostgreSQL. See the
-[product rules](VALUE.md#account-blocking).
+blocking and hiding its listings commit or roll back together. Coordinate
+locks for the acting account and listing owner. The
+[product rules](VALUE.md#account-blocking) define the outcome, and
+[Stage 4 verification](stages/STAGE_4.md#verification) records both PostgreSQL
+commit orders for races with staff publication and owner renewal.
 
 Classifieds and Identity retain their own moderation decisions. Listing review,
 direct listing block, and account block or unblock queue the agreed notices on
@@ -143,15 +143,42 @@ use the existing Notifications module independently of decision history.
 ### Content Reports
 
 Reports owns the shared submission, queue and decision model in its own
-PostgreSQL schema. News and Classifieds supply the current publication preview
-and apply their existing withdrawal or direct block in the staff decision
-transaction. Anonymous writes use the shared Identity administration lock
-and a per-subject transaction lock. The subject lock keeps report sequence
-order consistent with commit order. Staff decisions take the exclusive
-administration lock and cover the oldest pending reports up to the sequence
-returned by the preview, at most 20 reports per decision. Preview pages bound
-resolved reports and past decisions independently. The report, target snapshot
-and decision history survive deletion.
+PostgreSQL schema. News, Classifieds, and Comments provide target previews
+and apply the corresponding hide action in the staff decision transaction.
+See [Stage 4](stages/STAGE_4.md#article-and-advertisement-reports) and
+[Stage 5](stages/STAGE_5.md#reports-and-moderation) for categories and
+rules specific to each subject kind.
+
+Visitors can choose a category and add up to 500 characters of optional text
+for currently public content. Submissions require CSRF protection. The API
+allows five attempts per hour per IP and five per hour per signed-in account,
+shared across all subject kinds. Blocked accounts cannot submit reports.
+
+Moderators and administrators with confirmed Email and unblocked accounts
+review one queue row per subject. The preview shows the current subject when available,
+the oldest 20 pending reports at most, and independent pages of up to 20
+resolved reports and up to 20 decisions. Staff dismiss a batch without a reason or hide the subject
+with its current version and a trimmed reason of 1 to 500 characters.
+A decision covers only pending reports through the reviewed sequence.
+Later reports stay pending. A new report returns a still-public subject to
+the pending queue. Staff can dismiss pending reports after the subject
+disappears. History retains the subject ID and last reported title, the
+reports and decisions after deletion. It omits IP addresses.
+
+Report submissions share the Identity administration lock and take a
+per-subject transaction lock before reading visibility or assigning a
+sequence. The subject lock keeps report sequence order consistent with commit
+order. Staff decisions take the exclusive administration lock and commit
+the decision, report updates and any hide action together.
+
+| Route | Contract |
+| --- | --- |
+| POST `/api/reports/{kind}/{id}` | Submit a category and optional text. Returns 204, 400 for invalid input, 403 for a blocked account, 404 for unavailable content, or 429 when rate limited. |
+| GET `/api/staff/reports/{kind}` | List grouped pending reports or show resolved subjects and direct decisions with `history=true`. |
+| GET `/api/staff/reports/{kind}/{id}` | Open the review preview. Use `resolvedPage` and `decisionPage` to page through history. |
+| POST `/api/staff/reports/{kind}/{id}/decide` | Dismiss the reviewed batch or hide the subject. Returns 204 or 409 for a stale decision. |
+
+The supported values of `kind` are `articles`, `classifieds`, and `comments`.
 
 ### Comments
 

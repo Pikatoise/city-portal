@@ -12,7 +12,7 @@ with a cursor. The My Comments query has a partial index for undeleted
 account comments. The staff preview replaces two unbounded result sets with
 bounded pending, resolved, and decision queries. Report visibility for staff
 is expressed in one predicate shared by list, preview, and decision
-operations. See the [Stage 5 verification](stages/STAGE_5.md#code-review-follow-up).
+operations. See the [Stage 5 verification](stages/STAGE_5.md#implementation-and-verification).
 
 The integration fixture confirmed the response caps of 20 pending reports,
 20 resolved reports, and 20 decisions. It also verified that later reports
@@ -177,7 +177,7 @@ The upgrade regression detected removal of the recomputation UPDATE by checking
 the PostgreSQL row version of a large vector originally stored as EXTENDED.
 An isolated tag-page query improved from 62.428 ms to 4.078 ms. A broad ranked
 search improved from 471.552 ms to 20.571 ms. These timings measure individual
-queries. See [migration and recovery](development_instructions/installation_and_deployment/stage_2_upgrade_and_recovery.md)
+queries. See [Stage 2 upgrade](development_instructions/installation_and_deployment/stage_2_upgrade.md)
 for deployment steps.
 
 ### Capacity results

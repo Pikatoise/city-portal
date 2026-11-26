@@ -183,26 +183,20 @@ Publication lasts seven days. Edits and review preserve the expiry date. Owners 
 
 Moderators and administrators can block another user's advertisements with a mandatory reason of up to 500 characters, including after publication. Blocked advertisements cannot be relisted or renewed. Owners may correct and resubmit them; they remain hidden until approved.
 
-### Article and Advertisement Reports
+### Content Reports
 
-Anonymous and signed-in visitors can report a public article or advertisement.
-Choose one of the subject's standard categories, then add optional text up to
-500 characters. The limit is five reports per hour per IP and five per hour
-per signed-in account. Blocked accounts cannot submit reports.
+Anonymous and signed-in visitors can report a public article, advertisement,
+or comment. A report leaves the content visible until staff act. Blocked
+accounts cannot report content.
 
-Moderators and administrators use separate article and advertisement queues.
-Each subject appears once. Opening it shows the subject, the first pending
-batch, and pages of previous reports and decisions. Staff may dismiss the
-reports they saw without a reason
-or hide another user's publication with a required reason of up to 500
-characters. For articles, hiding uses editorial withdrawal. For advertisements,
-it uses a direct listing block. Reports leave the publication visible until
-staff act. A report that arrived during review remains pending. A later
-report returns the subject to the queue if it is still public.
+Moderators and administrators use separate queues for articles, advertisements,
+and comments. Staff can dismiss the reports they reviewed or hide the content
+with a reason. Staff can review reports on other users' articles and
+advertisements and on any comment.
 
-After deletion, history retains the subject ID and last reported title, the
-report categories and text, and staff decisions. Report history contains no IP
-addresses.
+The reports and decisions remain in staff history after the content is
+deleted. See the [shared reporting contract](CORE.md#content-reports) for
+submission limits, review batches, and the API.
 
 ### Article Comments
 
@@ -215,7 +209,7 @@ addresses.
 
 ### Personal Account and Notifications
 
-The account contains Profile, My Advertisements, My News Submissions, Account Settings, and Notifications. Staff also access role-specific work areas.
+The account contains Profile, My Advertisements, My News Submissions, My Comments, Account Settings, and Notifications. Staff also access role-specific work areas.
 
 The profile shows Email, display name, Email confirmation status, and all assigned roles. Confirmed users can change their display name and password. Email changes, account deletion, and additional profile settings are outside stage 1.
 
@@ -229,7 +223,11 @@ Role names in the profile use these Russian display labels:
 | Moderator | Модератор |
 | Administrator | Администратор |
 
-Review outcomes and feedback are delivered to the account and by Email. Profile settings provide separate switches for every notification type and channel. Disabling notifications does not hide decisions or feedback in content records.
+The workflows below define which events send account and Email notifications.
+Profile settings provide separate switches for every notification type and
+channel. Disabling notifications does not hide decisions or feedback in
+content records. Comment moderation decisions remain in staff history and
+send no account or Email notification.
 
 Article authors receive notices for return with feedback, final rejection, approval, publication, direct editorial correction, withdrawal, and closure of a superseded working version. Template submitters receive approval, rejection, archival, block, and unblock notifications. Each type defaults to enabled for both account and Email delivery.
 
