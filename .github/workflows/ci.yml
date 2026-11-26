@@ -3,7 +3,27 @@ name: CI
 on:
   push:
     branches: [main]
+    paths: &ci_paths
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.dockerignore'
+      - '.editorconfig'
+      - '.env.example'
+      - '.sonarcloud.properties'
+      - 'CityPortal.slnx'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.props'
+      - 'dotnet-tools.json'
+      - 'global.json'
+      - 'compose*.yaml'
+      - 'src/**'
+      - 'tests/**'
+      - 'frontend/**'
+      - 'infra/**'
+      - 'scripts/**'
+      - '!**/*.md'
   pull_request:
+    paths: *ci_paths
 
 permissions:
   contents: read
