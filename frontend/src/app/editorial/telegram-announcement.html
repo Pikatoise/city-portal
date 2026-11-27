@@ -20,12 +20,16 @@
         <textarea [(ngModel)]="text" maxlength="3000" rows="4" [disabled]="busy()"></textarea>
       </label>
       @if (current.articleUrl; as url) {
-        <p>Ссылка в анонсе: <a [href]="url" target="_blank" rel="noopener noreferrer">{{ url }}</a></p>
+        <p>
+          Ссылка в анонсе: <a [href]="url" target="_blank" rel="noopener noreferrer">{{ url }}</a>
+        </p>
       }
       @if (suggestion()) {
         <p><strong>Вариант текста</strong></p>
         <p>{{ suggestion() }}</p>
-        <button type="button" (click)="useSuggestion()" [disabled]="busy()">Вставить вариант</button>
+        <button type="button" (click)="useSuggestion()" [disabled]="busy()">
+          Вставить вариант
+        </button>
       }
       <div class="actions">
         @if (current.aiEnabled) {

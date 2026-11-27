@@ -22,7 +22,10 @@ export class TelegramApi {
   }
 
   queue(id: string, revisionId: string, channel: string, text: string) {
-    return this.write.invoke(queueTelegramAnnouncement, { id, body: { revisionId, channel, text } });
+    return this.write.invoke(queueTelegramAnnouncement, {
+      id,
+      body: { revisionId, channel, text },
+    });
   }
 
   suggest(id: string, revisionId: string) {
