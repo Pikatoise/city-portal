@@ -305,5 +305,3 @@ The following are outside the initial implementation or subject to later agreeme
 - City events calendar and public issue reporting.
 - Complex real-time collaboration.
 - Scheduled publication, advanced search, advanced revision comparison, and additional media capabilities.
-
-Open details include later state models, notification events and defaults, and remaining module interactions.

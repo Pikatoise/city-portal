@@ -2,10 +2,10 @@
 
 ## Goal and status
 
-Deliver five opt-in integrations for one installation. Stage 5 is closed.
-All five integrations are implemented. Live Telegram, OpenAI and Auth0
-acceptance and owner review remain open.
-Track progress in [GitHub issue #17](https://github.com/Pikatoise/city-portal/issues/17).
+All five opt-in integrations are implemented. The owner closed the stage on
+2026-11-27 with the live-provider checks deferred as documented below.
+See [GitHub issue #17](https://github.com/Pikatoise/city-portal/issues/17) and
+[GitHub Project 3](https://github.com/users/Pikatoise/projects/3) for tracking.
 See the [deployment guide](../development_instructions/installation_and_deployment/integrations.md)
 for provider setup.
 
@@ -81,7 +81,7 @@ advertises the HTTPS Auth0 issuer. Verify JWT signature, lifetime, issuer,
 audience, scope and allowed client ID. The OAuth identity grants access to MCP
 news reads only. Keep browser CityPortal roles and sessions independent.
 
-## Acceptance and open items
+## Acceptance criteria
 
 - An upgrade preserves Stage 5 data and starts with the five integrations off.
   Confirm permissions, CSRF, version conflicts, audit, and the absence of secrets
@@ -92,10 +92,8 @@ news reads only. Keep browser CityPortal roles and sessions independent.
   restart and reconciliation. Verify AI success, refusal or malformed output, and
   manual sending during provider failure.
 - Verify missing, wrong-audience, unauthorized-client and insufficient-scope
-  MCP requests. Complete authorization and one tool call with MCP Inspector.
-- Run CI against controlled provider responses. Live acceptance requires a test
-  Telegram channel and bot, OpenAI API access and an Auth0 tenant. Record results
-  here and close the stage after owner review.
+  MCP requests.
+- Run CI against controlled provider responses.
 
 ## Verification
 
@@ -118,8 +116,40 @@ command completed. API and Worker readiness passed. The HTTPS proxy returned
 404 for the disabled RSS and MCP routes. The disposable containers, volumes
 and images were removed.
 
-An earlier full Release run found the old system-metadata property count and
-two immediate probes after PostgreSQL unpause. Both checks were updated, and
-all three cases passed in the focused rerun. The earlier full run was stopped
-after those fixes. The final revision has focused verification rather than a
-completed full Release result.
+An earlier full Release run was stopped after fixes to the system-metadata
+property count and readiness probes after PostgreSQL unpause. The three affected
+cases passed in the focused rerun.
+
+On 2026-11-26, the full .NET Release run on `f704caa` (same implementation as
+`1c60bd9`) passed with SDK `10.0.403` and Docker Testcontainers. The command
+`dotnet test CityPortal.slnx --configuration Release` ran 242 tests in 13 min 23 s.
+All 242 passed, with zero failures and zero skips.
+
+On 2026-11-26, a disposable Compose stack with experimental provider stubs verified the HTTPS
+editorial flow. OpenAI returned a draft from the public title and summary. The
+Worker sent the edited text and canonical article URL, recorded `Sent`, and
+returned a link with the stub's message ID. The first run exposed a Telegram URI
+resolution error caused by the colon in the token. The fixed client resolves the
+path relative to the Bot API base URL, and the Worker test asserts that URL.
+The stub retained the post after restart. All four focused Telegram and AI
+tests passed. The Production API rejected the stub override at startup.
+
+On 2026-11-27, the frontend formatting failure from
+[CI run 45862216848](https://github.com/Pikatoise/city-portal/actions/runs/45862216848)
+reproduced on an LF checkout of `f704caa`. After formatting the two Telegram
+files, the same checkout passed Prettier, the generated API client check,
+the production build, and all 115 Angular tests.
+
+## Owner acceptance and limitations
+
+The owner accepted and closed Stage 6 on 2026-11-27. The recorded evidence
+includes automated and stub-based checks, and a live read-only Open-Meteo request.
+The following live checks have no recorded result and were deferred at closure:
+
+- Send an approved announcement through a real Telegram bot to a test channel.
+  Match the editorial status and post link against the message in the channel.
+- Generate a draft with a real OpenAI API key, edit it, and confirm that Telegram
+  receives the approved text.
+- Sign in to [MCP Inspector with Auth0](../development_instructions/installation_and_deployment/mcp_auth0.md)
+  over HTTPS and verify that the assigned reader can list, search, and open
+  published news.
