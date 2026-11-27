@@ -1,63 +1,33 @@
 # CityPortal
 
-## Project Purpose
-
-CityPortal is a portfolio and learning project focused on professional .NET backend development and understanding a complete system. It serves one configurable city per deployment and uses a fictional city for development and demonstrations.
-
-News is the main feature, complemented by moderated classifieds, citizen story suggestions, flat article comments, personal accounts, and editorial and administrative workspaces. Unified accounts support multiple roles: Regular User, Author, Editor, Moderator, and Administrator.
+CityPortal is a portfolio and learning project for professional .NET backend development.
 
 ## Sources of Truth
 
-- Read [docs/VALUE.md](docs/VALUE.md) before defining product behavior, permissions, content lifecycles, or scope.
-- Read [docs/CORE.md](docs/CORE.md) before architectural changes, implementation planning, or infrastructure work. It also links to instructions for starting and checking the application.
-- Before writing or reviewing C#, read [docs/CODE_STYLE.md](docs/CODE_STYLE.md) and follow the root `.editorconfig`. These files record the owner's approved conventions, including omitted braces for single-statement control-flow bodies.
-- These documents define the approved direction. Agree unresolved workflow details with the owner before implementation; new business rules and features require confirmation.
-
-## Technical Direction
-
-- Build a modular monolith using C# and .NET 10, ASP.NET Core Web API Controllers, and one Angular application. Public pages use SSR; personal and staff areas render in the browser.
-- Run Angular SSR, the API, and a separate .NET Worker behind one HTTPS origin, with the API at `/api/`.
-- Use PostgreSQL and EF Core. Each module owns its models, schema, DbContext, and migrations, and exposes explicit operations to other modules.
-- Use ASP.NET Core Identity with cookie authentication, CSRF protection, and API-enforced authorization based on roles, ownership, and content state.
-- Use Redis, Wolverine with RabbitMQ and transactional Outbox/Inbox, Quartz.NET, and S3-compatible media storage for the relevant workflows.
-- Use OpenAPI and Scalar, a generated TypeScript API client, xUnit and Testcontainers, OpenTelemetry, Docker Compose, GitHub Actions, and Linux hosting.
-
-## Implementation Priorities
-
-Preserve published revisions while changes await approval. Enforce current visibility and expiry rules in public reads. Account blocking and hiding the account's advertisements must be atomic. Citizen suggestions expire after 72 hours; advertisements remain public for seven days unless renewed. Durable background delivery must tolerate outages and duplicate messages.
-
-Deliver in order: accounts, roles, and Email; news and Media; citizen suggestions; classifieds and moderation; comments; Telegram, weather, and RSS. Apply security, tests, observability, and deployment preparation throughout. Keep the implementation maintainable and avoid speculative abstractions or infrastructure.
-
-The owner defines scenarios and key decisions; AI implements agreed behavior and explains it. Specify the relevant workflow, permissions, contracts, and acceptance criteria before coding. Complete and review each workflow before moving to the next module. Track work in GitHub Issues and Projects.
+- **Product behavior, scope, permissions, or content lifecycles.** Read [VALUE.md](docs/VALUE.md).
+- **Architecture, implementation planning, or infrastructure.** Read [CORE.md](docs/CORE.md) for technical decisions and delivery order.
+- **Local startup, verification, deployment, or recovery.** Use the procedures indexed in [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+- **C# implementation or review.** Read [CODE_STYLE.md](docs/CODE_STYLE.md) and follow the root [`.editorconfig`](.editorconfig).
+- **UI design or styling.** Read [UI_STYLE.md](docs/UI_STYLE.md).
 
 ## Stage Workflow
 
-1. Before stage work, read its specification in `docs/stages/STAGE_X.md`, where `X` is the delivery stage number from CORE.md. Start with [Stage 1](docs/stages/STAGE_1.md).
-2. Describe only the current stage. Create the next stage specification after the current stage is implemented, verified, and reviewed with the owner.
-3. Each specification must contain the goal, scope, tools, ordered implementation steps, relevant workflows, permissions, contracts, acceptance criteria, open decisions, and implementation status.
-4. Resolve open decisions with the owner before implementing the affected workflow. Implement the agreed specification and record progress and verification evidence in it.
-5. When work changes an agreed requirement, contract, or technical decision, update every affected specification in the same work session. Update VALUE.md for product changes and CORE.md for architecture or delivery changes; keep stage specifications consistent with both. Confirm new business rules and features with the owner before implementing them.
-6. Close the stage only when its acceptance criteria pass and the owner has reviewed the result. Record remaining limitations and the review outcome before describing the next stage. Keep GitHub Issues and Projects aligned with the stage specification.
-7. As soon as you close a numbered delivery stage, start a new agent session to review and clean up all documentation under `docs/`. Start it without a separate request and complete the review before beginning the next stage. Fix stale statuses and conflicting descriptions, consolidate duplicate rules in their source of truth, and move reusable procedures to the development guides. Preserve approved requirements, acceptance evidence, and known limitations. Verify local links and anchors after the cleanup.
+1. Before working on a stage, open its specification from the delivery order in [CORE.md](docs/CORE.md#delivery-order). Specify the current stage's goal, scope, tools, implementation order, workflows, permissions, contracts, acceptance criteria, open decisions, and status.
+2. The owner defines scenarios and key decisions. Agree on the workflow and acceptance criteria before coding. Resolve open decisions and obtain owner approval for new business rules and features before implementing them.
+3. Implement and explain the agreed behavior. Include security, tests, observability, and deployment checks as relevant. Complete and review each workflow before moving to the next module. Record progress and verification in the stage specification and track work in GitHub Issues and Projects.
+4. In the same session as a requirement, contract, or technical decision changes, update every affected specification. Update [VALUE.md](docs/VALUE.md) for product changes and [CORE.md](docs/CORE.md) for architecture or delivery changes.
+5. Close the stage after its acceptance criteria pass and the owner reviews the result. Record the review outcome and remaining limitations, and update GitHub Issues and Projects.
+6. Immediately after closing a numbered stage, start a new agent session to review all of `docs/` without waiting for a request. Fix stale and conflicting text, consolidate duplicate rules in their owning documents, and move reusable procedures to the development guides. Preserve approved requirements, acceptance evidence, and limitations. Verify local links and anchors before specifying the next stage.
 
 ## Optimization and Refactoring
 
-Read [docs/OPTIMIZATIONS.md](docs/OPTIMIZATIONS.md) before revisiting an
-existing optimization or refactor. After implementing one, record its date,
-scope, reason, change and verification there in the same work session.
-Include before-and-after measurements and their conditions when measured.
-Keep effective contracts and operational procedures in their owning documents
-and link to the log for implementation history and evidence.
+Read [OPTIMIZATIONS.md](docs/OPTIMIZATIONS.md) before revisiting an optimization or refactor. In the same session as implementation, record its date, scope, reason, change, and verification there. Include before-and-after measurements and their conditions when measured. Keep current contracts and procedures in their owning documents and link to the log for history and evidence.
 
 ## Workspace Cleanup
 
-Keep temporary scripts, logs, screenshots, runtime copies and test fixtures only
-for the task that needs them. Before finishing, stop task-owned processes and
-remove those files, disposable databases, broker vhosts and object buckets.
-Record durable verification results in the existing project documentation.
-Remove completed task specs from `docs/temp_tasks/` after recording their results.
-Preserve active stand data, credentials, required SDKs and dependencies. Keep
-diagnostic artifacts only while they are needed to investigate an unresolved failure.
+Before finishing, stop task-owned processes and remove temporary files, test fixtures, disposable databases, broker vhosts, and object buckets. Keep diagnostic artifacts while investigating an unresolved failure. Preserve active stand data, credentials, required SDKs, and dependencies.
+
+Record durable verification results in the existing project documentation, then remove completed task specs from `docs/temp_tasks/`.
 
 ## Communication
 
