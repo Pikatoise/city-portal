@@ -129,7 +129,7 @@ On 2026-11-26, the full .NET Release run on `f704caa` (same implementation as
 `dotnet test CityPortal.slnx --configuration Release` ran 242 tests in 13 min 23 s.
 All 242 passed, with zero failures and zero skips.
 
-On 2026-11-26, a fresh Compose stack with the provider stubs verified the HTTPS
+On 2026-11-26, a disposable Compose stack with experimental provider stubs verified the HTTPS
 editorial flow. OpenAI returned a draft from the public title and summary. The
 Worker sent the edited text and canonical article URL, recorded `Sent`, and
 returned a link with the stub's message ID. The first run exposed a Telegram URI
@@ -146,7 +146,7 @@ the production build, and all 115 Angular tests.
 
 ## Owner acceptance and limitations
 
-On 2026-11-27, the owner instructed us to close Stage 6. The recorded evidence
+The owner accepted and closed Stage 6 on 2026-11-27. The recorded evidence
 includes automated and stub-based checks, and a live read-only Open-Meteo request.
 The following live checks have no recorded result and were deferred at closure:
 
