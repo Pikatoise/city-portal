@@ -29,7 +29,7 @@ internal static class Program
         builder.Services.AddCitizenSubmissionsModule(database);
         builder.Services.AddIntegrationsModule(database);
         builder.Services.AddWeatherWorker();
-        builder.Services.AddTelegramIntegrations(builder.Configuration);
+        builder.Services.AddTelegramIntegrations(builder.Configuration, builder.Environment.IsDevelopment());
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: true, options => options.ConfigureTelegramMessaging(isWorker: true));
         string keysPath = builder.Configuration["Security:DataProtectionKeysPath"]
             ?? throw new InvalidOperationException("Security:DataProtectionKeysPath must be configured.");

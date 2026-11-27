@@ -19,7 +19,7 @@ public sealed class TelegramBotClient
         {
             if (!IsValidToken(token))
                 return new TelegramSendResult(null, null, "telegram_rejected", false);
-            using HttpResponseMessage response = await _http.PostAsJsonAsync($"bot{token}/sendMessage",
+            using HttpResponseMessage response = await _http.PostAsJsonAsync($"./bot{token}/sendMessage",
                 new { chat_id = channel, text = $"{text}\n\n{articleUrl}", link_preview_options = new { url = articleUrl } }, cancellationToken);
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {

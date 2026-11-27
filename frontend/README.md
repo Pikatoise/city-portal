@@ -1,6 +1,6 @@
 ﻿# CityPortal frontend
 
-Angular 22 application with a Node.js SSR host. Public routes use SSR. Account and staff routes render in the browser and remain placeholders until their stage 1 workflows are implemented.
+Angular 22 application with a Node.js SSR host. Public routes use SSR. Setup, account, and staff routes render in the browser.
 
 Use Node.js 26.8.1 and npm 11 or later. Run commands from this directory; on Windows use `npm.cmd` if PowerShell blocks `npm.ps1`.
 

@@ -5,6 +5,9 @@ when upgrading from Stage 5. The migration creates the `integrations` schema.
 Include it in the regular database backup. An existing installation starts with
 all integration switches off.
 
+For local review without Telegram or OpenAI credentials, see the
+[stand with provider stubs](../local_startup/local_review_stand.md#telegram-and-openai-stubs).
+
 Open `/staff/integrations` as an administrator with confirmed Email. Enable each
 integration when its deployment configuration is ready. Set `PUBLIC_ORIGIN` to
 the public HTTPS origin before publishing links through RSS, Telegram, or MCP.

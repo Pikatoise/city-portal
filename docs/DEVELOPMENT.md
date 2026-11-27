@@ -7,6 +7,7 @@
 - [Build, migrate, and start with Docker Compose](development_instructions/local_startup/compose_startup.md)
 - [Export and trust the local HTTPS certificate](development_instructions/local_startup/local_https_certificate.md)
 - [Launch the review stand and open pgAdmin](development_instructions/local_startup/local_review_stand.md)
+- [Exercise Telegram and OpenAI locally with provider stubs](development_instructions/local_startup/local_review_stand.md#telegram-and-openai-stubs)
 
 ## Installation and deployment
 
@@ -15,7 +16,7 @@
 - [Bootstrap a legacy administrator and locate account tools](development_instructions/installation_and_deployment/legacy_administrator_bootstrap.md)
 - [Back up and restore an installation](development_instructions/installation_and_deployment/backup_and_restore.md)
 - [Apply the Stage 2 migration](development_instructions/installation_and_deployment/stage_2_upgrade.md)
-- [Configure Stage 6 providers and check their work](development_instructions/installation_and_deployment/integrations.md)
+- [Configure and check the external integrations](development_instructions/installation_and_deployment/integrations.md)
 - [Authorize an MCP Inspector client in Auth0](development_instructions/installation_and_deployment/mcp_auth0.md)
 
 ## Development and verification
