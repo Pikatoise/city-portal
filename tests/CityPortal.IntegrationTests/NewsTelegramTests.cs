@@ -243,6 +243,7 @@ public sealed partial class NewsTests
                 }
                 while (delivery?.State != "Sent");
                 Assert.Equal(1, handler.Calls);
+                Assert.Equal(new Uri("https://telegram.invalid/bot1234:fixture_only/sendMessage"), handler.RequestUri);
                 Assert.Equal("Durable from RabbitMQ\n\n" + preview.ArticleUrl, handler.Text);
                 Assert.Equal("https://t.me/city_fixture/52", delivery.PostUrl);
             }
@@ -304,6 +305,8 @@ public sealed partial class NewsTests
 
         public int Calls { get; private set; }
 
+        public Uri? RequestUri { get; private set; }
+
         public string? Text { get; private set; }
 
         public string? Channel { get; private set; }
@@ -311,6 +314,7 @@ public sealed partial class NewsTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++;
+            RequestUri = request.RequestUri;
             using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
             Text = body.RootElement.GetProperty("text").GetString();
             Channel = body.RootElement.GetProperty("chat_id").GetString();

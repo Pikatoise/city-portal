@@ -91,7 +91,9 @@ def confirmation(email):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-build", action="store_true", help="Reuse already built application images")
+    parser.add_argument("--integration-stubs", action="store_true", help="Use local Telegram and OpenAI substitutes")
     args = parser.parse_args()
+    compose = COMPOSE + (["-f", "compose.integration-stubs.yaml"] if args.integration_stubs else [])
     LOCAL.mkdir(parents=True, exist_ok=True)
     env_file = ROOT / ".env"
     if not env_file.exists():
@@ -107,24 +109,24 @@ def main():
     values["RABBITMQ_USER"] = values.get("RABBITMQ_USER") or "cityportal"
     env = dict(os.environ, **values)
     env["PUBLIC_ORIGIN"] = "https://localhost:8443"
-    command(COMPOSE + ["config", "--quiet"], env)
+    command(compose + ["config", "--quiet"], env)
     if not args.no_build:
-        command(COMPOSE + ["build"], env)
-    command(COMPOSE + ["up", "-d", "--wait", "postgres", "rabbitmq", "mailpit", "media-store", "pgadmin"], env)
-    vhosts = command(COMPOSE + ["exec", "-T", "rabbitmq", "rabbitmqctl", "-q", "list_vhosts", "name"], env, capture=True)
+        command(compose + ["build"], env)
+    command(compose + ["up", "-d", "--wait", "postgres", "rabbitmq", "mailpit", "media-store", "pgadmin"], env)
+    vhosts = command(compose + ["exec", "-T", "rabbitmq", "rabbitmqctl", "-q", "list_vhosts", "name"], env, capture=True)
     if "cityportal_stand" not in vhosts.splitlines():
-        command(COMPOSE + ["exec", "-T", "rabbitmq", "rabbitmqctl", "add_vhost", "cityportal_stand"], env)
-    command(COMPOSE + ["exec", "-T", "rabbitmq", "rabbitmqctl", "set_permissions", "-p", "cityportal_stand", values.get("RABBITMQ_USER", "cityportal"), ".*", ".*", ".*"], env)
-    existing = command(COMPOSE + ["exec", "-T", "postgres", "psql", "-X", "-qAt", "-U", "cityportal", "-d", "cityportal"], env,
+        command(compose + ["exec", "-T", "rabbitmq", "rabbitmqctl", "add_vhost", "cityportal_stand"], env)
+    command(compose + ["exec", "-T", "rabbitmq", "rabbitmqctl", "set_permissions", "-p", "cityportal_stand", values.get("RABBITMQ_USER", "cityportal"), ".*", ".*", ".*"], env)
+    existing = command(compose + ["exec", "-T", "postgres", "psql", "-X", "-qAt", "-U", "cityportal", "-d", "cityportal"], env,
                        data="SELECT count(*) FROM pg_database WHERE datname='cityportal_stand';", capture=True)
     if existing == "0":
-        command(COMPOSE + ["exec", "-T", "postgres", "createdb", "-U", "cityportal", "cityportal_stand"], env)
-    command(COMPOSE + ["stop", "api", "worker"], env)
-    command(COMPOSE + ["run", "--rm", "--no-deps", "api", "--migrate"], env)
-    command(COMPOSE + ["up", "-d", "api", "worker", "frontend", "proxy"], env)
+        command(compose + ["exec", "-T", "postgres", "createdb", "-U", "cityportal", "cityportal_stand"], env)
+    command(compose + ["stop", "api", "worker"], env)
+    command(compose + ["run", "--rm", "--no-deps", "api", "--migrate"], env)
+    command(compose + ["up", "-d", "api", "worker", "frontend", "proxy"], env)
     ca = LOCAL / "root.crt"
     def copy_ca():
-        command(COMPOSE + ["cp", "proxy:/data/caddy/pki/authorities/local/root.crt", str(ca)], env, capture=True)
+        command(compose + ["cp", "proxy:/data/caddy/pki/authorities/local/root.crt", str(ca)], env, capture=True)
         return ca.is_file()
     wait_for(copy_ca, "local HTTPS certificate")
     client = Client("https://localhost:8443", ca)

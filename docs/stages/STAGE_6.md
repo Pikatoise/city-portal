@@ -72,6 +72,10 @@ summary to the provider. An editor reviews the suggestion and separately confirm
 the send. Bounded calls and response validation protect the form from provider
 failures. The manual text remains available.
 
+The [local review stand](../development_instructions/local_startup/local_review_stand.md#telegram-and-openai-stubs)
+can substitute local HTTP responses for Telegram and OpenAI. This exercises the
+editorial flow and Worker delivery without provider credentials.
+
 ### MCP
 
 The API exposes `/api/mcp` when enabled and offers `list_latest_news`,

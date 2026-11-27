@@ -7,6 +7,7 @@
 - [Build, migrate, and start with Docker Compose](development_instructions/local_startup/compose_startup.md)
 - [Export and trust the local HTTPS certificate](development_instructions/local_startup/local_https_certificate.md)
 - [Launch the review stand and open pgAdmin](development_instructions/local_startup/local_review_stand.md)
+- [Exercise Telegram and OpenAI locally with provider stubs](development_instructions/local_startup/local_review_stand.md#telegram-and-openai-stubs)
 
 ## Installation and deployment
 
