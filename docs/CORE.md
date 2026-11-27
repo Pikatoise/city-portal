@@ -202,6 +202,9 @@ Telegram announcements through Wolverine. The API serves RSS, authenticates
 MCP readers through Auth0, and requests optional AI suggestions. See the
 [Stage 6 contracts](stages/STAGE_6.md).
 
+The application allows the [local Telegram and OpenAI HTTP stubs](development_instructions/local_startup/local_review_stand.md#telegram-and-openai-stubs)
+only in Development.
+
 ## Background Processing and Integrations
 
 Use Wolverine, RabbitMQ and EF Core Transactional Outbox/Inbox for durable

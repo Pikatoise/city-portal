@@ -45,7 +45,7 @@ public partial class Program
         builder.Services.AddCommentsModule(database);
         builder.Services.AddIntegrationsModule(database);
         builder.Services.AddScoped<PublicIntegrationReads>();
-        builder.Services.AddTelegramIntegrations(builder.Configuration);
+        builder.Services.AddTelegramIntegrations(builder.Configuration, builder.Environment.IsDevelopment());
         builder.Host.UseAccountMailMessaging(database, messaging, isWorker: false, options => options.ConfigureTelegramMessaging(isWorker: false));
         builder.Services.AddAccountSecurity(builder.Configuration);
         builder.Services.AddNewsMcp(builder.Configuration);
